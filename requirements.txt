@@ -1,0 +1,11 @@
+python-dotenv
+streamlit
+langchain
+langchain_openai
+langgraph
+langchain_community
+azure-core
+azure-search-documents
+azure-ai-textanalytics
+azure-storage-blob
+python-docx
