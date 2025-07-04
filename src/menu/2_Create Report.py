@@ -64,9 +64,6 @@ def read_sample_document(file_path: str) -> str:
 
 def generate_llm_report(body_text: str, sample_format: str) -> str:
     """Azure OpenAI를 사용하여 LLM 보고서 생성"""
-    st.write("openai_endpoint:", openai_endpoint)
-    st.write("openai_api_key:", openai_api_key)
-    st.write("chat_model:", chat_model)
     
     try:
         if not all([openai_endpoint, openai_api_key, chat_model]):

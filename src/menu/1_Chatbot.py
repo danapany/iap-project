@@ -11,7 +11,7 @@ load_dotenv()
 
 # Streamlit 페이지 설정
 st.set_page_config(
-    page_title="Azure OpenAI RAG 챗봇",
+    page_title="트러블 체이서 챗봇",
     page_icon="🤖",
     layout="wide"
 )
@@ -27,7 +27,7 @@ search_key = os.getenv("SEARCH_API_KEY")
 search_index = os.getenv("INDEX_NAME")
 
 # 메인 페이지
-st.title("🤖 Azure OpenAI RAG 챗봇")
+st.title("🤖 트러블 체이서 챗봇")
 st.write("Azure AI Search를 활용한 RAG 방식 질의응답 시스템")
 
 # Azure 클라이언트 초기화
@@ -252,23 +252,6 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
     if init_success:
         st.success("Azure 서비스 연결 성공!")
         
-        # 검색 옵션 설정을 먼저 배치
-        st.header("⚙️ 검색 옵션")
-        col_search1, col_search2 = st.columns(2)
-        
-        with col_search1:
-            search_type = st.selectbox(
-                "검색 방식",
-                ["시맨틱 검색 (권장)", "일반 검색"],
-                index=0
-            )
-        
-        with col_search2:
-            search_count = st.slider("검색 결과 수", 1, 10, 5)
-        
-        # 채팅 인터페이스
-        st.header("💬 질의응답")
-        
         # 세션 상태 초기화
         if 'messages' not in st.session_state:
             st.session_state.messages = []
@@ -364,7 +347,20 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
                     st.session_state.sample_query = f"타 서비스에서 {incident_symptom} 동일 현상에 대한 대응이력조회"
                 else:
                     st.session_state.sample_query = "타 서비스에 동일 현상에 대한 대응이력조회"
+
+        # 검색 옵션 설정을 먼저 배치
+        col_search1, col_search2 = st.columns(2)
         
+        with col_search1:
+            search_type = st.selectbox(
+                "검색 방식",
+                ["시맨틱 검색 (권장)", "일반 검색"],
+                index=0
+            )
+        
+        with col_search2:
+            search_count = st.slider("검색 결과 수", 1, 10, 5)
+
         # 주요 질문 처리
         if 'sample_query' in st.session_state:
             query = st.session_state.sample_query

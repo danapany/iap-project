@@ -8,7 +8,7 @@ from difflib import SequenceMatcher
 # 환경 변수 로드
 load_dotenv()
 openai_endpoint = os.getenv("OPENAI_ENDPOINT")
-openai_api_key = os.getenv("OPENAI_API_KEY")
+openai_api_key = os.getenv("OPENAI_KEY")
 chat_model = os.getenv("CHAT_MODEL")
 
 # Azure OpenAI 클라이언트 초기화
