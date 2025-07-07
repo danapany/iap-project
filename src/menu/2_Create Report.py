@@ -5,7 +5,7 @@ import sqlite3
 from docx import Document
 from docx.shared import Pt
 import tempfile
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 import datetime
 from openai import AzureOpenAI
 
@@ -108,21 +108,70 @@ def generate_llm_report(body_text: str, sample_format: str) -> str:
     except Exception as e:
         return f"LLM 보고서 생성 중 오류가 발생했습니다: {str(e)}"
 
-def generate_word_from_body(body_text: str, filename: str) -> str:
-    """본문 내용을 기반으로 Word 문서 생성"""
-    doc = Document("data/docx/iap-report-sample1.docx")  # 샘플 문서 기반
+def generate_word_from_llm_report(llm_report: str, filename: str) -> str:
+    """LLM 생성 보고서를 기반으로 Word 문서 생성"""
+    # 새로운 Word 문서 생성
+    doc = Document()
     
-    doc.add_paragraph("")  # 구분선
-    content_paragraph = doc.add_paragraph(body_text)
-    content_paragraph.style.font.size = Pt(11)
-
+    # 문서 제목 추가
+    title = doc.add_heading('장애보고서', 0)
+    title.alignment = 1  # 중앙 정렬
+    
+    # LLM 보고서 내용을 줄별로 분리하여 처리
+    lines = llm_report.split('\n')
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        # 마크다운 헤딩 처리
+        if line.startswith('# '):
+            doc.add_heading(line[2:], level=1)
+        elif line.startswith('## '):
+            doc.add_heading(line[3:], level=2)
+        elif line.startswith('### '):
+            doc.add_heading(line[4:], level=3)
+        elif line.startswith('#### '):
+            doc.add_heading(line[5:], level=4)
+        # 볼드 텍스트 처리
+        elif line.startswith('**') and line.endswith('**'):
+            paragraph = doc.add_paragraph()
+            run = paragraph.add_run(line[2:-2])
+            run.bold = True
+        # 리스트 처리
+        elif line.startswith('- ') or line.startswith('* '):
+            paragraph = doc.add_paragraph(line[2:], style='List Bullet')
+        elif line.startswith('1. ') or line.startswith('2. ') or line.startswith('3. '):
+            # 숫자 리스트 처리
+            paragraph = doc.add_paragraph(line[3:], style='List Number')
+        # 일반 텍스트
+        else:
+            # 인라인 볼드 텍스트 처리
+            paragraph = doc.add_paragraph()
+            parts = line.split('**')
+            for i, part in enumerate(parts):
+                if i % 2 == 0:
+                    # 일반 텍스트
+                    paragraph.add_run(part)
+                else:
+                    # 볼드 텍스트
+                    run = paragraph.add_run(part)
+                    run.bold = True
+    
+    # 문서 스타일 설정
+    for paragraph in doc.paragraphs:
+        if paragraph.style.name == 'Normal':
+            paragraph.style.font.name = '맑은 고딕'
+            paragraph.style.font.size = Pt(11)
+    
     # 임시 파일에 저장
     temp_path = tempfile.NamedTemporaryFile(delete=False, suffix=".docx").name
     doc.save(temp_path)
     return temp_path
 
-def upload_to_azure_word_blob(file_content, filename):
-    """Azure Blob Storage에 파일 업로드"""
+def upload_to_azure_word_blob(file_path, filename):
+    """Azure Blob Storage에 파일 업로드하고 다운로드 URL 반환"""
     try:
         if not AZURE_STORAGE_CONNECTION_STRING:
             return False, None, "Azure Storage 연결 문자열이 설정되지 않았습니다."
@@ -153,13 +202,37 @@ def upload_to_azure_word_blob(file_content, filename):
             blob=blob_name
         )
         
-        # 파일 내용이 bytes가 아닌 경우 변환
-        if isinstance(file_content, str):
-            file_content = file_content.encode('utf-8')
+        # 파일 업로드
+        with open(file_path, "rb") as data:
+            blob_client.upload_blob(data, overwrite=True)
         
-        blob_client.upload_blob(file_content, overwrite=True)
+        # 다운로드 URL 생성 (SAS 토큰 포함)
+        # 연결 문자열에서 계정 키 추출
+        account_key = None
+        for part in AZURE_STORAGE_CONNECTION_STRING.split(';'):
+            if part.startswith('AccountKey='):
+                account_key = part.split('=', 1)[1]
+                break
         
-        return True, blob_name, None
+        if account_key:
+            # SAS 토큰 생성 (24시간 유효)
+            sas_token = generate_blob_sas(
+                account_name=STORAGE_ACCOUNT_NAME,
+                container_name=WORD_CONTAINER_NAME,
+                blob_name=blob_name,
+                account_key=account_key,
+                permission=BlobSasPermissions(read=True),
+                expiry=datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+            )
+            
+            # 다운로드 URL 생성
+            blob_url = f"https://{STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{WORD_CONTAINER_NAME}/{blob_name}?{sas_token}"
+        else:
+            # 계정 키를 찾을 수 없으면 기본 URL만 반환
+            blob_url = f"https://{STORAGE_ACCOUNT_NAME}.blob.core.windows.net/{WORD_CONTAINER_NAME}/{blob_name}"
+        
+        return True, blob_url, None
+        
     except Exception as e:
         error_message = str(e)
         if "Connection string is either blank or malformed" in error_message:
@@ -228,10 +301,19 @@ else:
 
         st.markdown("---")
         if st.button("📄 Word 파일 생성 및 업로드"):
-            word_file = generate_word_from_body(body_text, "generated_report.docx")
-            blob_name = f"iap-report-{selected_record[0]}.docx"
-            blob_url = upload_to_azure_word_blob(word_file, blob_name)
-
-            if blob_url:
-                st.success("✅ Word 파일이 생성되어 Azure에 업로드되었습니다.")
-                st.markdown(f"[📥 파일 다운로드]({blob_url})", unsafe_allow_html=True)
+            with st.spinner("Word 파일을 생성하고 업로드하는 중..."):
+                word_file_path = generate_word_from_llm_report(llm_report, "generated_report.docx")
+                blob_name = f"iap-report-{selected_record[0]}.docx"
+                
+                success, blob_url, error_msg = upload_to_azure_word_blob(word_file_path, blob_name)
+                
+                # 임시 파일 삭제
+                if os.path.exists(word_file_path):
+                    os.unlink(word_file_path)
+                
+                if success and blob_url:
+                    st.success("✅ Word 파일이 생성되어 Azure에 업로드되었습니다.")
+                    st.markdown(f"**📥 [파일 다운로드]({blob_url})**")
+                    st.info("💡 다운로드 링크는 24시간 동안 유효합니다.")
+                else:
+                    st.error(f"❌ 업로드 실패: {error_msg}")
