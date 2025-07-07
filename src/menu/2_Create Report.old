@@ -4,10 +4,7 @@ import streamlit as st
 import sqlite3
 from docx import Document
 from docx.shared import Pt
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml.shared import OxmlElement, qn
 import tempfile
-import re
 from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
 import datetime
 from openai import AzureOpenAI
@@ -18,6 +15,7 @@ load_dotenv()
 # 데이터 캐시 비우기
 st.cache_data.clear()
 st.cache_resource.clear()
+
 
 # Azure OpenAI 설정
 openai_endpoint = os.getenv("OPENAI_ENDPOINT")
@@ -111,13 +109,13 @@ def generate_llm_report(body_text: str, sample_format: str) -> str:
         return f"LLM 보고서 생성 중 오류가 발생했습니다: {str(e)}"
 
 def generate_word_from_llm_report(llm_report: str, filename: str) -> str:
-    """LLM 생성 보고서를 기반으로 Word 문서 생성 (마크다운을 Word 스타일로 변환)"""
+    """LLM 생성 보고서를 기반으로 Word 문서 생성"""
     # 새로운 Word 문서 생성
     doc = Document()
     
     # 문서 제목 추가
     title = doc.add_heading('장애보고서', 0)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title.alignment = 1  # 중앙 정렬
     
     # LLM 보고서 내용을 줄별로 분리하여 처리
     lines = llm_report.split('\n')
@@ -125,144 +123,52 @@ def generate_word_from_llm_report(llm_report: str, filename: str) -> str:
     for line in lines:
         line = line.strip()
         if not line:
-            # 빈 줄은 빈 문단으로 추가
-            doc.add_paragraph()
             continue
-        
+            
         # 마크다운 헤딩 처리
-        if line.startswith('#### '):
-            heading = doc.add_heading(line[5:], level=4)
-            set_korean_font(heading)
-        elif line.startswith('### '):
-            heading = doc.add_heading(line[4:], level=3)
-            set_korean_font(heading)
+        if line.startswith('# '):
+            doc.add_heading(line[2:], level=1)
         elif line.startswith('## '):
-            heading = doc.add_heading(line[3:], level=2)
-            set_korean_font(heading)
-        elif line.startswith('# '):
-            heading = doc.add_heading(line[2:], level=1)
-            set_korean_font(heading)
-        # 순서 있는 리스트 처리 (숫자로 시작하는 패턴)
-        elif re.match(r'^\d+\.\s+', line):
-            # 숫자 제거하고 내용만 추출
-            content = re.sub(r'^\d+\.\s+', '', line)
-            paragraph = doc.add_paragraph()
-            paragraph.style = 'List Number'
-            add_formatted_text(paragraph, content)
-            set_korean_font(paragraph)
-        # 순서 없는 리스트 처리
-        elif line.startswith('- ') or line.startswith('* '):
-            content = line[2:]
-            paragraph = doc.add_paragraph()
-            paragraph.style = 'List Bullet'
-            add_formatted_text(paragraph, content)
-            set_korean_font(paragraph)
-        # 전체가 볼드인 경우 (제목처럼 사용)
-        elif line.startswith('**') and line.endswith('**') and line.count('**') == 2:
+            doc.add_heading(line[3:], level=2)
+        elif line.startswith('### '):
+            doc.add_heading(line[4:], level=3)
+        elif line.startswith('#### '):
+            doc.add_heading(line[5:], level=4)
+        # 볼드 텍스트 처리
+        elif line.startswith('**') and line.endswith('**'):
             paragraph = doc.add_paragraph()
             run = paragraph.add_run(line[2:-2])
             run.bold = True
-            run.font.size = Pt(12)
-            set_korean_font(paragraph)
-        # 일반 텍스트 (인라인 포맷팅 포함)
+        # 리스트 처리
+        elif line.startswith('- ') or line.startswith('* '):
+            paragraph = doc.add_paragraph(line[2:], style='List Bullet')
+        elif line.startswith('1. ') or line.startswith('2. ') or line.startswith('3. '):
+            # 숫자 리스트 처리
+            paragraph = doc.add_paragraph(line[3:], style='List Number')
+        # 일반 텍스트
         else:
+            # 인라인 볼드 텍스트 처리
             paragraph = doc.add_paragraph()
-            add_formatted_text(paragraph, line)
-            set_korean_font(paragraph)
+            parts = line.split('**')
+            for i, part in enumerate(parts):
+                if i % 2 == 0:
+                    # 일반 텍스트
+                    paragraph.add_run(part)
+                else:
+                    # 볼드 텍스트
+                    run = paragraph.add_run(part)
+                    run.bold = True
     
-    # 문서 전체 스타일 설정
-    set_document_style(doc)
+    # 문서 스타일 설정
+    for paragraph in doc.paragraphs:
+        if paragraph.style.name == 'Normal':
+            paragraph.style.font.name = '맑은 고딕'
+            paragraph.style.font.size = Pt(11)
     
     # 임시 파일에 저장
     temp_path = tempfile.NamedTemporaryFile(delete=False, suffix=".docx").name
     doc.save(temp_path)
     return temp_path
-
-def add_formatted_text(paragraph, text):
-    """문단에 인라인 포맷팅이 적용된 텍스트 추가"""
-    # 볼드 텍스트 패턴 처리
-    parts = re.split(r'(\*\*.*?\*\*)', text)
-    
-    for part in parts:
-        if part.startswith('**') and part.endswith('**') and len(part) > 4:
-            # 볼드 텍스트
-            run = paragraph.add_run(part[2:-2])
-            run.bold = True
-        elif part:
-            # 일반 텍스트
-            run = paragraph.add_run(part)
-
-def set_korean_font(paragraph):
-    """한글 폰트 설정"""
-    for run in paragraph.runs:
-        run.font.name = '맑은 고딕'
-        run.font.size = Pt(11)
-        
-        # 한글 폰트 설정을 위한 XML 처리
-        r = run._element
-        rPr = r.get_or_add_rPr()
-        
-        # 동아시아 폰트 설정
-        rFonts = rPr.find(qn('w:rFonts'))
-        if rFonts is None:
-            rFonts = OxmlElement('w:rFonts')
-            rPr.append(rFonts)
-        
-        rFonts.set(qn('w:eastAsia'), '맑은 고딕')
-        rFonts.set(qn('w:hint'), 'eastAsia')
-
-def set_document_style(doc):
-    """문서 전체 스타일 설정"""
-    # 기본 스타일 설정
-    styles = doc.styles
-    
-    # Normal 스타일 설정
-    normal_style = styles['Normal']
-    normal_font = normal_style.font
-    normal_font.name = '맑은 고딕'
-    normal_font.size = Pt(11)
-    
-    # 문단 간격 설정
-    paragraph_format = normal_style.paragraph_format
-    paragraph_format.space_after = Pt(6)
-    paragraph_format.line_spacing = 1.15
-    
-    # 헤딩 스타일 설정
-    for level in range(1, 5):
-        heading_style = styles[f'Heading {level}']
-        heading_font = heading_style.font
-        heading_font.name = '맑은 고딕'
-        heading_font.bold = True
-        
-        # 헤딩 레벨별 크기 설정
-        if level == 1:
-            heading_font.size = Pt(16)
-        elif level == 2:
-            heading_font.size = Pt(14)
-        elif level == 3:
-            heading_font.size = Pt(13)
-        else:  # level 4
-            heading_font.size = Pt(12)
-        
-        # 헤딩 간격 설정
-        heading_format = heading_style.paragraph_format
-        heading_format.space_before = Pt(12)
-        heading_format.space_after = Pt(6)
-    
-    # 리스트 스타일 설정
-    try:
-        list_bullet_style = styles['List Bullet']
-        list_bullet_font = list_bullet_style.font
-        list_bullet_font.name = '맑은 고딕'
-        list_bullet_font.size = Pt(11)
-        
-        list_number_style = styles['List Number']
-        list_number_font = list_number_style.font
-        list_number_font.name = '맑은 고딕'
-        list_number_font.size = Pt(11)
-    except KeyError:
-        # 스타일이 없는 경우 무시
-        pass
 
 def upload_to_azure_word_blob(file_path, filename):
     """Azure Blob Storage에 파일 업로드하고 다운로드 URL 반환"""
@@ -279,7 +185,7 @@ def upload_to_azure_word_blob(file_path, filename):
         blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
         
         # 타임스탬프를 포함한 고유한 파일명 생성
-        timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         blob_name = f"{timestamp}_{filename}"
         
         # 컨테이너 존재 확인 및 생성
@@ -316,7 +222,7 @@ def upload_to_azure_word_blob(file_path, filename):
                 blob_name=blob_name,
                 account_key=account_key,
                 permission=BlobSasPermissions(read=True),
-                expiry=datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=24)
+                expiry=datetime.datetime.utcnow() + datetime.timedelta(hours=24)
             )
             
             # 다운로드 URL 생성
@@ -396,7 +302,6 @@ else:
         st.markdown("---")
         if st.button("📄 Word 파일 생성 및 업로드"):
             with st.spinner("Word 파일을 생성하고 업로드하는 중..."):
-                # 수정: st.markdown(llm_report) 대신 llm_report 직접 전달
                 word_file_path = generate_word_from_llm_report(llm_report, "generated_report.docx")
                 blob_name = f"iap-report-{selected_record[0]}.docx"
                 
