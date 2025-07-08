@@ -26,26 +26,31 @@ search_endpoint = os.getenv("SEARCH_ENDPOINT")
 search_key = os.getenv("SEARCH_API_KEY")
 search_index = os.getenv("INDEX_NAME")
 
-# 메인 페이지
+# 메인 페이지 제목
 st.title("🤖 트러블 체이서 챗봇")
 st.write("Azure AI Search를 활용한 RAG 방식 질의응답 시스템")
 
 # 질문 타입별 시스템 프롬프트 정의
 SYSTEM_PROMPTS = {
-    "guide": """당신은 IT 대응 가이드 전문가입니다. 
-사용자의 서비스와 현상을 바탕으로 명확하고 실용적인 대응 방안을 제공하세요.
-답변은 한국어로 작성하며, 단계별로 구체적인 대응 방법을 안내해주세요.
-장애 ID, 서비스명, 원인, 복구방법 등의 구체적인 정보를 포함해주세요.
-만약 제공된 문서에서 관련 정보를 찾을 수 없다면, 그렇게 명시해주세요.""",
+    "repair": """당신은 IT서비스 트러블슈팅 전문가입니다. 
+사용자의 서비스와 현상에 해당되는 대표 복구방법(incident_repair)을 아래와 같은 형식으로 Top3로 요약해서 답변해주세요. 
+Case1 : ~~현 영향도
+* 원인 : ~~한 원인
+* 현상 : ~~한 현상
+* 조치방법 : ~~해서 복구
+장애현상은 공지사항의 '현상'을 참고하고 없으면 '영향도'를 참고해서주세요
+답변은 한국어로 작성하며, 만약 제공된 문서에서 관련 정보를 찾을 수 없다면, 그렇게 명시해주세요.""",
     
     "cause": """당신은 장애 원인 분석 전문가입니다. 
-사용자의 질문에 대해 대표적인 장애 원인을 간결하게 설명하세요.
+사용자의 질문에 대해 입력받은 서비스명은 상관없이 장애현상에 대한 대표적인 장애 원인을 간결하게 설명하세요.
+장애현상은 공지사항의 '현상'을 참고하고 없으면 '영향도'를 참고해서주세요
 답변은 한국어로 작성하며, 원인별로 분류하여 설명해주세요.
 장애 ID, 서비스명, 원인 유형 등의 구체적인 정보를 포함해주세요.
 만약 제공된 문서에서 관련 정보를 찾을 수 없다면, 그렇게 명시해주세요.""",
     
     "history": """당신은 과거 장애 이력 분석 전문가입니다. 
 유사한 과거 장애 사례를 찾아 원인 및 대응 방법을 표 형식으로 요약하세요.
+장애현상은 공지사항의 '현상'을 참고하고 없으면 '영향도'를 참고해서주세요
 답변은 한국어로 작성하며, 다음과 같은 표 형식을 사용해주세요:
 | 장애 ID | 서비스명 | 장애 원인 | 복구 방법 | 처리 유형 | 담당 부서 |
 장애 ID, 서비스명, 원인, 복구방법 등의 구체적인 정보를 포함해주세요.
@@ -54,12 +59,29 @@ SYSTEM_PROMPTS = {
     "similar": """당신은 유사 사례 추천 전문가입니다. 
 다른 서비스에서 유사한 장애 현상이 어떤 원인이었고 어떻게 처리됐는지 설명하세요.
 답변은 한국어로 작성하며, 서비스별로 분류하여 설명해주세요.
+장애현상은 공지사항의 '현상'을 참고하고 없으면 '영향도'를 참고해서주세요
 장애 ID, 서비스명, 원인, 복구방법 등의 구체적인 정보를 포함해주세요.
-만약 제공된 문서에서 관련 정보를 찾을 수 없다면, 그렇게 명시해주세요.""",
+만약 제공된 문서에서 관련 정보를 찾을 수 없다면, 그렇게 명시해주세요.
+
+# 장애 이력 예시:
+1. KT AICC SaaS/PaaS
+장애 ID: INM23022026178
+서비스명: KT AICC SaaS/PaaS
+장애 범위: 국소 단절
+발생시간: 02/20 08:42
+복구시간: 02/20 10:23
+장애 원인: mecab 사전에 잘못 등록된 상품명(쌍따옴표")으로 인해 TA 분석 오류 발생.
+복구 방법:
+오류 상품명 삭제 및 mecab 리빌드 조치.
+10:23에 서비스 정상화 완료.
+개선 계획: mecab 사전 백업 및 로그 처리, Skip 처리 진행 예정.
+
+""",
     
     "default": """당신은 IT 시스템 장애 전문가입니다. 
 사용자의 질문에 대해 제공된 장애 이력 문서를 기반으로 정확하고 유용한 답변을 제공해주세요.
 답변은 한국어로 작성하며, 구체적인 해결방안이나 원인을 명시해주세요.
+장애현상은 공지사항의 '현상'을 참고하고 없으면 '영향도'를 참고해서주세요
 장애 ID, 서비스명, 원인, 복구방법 등의 구체적인 정보를 포함해주세요.
 만약 제공된 문서에서 관련 정보를 찾을 수 없다면, 그렇게 명시해주세요."""
 }
@@ -282,17 +304,93 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
     if init_success:
         st.success("Azure 서비스 연결 성공!")
         
+        # =================== 상단 고정 영역 시작 ===================
+        # 컨테이너를 사용하여 상단 고정 영역 구성
+        with st.container():
+            st.markdown("---")
+            
+            # 서비스 정보 입력 섹션
+            st.header("📝 서비스 정보 입력")
+            input_col1, input_col2 = st.columns(2)
+            
+            with input_col1:
+                service_name = st.text_input("서비스명을 입력하세요", placeholder="예: 마이페이지, 패밀리박스, 통합쿠폰플랫폼")
+            
+            with input_col2:
+                incident_symptom = st.text_input("장애현상을 입력하세요", placeholder="예: 접속불가, 응답지연, 오류발생")
+            
+            # 서비스명과 장애현상이 입력되었는지 확인
+            if service_name and incident_symptom:
+                st.success(f"서비스: {service_name} | 장애현상: {incident_symptom}")
+            
+            # 주요 질문 버튼들
+            st.header("🔍 주요 질문")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("🔧 서비스와 현상에 대해 복구 방법 안내", key="repair_btn"):
+                    if service_name and incident_symptom:
+                        st.session_state.sample_query = f"{service_name} {incident_symptom}에 대한 복구방법 안내"
+                    else:
+                        st.session_state.sample_query = "서비스와 현상에 대해 복구방법 안내"
+                    st.session_state.query_type = "repair"
+                
+                if st.button("🔍 현상에 대한 대표 원인 안내", key="cause_btn"):
+                    if service_name and incident_symptom:
+                        st.session_state.sample_query = f"{service_name} {incident_symptom} 현상에 대한 대표 원인 안내"
+                    else:
+                        st.session_state.sample_query = "현상에 대한 대표 원인 안내"
+                    st.session_state.query_type = "cause"
+            
+            with col2:
+                if st.button("📋 서비스와 현상에 대한 과거 대응방법", key="history_btn"):
+                    if service_name and incident_symptom:
+                        st.session_state.sample_query = f"{service_name} {incident_symptom}에 대한 과거 대응방법"
+                    else:
+                        st.session_state.sample_query = "서비스와 현상에 대한 과거 대응방법"
+                    st.session_state.query_type = "history"
+                
+                if st.button("🔄 타 서비스에 동일 현상에 대한 대응이력조회", key="similar_btn"):
+                    if service_name and incident_symptom:
+                        st.session_state.sample_query = f"타 서비스에서 {incident_symptom} 동일 현상에 대한 대응이력조회"
+                    else:
+                        st.session_state.sample_query = "타 서비스에 동일 현상에 대한 대응이력조회"
+                    st.session_state.query_type = "similar"
+
+            # 검색 옵션 설정
+            st.header("⚙️ 검색 옵션")
+            col_search1, col_search2 = st.columns(2)
+            
+            with col_search1:
+                search_type = st.selectbox(
+                    "검색 방식",
+                    ["시맨틱 검색 (권장)", "일반 검색"],
+                    index=0
+                )
+            
+            with col_search2:
+                search_count = st.slider("검색 결과 수", 1, 10, 5)
+            
+            st.markdown("---")
+        
+        # =================== 상단 고정 영역 끝 ===================
+        
+        # 채팅 섹션
+        st.header("💬 채팅")
+        
         # 세션 상태 초기화
         if 'messages' not in st.session_state:
             st.session_state.messages = []
         
-        # 이전 메시지 표시
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.write(message["content"])
+        # 채팅 메시지 표시 영역 (스크롤 가능)
+        chat_container = st.container()
         
-        # 사용자 입력
-        user_query = st.chat_input("질문을 입력하세요 (예: 마이페이지 장애원인 알려줘)")
+        with chat_container:
+            # 이전 메시지 표시
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.write(message["content"])
         
         # 검색 및 응답 처리 함수
         def process_query(query, query_type="default"):
@@ -323,6 +421,9 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
                         st.write(error_msg)
                         st.session_state.messages.append({"role": "assistant", "content": error_msg})
         
+        # 사용자 입력 (하단 고정)
+        user_query = st.chat_input("질문을 입력하세요 (예: 마이페이지 장애원인 알려줘)")
+        
         if user_query:
             # 사용자 메시지 추가
             st.session_state.messages.append({"role": "user", "content": user_query})
@@ -332,68 +433,6 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
             
             # 검색 및 응답 생성 (일반 질문은 기본 타입)
             process_query(user_query, "default")
-        
-        # 서비스명과 장애현상 입력
-        st.header("📝 서비스 정보 입력")
-        input_col1, input_col2 = st.columns(2)
-        
-        with input_col1:
-            service_name = st.text_input("서비스명을 입력하세요", placeholder="예: 마이페이지, 로그인, 결제시스템")
-        
-        with input_col2:
-            incident_symptom = st.text_input("장애현상을 입력하세요", placeholder="예: 접속불가, 응답지연, 오류발생")
-        
-        # 주요 질문 버튼들
-        st.header("🔍 주요 질문")
-        
-        # 서비스명과 장애현상이 입력되었는지 확인
-        if service_name and incident_symptom:
-            st.success(f"서비스: {service_name} | 장애현상: {incident_symptom}")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("서비스와 현상에 대해 대응가이드 안내"):
-                if service_name and incident_symptom:
-                    st.session_state.sample_query = f"{service_name} {incident_symptom}에 대한 대응가이드 안내"
-                else:
-                    st.session_state.sample_query = "서비스와 현상에 대해 대응가이드 안내"
-                st.session_state.query_type = "guide"
-            
-            if st.button("현상에 대한 대표 원인 안내"):
-                if service_name and incident_symptom:
-                    st.session_state.sample_query = f"{service_name} {incident_symptom} 현상에 대한 대표 원인 안내"
-                else:
-                    st.session_state.sample_query = "현상에 대한 대표 원인 안내"
-                st.session_state.query_type = "cause"
-        
-        with col2:
-            if st.button("서비스와 현상에 대한 과거 대응방법"):
-                if service_name and incident_symptom:
-                    st.session_state.sample_query = f"{service_name} {incident_symptom}에 대한 과거 대응방법"
-                else:
-                    st.session_state.sample_query = "서비스와 현상에 대한 과거 대응방법"
-                st.session_state.query_type = "history"
-            
-            if st.button("타 서비스에 동일 현상에 대한 대응이력조회"):
-                if service_name and incident_symptom:
-                    st.session_state.sample_query = f"타 서비스에서 {incident_symptom} 동일 현상에 대한 대응이력조회"
-                else:
-                    st.session_state.sample_query = "타 서비스에 동일 현상에 대한 대응이력조회"
-                st.session_state.query_type = "similar"
-
-        # 검색 옵션 설정을 먼저 배치
-        col_search1, col_search2 = st.columns(2)
-        
-        with col_search1:
-            search_type = st.selectbox(
-                "검색 방식",
-                ["시맨틱 검색 (권장)", "일반 검색"],
-                index=0
-            )
-        
-        with col_search2:
-            search_count = st.slider("검색 결과 수", 1, 10, 5)
 
         # 주요 질문 처리
         if 'sample_query' in st.session_state:
