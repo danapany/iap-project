@@ -12,9 +12,9 @@ pg = st.navigation([
     st.Page("menu/5_Process_FAQ.py", title="장애프로세스 FAQ", icon="❓"),
 
     # 관리자용
-    #st.Page("menu/91_Admin-Process_Description_Create.py", title="장애프로세스 쉬운설명 (생성)", icon="⚙️"),
-    #st.Page("menu/92_Admin-FAQ_Create.py", title="장애프로세스 FAQ (생성)", icon="⚙️"),
-    #st.Page("menu/93_Admin-Keyword-based_question_Create.py", title="장애프로세스 챗봇 키워드버튼 (생성)", icon="⚙️"),
+    st.Page("menu/91_Admin-Process_Description_Create.py", title="장애프로세스 쉬운설명 (생성)", icon="⚙️"),
+    st.Page("menu/92_Admin-FAQ_Create.py", title="장애프로세스 FAQ (생성)", icon="⚙️"),
+    st.Page("menu/93_Admin-Keyword-based_question_Create.py", title="장애프로세스 챗봇 키워드버튼 (생성)", icon="⚙️"),
 
     # 개발용 (임시)
     #st.Page("menu/99_azure_test01.py", title="RAG Test", icon="🎯"),    
