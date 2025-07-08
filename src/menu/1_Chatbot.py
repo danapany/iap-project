@@ -425,7 +425,7 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
                         st.session_state.messages.append({"role": "assistant", "content": error_msg})
         
         # 사용자 입력 (하단 고정)
-        user_query = st.chat_input("질문을 입력하세요 (예: 마이페이지 장애원인 알려줘)")
+        user_query = st.chat_input("질문을 입력하세요 (예: 마이페이지 최근 장애 발생일자와 장애원인 알려줘)")
         
         if user_query:
             # 사용자 메시지 추가
