@@ -293,6 +293,17 @@ def display_documents(documents):
         
         st.write("---")
 
+# 입력 검증 함수
+def validate_inputs(service_name, incident_symptom):
+    """서비스명과 장애현상 입력 검증"""
+    if not service_name or not service_name.strip():
+        st.error("❌ 서비스명을 입력해주세요!")
+        return False
+    if not incident_symptom or not incident_symptom.strip():
+        st.error("❌ 장애현상을 입력해주세요!")
+        return False
+    return True
+
 # 메인 애플리케이션 로직
 if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, search_index]):
     # 클라이언트 초기화
@@ -330,33 +341,25 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
             
             with col1:
                 if st.button("🔧 서비스와 현상에 대해 복구 방법 안내", key="repair_btn"):
-                    if service_name and incident_symptom:
+                    if validate_inputs(service_name, incident_symptom):
                         st.session_state.sample_query = f"{service_name} {incident_symptom}에 대한 복구방법 안내"
-                    else:
-                        st.session_state.sample_query = "서비스와 현상에 대해 복구방법 안내"
-                    st.session_state.query_type = "repair"
+                        st.session_state.query_type = "repair"
                 
                 if st.button("🔍 현상에 대한 대표 원인 안내", key="cause_btn"):
-                    if service_name and incident_symptom:
+                    if validate_inputs(service_name, incident_symptom):
                         st.session_state.sample_query = f"{service_name} {incident_symptom} 현상에 대한 대표 원인 안내"
-                    else:
-                        st.session_state.sample_query = "현상에 대한 대표 원인 안내"
-                    st.session_state.query_type = "cause"
+                        st.session_state.query_type = "cause"
             
             with col2:
                 if st.button("📋 서비스와 현상에 대한 과거 대응방법", key="history_btn"):
-                    if service_name and incident_symptom:
+                    if validate_inputs(service_name, incident_symptom):
                         st.session_state.sample_query = f"{service_name} {incident_symptom}에 대한 과거 대응방법"
-                    else:
-                        st.session_state.sample_query = "서비스와 현상에 대한 과거 대응방법"
-                    st.session_state.query_type = "history"
+                        st.session_state.query_type = "history"
                 
                 if st.button("🔄 타 서비스에 동일 현상에 대한 대응이력조회", key="similar_btn"):
-                    if service_name and incident_symptom:
+                    if validate_inputs(service_name, incident_symptom):
                         st.session_state.sample_query = f"타 서비스에서 {incident_symptom} 동일 현상에 대한 대응이력조회"
-                    else:
-                        st.session_state.sample_query = "타 서비스에 동일 현상에 대한 대응이력조회"
-                    st.session_state.query_type = "similar"
+                        st.session_state.query_type = "similar"
 
             # 검색 옵션 설정
             st.header("⚙️ 검색 옵션")
