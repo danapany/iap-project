@@ -127,7 +127,7 @@ def search_documents(search_client, query, top_k=5):
             ],
             # 검색 가능한 필드들로 제한
             search_fields=[
-                "subject", "notice_text", "incident_cause", "incident_repair", 
+                "subject", "notice_text", "error_date", "week","incident_cause", "incident_repair", 
                 "incident_plan", "domain_name", "service_name", "cause_type", 
                 "done_type", "owner_depart"
             ]
