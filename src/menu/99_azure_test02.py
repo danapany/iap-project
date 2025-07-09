@@ -280,7 +280,7 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
             )
         
         with col_search2:
-            search_count = st.slider("검색 결과 수", 1, 10, 5)
+            search_count = st.slider("검색 결과 수", 1, 50, 5)
         
         # 채팅 인터페이스
         st.header("💬 질의응답")

@@ -28,7 +28,7 @@ search_index = os.getenv("INDEX_NAME")
 
 # 메인 페이지 제목
 st.title("🤖 트러블 체이서 챗봇")
-st.write("Azure AI Search를 활용한 RAG 방식 질의응답 시스템")
+st.write("신속한 장애복구를 위해서 서비스정보를 입력하고 복구방법과 유사사례에 대한 이력을 확인해보세요!")
 
 # 질문 타입별 시스템 프롬프트 정의
 SYSTEM_PROMPTS = {
@@ -83,7 +83,10 @@ Case1 : ~~현 영향도
 답변은 한국어로 작성하며, 구체적인 해결방안이나 원인을 명시해주세요.
 장애현상은 공지사항의 '현상'을 참고하고 없으면 '영향도'를 참고해서주세요
 장애 ID, 서비스명, 원인, 복구방법 등의 구체적인 정보를 포함해주세요.
-만약 제공된 문서에서 관련 정보를 찾을 수 없다면, 그렇게 명시해주세요."""
+만약 제공된 문서에서 관련 정보를 찾을 수 없다면, 그렇게 명시해주세요.
+만약 제공된 문서에서 관련 정보를 찾을 수 있다면 아래내용은 답변 하단에 항상포함해주세요
+'-- 주의: 답변은 AI 해석에 따른 오류가 포함될 수 있음을 감안하시고 활용부탁드립니다. --'
+"""
 }
 
 # Azure 클라이언트 초기화
@@ -373,7 +376,7 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
                 )
             
             with col_search2:
-                search_count = st.slider("검색 결과 수", 1, 10, 5)
+                search_count = st.slider("검색 결과 수", 1, 30, 5)
             
             st.markdown("---")
         

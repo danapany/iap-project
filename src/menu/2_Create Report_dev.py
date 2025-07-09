@@ -3,9 +3,11 @@ from dotenv import load_dotenv
 import streamlit as st
 import sqlite3
 from docx import Document
-from docx.shared import Pt
+from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.shared import OxmlElement, qn
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.oxml.ns import qn as qn_ns
 import tempfile
 import re
 from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
@@ -92,13 +94,21 @@ def generate_llm_report(body_text: str, sample_format: str) -> str:
 - 장애 발생 시간, 원인, 영향도, 조치사항 등을 명확히 구분하여 작성
 - 기술적인 내용은 정확하고 이해하기 쉽게 설명
 - 보고서 형식은 샘플과 동일하게 유지
+- 표 형식의 정보는 다음과 같이 마크다운 표 형식으로 작성:
+  | 항목 | 내용 |
+  |------|------|
+  | 장애발생일시 | 2024-XX-XX XX:XX |
+  | 장애해결일시 | 2024-XX-XX XX:XX |
+  | 영향도 | 상/중/하 |
+  | 장애원인 | 구체적 원인 |
+  | 조치사항 | 구체적 조치 내용 |
 """
         
         # OpenAI API 호출
         response = client.chat.completions.create(
             model=chat_model,
             messages=[
-                {"role": "system", "content": "당신은 IT 장애보고서 작성 전문가입니다. 주어진 정보를 바탕으로 정확하고 전문적인 장애보고서를 작성해주세요."},
+                {"role": "system", "content": "당신은 IT 장애보고서 작성 전문가입니다. 주어진 정보를 바탕으로 정확하고 전문적인 장애보고서를 작성해주세요. 표 형식의 정보는 마크다운 표 형식으로 작성해주세요."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=2000,
@@ -109,6 +119,76 @@ def generate_llm_report(body_text: str, sample_format: str) -> str:
         
     except Exception as e:
         return f"LLM 보고서 생성 중 오류가 발생했습니다: {str(e)}"
+
+def parse_markdown_table(table_text):
+    """마크다운 표 텍스트를 파싱하여 테이블 데이터 반환"""
+    lines = table_text.strip().split('\n')
+    if len(lines) < 3:  # 최소 헤더, 구분자, 데이터 1행
+        return None
+    
+    # 헤더 행 파싱
+    header_line = lines[0].strip()
+    headers = [cell.strip() for cell in header_line.split('|')[1:-1]]  # 첫 번째와 마지막 빈 요소 제거
+    
+    # 구분자 행 건너뛰기 (lines[1])
+    
+    # 데이터 행들 파싱
+    data_rows = []
+    for i in range(2, len(lines)):
+        line = lines[i].strip()
+        if line:
+            cells = [cell.strip() for cell in line.split('|')[1:-1]]  # 첫 번째와 마지막 빈 요소 제거
+            if len(cells) == len(headers):
+                data_rows.append(cells)
+    
+    return headers, data_rows
+
+def create_word_table(doc, headers, data_rows):
+    """Word 문서에 표 추가"""
+    # 표 생성 (헤더 포함)
+    table = doc.add_table(rows=1, cols=len(headers))
+    table.style = 'Table Grid'
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    
+    # 표 너비 설정
+    table.autofit = False
+    table.allow_autofit = False
+    
+    # 헤더 행 설정
+    header_row = table.rows[0]
+    for i, header in enumerate(headers):
+        cell = header_row.cells[i]
+        cell.text = header
+        # 헤더 셀 스타일링
+        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = cell.paragraphs[0].runs[0]
+        run.font.bold = True
+        run.font.name = '맑은 고딕'
+        run.font.size = Pt(11)
+        
+        # 헤더 배경색 설정 (회색)
+        shading = OxmlElement('w:shd')
+        shading.set(qn_ns('w:fill'), 'D9D9D9')
+        cell._tc.get_or_add_tcPr().append(shading)
+    
+    # 데이터 행 추가
+    for row_data in data_rows:
+        row = table.add_row()
+        for i, cell_data in enumerate(row_data):
+            cell = row.cells[i]
+            cell.text = cell_data
+            # 데이터 셀 스타일링
+            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+            run = cell.paragraphs[0].runs[0] if cell.paragraphs[0].runs else cell.paragraphs[0].add_run()
+            run.font.name = '맑은 고딕'
+            run.font.size = Pt(11)
+    
+    # 표 열 너비 자동 조정
+    for row in table.rows:
+        for cell in row.cells:
+            cell.width = Inches(2.5)  # 기본 너비 설정
+    
+    return table
 
 def generate_word_from_llm_report(llm_report: str, filename: str) -> str:
     """LLM 생성 보고서를 기반으로 Word 문서 생성 (마크다운을 Word 스타일로 변환)"""
@@ -122,12 +202,50 @@ def generate_word_from_llm_report(llm_report: str, filename: str) -> str:
     # LLM 보고서 내용을 줄별로 분리하여 처리
     lines = llm_report.split('\n')
     
-    for line in lines:
-        line = line.strip()
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        
         if not line:
             # 빈 줄은 빈 문단으로 추가
             doc.add_paragraph()
+            i += 1
             continue
+        
+        # 마크다운 표 감지
+        if line.startswith('|') and '|' in line:
+            # 표 시작 감지
+            table_lines = []
+            j = i
+            while j < len(lines) and lines[j].strip() and '|' in lines[j]:
+                table_lines.append(lines[j])
+                j += 1
+            
+            if len(table_lines) >= 3:  # 최소 헤더, 구분자, 데이터 1행
+                # 표 파싱 및 생성
+                table_text = '\n'.join(table_lines)
+                table_data = parse_markdown_table(table_text)
+                
+                if table_data:
+                    headers, data_rows = table_data
+                    create_word_table(doc, headers, data_rows)
+                    doc.add_paragraph()  # 표 다음에 빈 줄 추가
+                    i = j
+                    continue
+                else:
+                    # 표 파싱 실패 시 일반 텍스트로 처리
+                    paragraph = doc.add_paragraph()
+                    add_formatted_text(paragraph, line)
+                    set_korean_font(paragraph)
+                    i += 1
+                    continue
+            else:
+                # 표가 아닌 일반 텍스트로 처리
+                paragraph = doc.add_paragraph()
+                add_formatted_text(paragraph, line)
+                set_korean_font(paragraph)
+                i += 1
+                continue
         
         # 마크다운 헤딩 처리
         if line.startswith('#### '):
@@ -169,6 +287,8 @@ def generate_word_from_llm_report(llm_report: str, filename: str) -> str:
             paragraph = doc.add_paragraph()
             add_formatted_text(paragraph, line)
             set_korean_font(paragraph)
+        
+        i += 1
     
     # 문서 전체 스타일 설정
     set_document_style(doc)
@@ -385,7 +505,7 @@ else:
             st.markdown(f"```\n{sample_content}\n```")
 
         # LLM 생성 보고서 섹션 추가
-        st.subheader("🤖 장애보고서 생성 (미리보기)")
+        st.subheader("🤖 LLM 생성 보고서")
 
         with st.spinner("LLM이 보고서를 생성하고 있습니다..."):
             llm_report = generate_llm_report(body_text, sample_content)
@@ -394,7 +514,7 @@ else:
             st.markdown(llm_report)
 
         st.markdown("---")
-        if st.button("📄 Word 파일 생성 및 다운로드 링크생성"):
+        if st.button("📄 Word 파일 생성 및 업로드"):
             with st.spinner("Word 파일을 생성하고 업로드하는 중..."):
                 # 수정: st.markdown(llm_report) 대신 llm_report 직접 전달
                 word_file_path = generate_word_from_llm_report(llm_report, "generated_report.docx")

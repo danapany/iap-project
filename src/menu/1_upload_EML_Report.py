@@ -463,20 +463,3 @@ if uploaded_file is not None:
             else:
                 st.error(f"❌ 업로드 중 오류가 발생했습니다: {upload_error}")
 
-# === 사이드바: 환경변수 상세 상태 ===
-with st.sidebar:
-    st.markdown("---")
-    st.subheader("🔧 환경변수 상세 상태")
-    
-    env_status = {
-        "Azure Connection": "✅" if STORAGE_CONN_STR else "❌",
-        "Storage Account": "✅" if STORAGE_ACCOUNT_NAME else "❌",
-        "EML Container": "✅" if EML_CONTAINER_NAME else "❌",
-        "Database Name": "✅" if EML_DB_NAME else "❌",
-        "OpenAI Endpoint": "✅" if openai_endpoint else "❌",
-        "OpenAI API Key": "✅" if openai_api_key else "❌",
-        "OpenAI Model": "✅" if openai_model else "❌"
-    }
-    
-    for key, status in env_status.items():
-        st.write(f"{status} {key}")
