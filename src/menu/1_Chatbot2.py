@@ -26,9 +26,16 @@ search_endpoint = os.getenv("SEARCH_ENDPOINT")
 search_key = os.getenv("SEARCH_API_KEY")
 search_index = os.getenv("INDEX_ADDCOL_NAME")
 
+# Reranker 기반 검색 품질 향상을 위한 설정
+SEARCH_SCORE_THRESHOLD = 0.5      # 초기 검색 점수 임계값 (낮게 설정하여 더 많은 후보 확보)
+RERANKER_SCORE_THRESHOLD = 2.0    # Reranker 점수 임계값 (높은 품질 보장)
+HYBRID_SCORE_THRESHOLD = 0.75     # 하이브리드 점수 임계값
+MAX_INITIAL_RESULTS = 20          # 초기 검색 결과 수 (Reranker 입력용)
+MAX_FINAL_RESULTS = 5             # 최종 선별 문서 수
+
 # 메인 페이지 제목
-st.title("🤖 트러블 체이서 챗봇")
-st.write("신속한 장애복구를 위해서 서비스정보를 입력하고 복구방법과 유사사례에 대한 이력을 확인해보세요!")
+st.title("🤖 트러블 체이서 챗봇 (Reranker 강화)")
+st.write("🎯 Reranker 기술로 답변 정확도를 대폭 향상시킨 고품질 장애복구 지원 시스템")
 
 # 질문 타입별 시스템 프롬프트 정의
 SYSTEM_PROMPTS = {
@@ -42,7 +49,6 @@ SYSTEM_PROMPTS = {
 3. **공지사항(notice_text)에 '복합' 단어가 포함된 건**  
 4. **장애원인(incident_cause)에 '복합' 단어가 포함된 건**
 5. **복구방법(incident_repair)에 '복합' 단어가 포함된 건**
-
 
 ## 대상선정원칙
 **위의 제외 조건을 모두 통과한 건들 중에서만** 아래 기준으로 선정:
@@ -137,67 +143,95 @@ def init_clients(openai_endpoint, openai_key, openai_api_version, search_endpoin
         st.error(f"클라이언트 초기화 실패: {str(e)}")
         return None, None, False
 
-# 검색 함수 - 실제 인덱스 스키마에 맞게 수정
-def search_documents(search_client, query, top_k=5):
-    try:
-        # 실제 인덱스 필드명에 맞게 수정
-        results = search_client.search(
-            search_text=query,
-            top=top_k,
-            include_total_count=True,
-            # 실제 인덱스에 있는 필드명 사용
-            select=[
-                "incident_id", "domain_name", "service_name", "service_grade",
-                "error_range", "error_time", "subject", "notice_text", 
-                "error_date", "week", "incident_cause", "incident_repair", 
-                "incident_plan", "cause_type", "done_type", "incident_grade", 
-                "owner_depart"
-            ],
-            # 검색 가능한 필드들로 제한
-            search_fields=[
-                "subject", "notice_text", "error_date", "week","incident_cause", "incident_repair", 
-                "incident_plan", "domain_name", "service_name", "cause_type", 
-                "done_type", "owner_depart"
-            ]
-        )
+# 하이브리드 점수 계산 함수
+def calculate_hybrid_score(search_score, reranker_score):
+    """검색 점수와 Reranker 점수를 조합하여 하이브리드 점수 계산"""
+    if reranker_score > 0:
+        # Reranker 점수가 있는 경우: Reranker 점수를 주로 사용하되 검색 점수도 고려
+        # Reranker 점수는 보통 0-4 범위이므로 0-1로 정규화
+        normalized_reranker = min(reranker_score / 4.0, 1.0)
+        # 검색 점수는 이미 0-1 범위
+        normalized_search = min(search_score, 1.0)
         
-        documents = []
-        for result in results:
-            documents.append({
-                "incident_id": result.get("incident_id", ""),
-                "domain_name": result.get("domain_name", ""),
-                "service_name": result.get("service_name", ""),
-                "service_grade": result.get("service_grade", ""),
-                "error_range": result.get("error_range", ""),
-                "error_time": result.get("error_time", ""),
-                "subject": result.get("subject", ""),
-                "notice_text": result.get("notice_text", ""),
-                "error_date": result.get("error_date", ""),
-                "week": result.get("week", ""),
-                "incident_cause": result.get("incident_cause", ""),
-                "incident_repair": result.get("incident_repair", ""),
-                "incident_plan": result.get("incident_plan", ""),
-                "cause_type": result.get("cause_type", ""),
-                "done_type": result.get("done_type", ""),
-                "incident_grade": result.get("incident_grade", ""),
-                "owner_depart": result.get("owner_depart", ""),
-                "score": result.get("@search.score", 0)
-            })
-        
-        return documents
-    except Exception as e:
-        st.error(f"검색 실패: {str(e)}")
-        return []
+        # 가중평균: Reranker 80%, 검색 점수 20%
+        hybrid_score = (normalized_reranker * 0.8) + (normalized_search * 0.2)
+    else:
+        # Reranker 점수가 없는 경우: 검색 점수만 사용
+        hybrid_score = min(search_score, 1.0)
+    
+    return hybrid_score
 
-# 시맨틱 검색 함수 추가
-def semantic_search_documents(search_client, query, top_k=5):
+# Reranker 기반 고급 문서 필터링 함수
+def advanced_filter_documents(documents):
+    """Reranker 점수와 하이브리드 점수를 활용한 고급 필터링"""
+    filtered_docs = []
+    filter_stats = {
+        'total': len(documents),
+        'search_filtered': 0,
+        'reranker_qualified': 0,
+        'hybrid_qualified': 0,
+        'final_selected': 0
+    }
+    
+    for doc in documents:
+        search_score = doc.get('score', 0)
+        reranker_score = doc.get('reranker_score', 0)
+        
+        # 1단계: 기본 검색 점수 필터링
+        if search_score < SEARCH_SCORE_THRESHOLD:
+            continue
+        filter_stats['search_filtered'] += 1
+        
+        # 2단계: Reranker 점수 우선 평가
+        if reranker_score >= RERANKER_SCORE_THRESHOLD:
+            filter_stats['reranker_qualified'] += 1
+            doc['filter_reason'] = f"Reranker 고품질 (점수: {reranker_score:.2f})"
+            doc['final_score'] = reranker_score
+            doc['quality_tier'] = 'Premium'
+            filtered_docs.append(doc)
+            filter_stats['final_selected'] += 1
+            continue
+        
+        # 3단계: 하이브리드 점수 평가
+        hybrid_score = calculate_hybrid_score(search_score, reranker_score)
+        if hybrid_score >= HYBRID_SCORE_THRESHOLD:
+            filter_stats['hybrid_qualified'] += 1
+            doc['filter_reason'] = f"하이브리드 점수 통과 (점수: {hybrid_score:.2f})"
+            doc['final_score'] = hybrid_score
+            doc['quality_tier'] = 'Standard'
+            filtered_docs.append(doc)
+            filter_stats['final_selected'] += 1
+    
+    # 점수 기준으로 정렬 (높은 점수 우선)
+    filtered_docs.sort(key=lambda x: x['final_score'], reverse=True)
+    
+    # 최종 결과 수 제한
+    final_docs = filtered_docs[:MAX_FINAL_RESULTS]
+    
+    # 필터링 통계 표시
+    st.info(f"""
+    📊 **Reranker 기반 문서 필터링 결과**
+    - 🔍 전체 검색 결과: {filter_stats['total']}개
+    - ✅ 기본 점수 통과: {filter_stats['search_filtered']}개 (≥{SEARCH_SCORE_THRESHOLD})
+    - 🏆 Reranker 고품질: {filter_stats['reranker_qualified']}개 (≥{RERANKER_SCORE_THRESHOLD})
+    - 🎯 하이브리드 통과: {filter_stats['hybrid_qualified']}개 (≥{HYBRID_SCORE_THRESHOLD})
+    - 📋 최종 선별: {len(final_docs)}개 (상위 {MAX_FINAL_RESULTS}개)
+    """)
+    
+    return final_docs
+
+# Reranker 지원 시맨틱 검색 함수
+def semantic_search_with_reranker(search_client, query, top_k=MAX_INITIAL_RESULTS):
+    """Reranker를 활용한 고품질 시맨틱 검색"""
     try:
-        # 시맨틱 검색 사용 (인덱스에 semantic 설정이 있는 경우)
+        st.info(f"🔄 1단계: {top_k}개 초기 검색 결과 수집 중...")
+        
+        # 시맨틱 검색 실행 (더 많은 후보 확보)
         results = search_client.search(
             search_text=query,
             top=top_k,
             query_type="semantic",
-            semantic_configuration_name="iap-incident-addcol-meaning",  # 인덱스 스키마에 정의된 이름
+            semantic_configuration_name="iap-incident-addcol-meaning",
             include_total_count=True,
             select=[
                 "incident_id", "domain_name", "service_name", "service_grade",
@@ -234,18 +268,89 @@ def semantic_search_documents(search_client, query, top_k=5):
                 "reranker_score": result.get("@search.reranker_score", 0)
             })
         
-        return documents
+        st.info(f"🎯 2단계: Reranker 기반 고품질 문서 선별 중...")
+        
+        # Reranker 기반 고급 필터링 적용
+        filtered_documents = advanced_filter_documents(documents)
+        
+        return filtered_documents
+        
     except Exception as e:
         st.warning(f"시맨틱 검색 실패, 일반 검색으로 대체: {str(e)}")
-        return search_documents(search_client, query, top_k)
+        return search_documents_with_reranker(search_client, query, top_k)
 
-# RAG 응답 생성 - 질문 타입별 시스템 프롬프트 사용
-def generate_rag_response(azure_openai_client, query, documents, model_name, query_type="default"):
+# 일반 검색도 Reranker 원리 적용
+def search_documents_with_reranker(search_client, query, top_k=MAX_INITIAL_RESULTS):
+    """일반 검색에 Reranker 원리 적용"""
     try:
-        # 검색된 문서들을 컨텍스트로 구성 (실제 필드명 사용)
+        st.info(f"🔄 1단계: {top_k}개 초기 검색 결과 수집 중...")
+        
+        results = search_client.search(
+            search_text=query,
+            top=top_k,
+            include_total_count=True,
+            select=[
+                "incident_id", "domain_name", "service_name", "service_grade",
+                "error_range", "error_time", "subject", "notice_text", 
+                "error_date", "week", "incident_cause", "incident_repair", 
+                "incident_plan", "cause_type", "done_type", "incident_grade", 
+                "owner_depart", "multifail_yn", "fail_type"
+            ],
+            search_fields=[
+                "subject", "notice_text", "error_date", "week","incident_cause", "incident_repair", 
+                "incident_plan", "domain_name", "service_name", "cause_type", 
+                "done_type", "owner_depart"
+            ]
+        )
+        
+        documents = []
+        for result in results:
+            documents.append({
+                "incident_id": result.get("incident_id", ""),
+                "domain_name": result.get("domain_name", ""),
+                "service_name": result.get("service_name", ""),
+                "service_grade": result.get("service_grade", ""),
+                "error_range": result.get("error_range", ""),
+                "error_time": result.get("error_time", ""),
+                "subject": result.get("subject", ""),
+                "notice_text": result.get("notice_text", ""),
+                "error_date": result.get("error_date", ""),
+                "week": result.get("week", ""),
+                "incident_cause": result.get("incident_cause", ""),
+                "incident_repair": result.get("incident_repair", ""),
+                "incident_plan": result.get("incident_plan", ""),
+                "cause_type": result.get("cause_type", ""),
+                "done_type": result.get("done_type", ""),
+                "incident_grade": result.get("incident_grade", ""),
+                "owner_depart": result.get("owner_depart", ""),
+                "multifail_yn": result.get("multifail_yn", ""),
+                "fail_type": result.get("fail_type", ""),
+                "score": result.get("@search.score", 0),
+                "reranker_score": 0  # 일반 검색에서는 0
+            })
+        
+        st.info(f"🎯 2단계: 검색 점수 기반 고품질 문서 선별 중...")
+        
+        # 점수 기반 필터링 적용
+        filtered_documents = advanced_filter_documents(documents)
+        
+        return filtered_documents
+        
+    except Exception as e:
+        st.error(f"검색 실패: {str(e)}")
+        return []
+
+# RAG 응답 생성 - Reranker 정보 포함
+def generate_rag_response_with_reranker(azure_openai_client, query, documents, model_name, query_type="default"):
+    try:
+        # 검색된 문서들을 컨텍스트로 구성 (품질 정보 포함)
         context_parts = []
         for i, doc in enumerate(documents):
-            context_part = f"""문서 {i+1}:
+            final_score = doc.get('final_score', 0)
+            quality_tier = doc.get('quality_tier', 'Standard')
+            filter_reason = doc.get('filter_reason', '기본 선별')
+            
+            context_part = f"""문서 {i+1} [{quality_tier}급 - {filter_reason}]:
 장애 ID: {doc['incident_id']}
 도메인: {doc['domain_name']}
 서비스명: {doc['service_name']}
@@ -265,6 +370,7 @@ def generate_rag_response(azure_openai_client, query, documents, model_name, que
 담당부서: {doc['owner_depart']}
 복합장애여부: {doc['multifail_yn']}
 장애유형: {doc['fail_type']}
+품질점수: {final_score:.2f}
 """
             context_parts.append(context_part)
         
@@ -274,7 +380,8 @@ def generate_rag_response(azure_openai_client, query, documents, model_name, que
         system_prompt = SYSTEM_PROMPTS.get(query_type, SYSTEM_PROMPTS["default"])
 
         user_prompt = f"""
-다음 장애 이력 문서들을 참고하여 질문에 답변해주세요:
+다음 장애 이력 문서들을 참고하여 질문에 답변해주세요.
+(모든 문서는 Reranker 기반 고품질 필터링을 통과한 최고 품질의 검색 결과입니다):
 
 {context}
 
@@ -282,7 +389,7 @@ def generate_rag_response(azure_openai_client, query, documents, model_name, que
 
 답변:"""
 
-        # Azure OpenAI API 호출 (새로운 방식)
+        # Azure OpenAI API 호출
         response = azure_openai_client.chat.completions.create(
             model=model_name,
             messages=[
@@ -290,7 +397,7 @@ def generate_rag_response(azure_openai_client, query, documents, model_name, que
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.3,
-            max_tokens=1000
+            max_tokens=1500
         )
         
         return response.choices[0].message.content
@@ -299,12 +406,40 @@ def generate_rag_response(azure_openai_client, query, documents, model_name, que
         st.error(f"응답 생성 실패: {str(e)}")
         return "죄송합니다. 응답을 생성하는 중 오류가 발생했습니다."
 
-# 문서 표시 함수 개선
-def display_documents(documents):
+# 고급 문서 표시 함수
+def display_documents_with_quality_info(documents):
+    """품질 정보와 함께 문서 표시"""
     for i, doc in enumerate(documents):
-        st.write(f"**문서 {i+1}** (검색 점수: {doc['score']:.2f})")
+        quality_tier = doc.get('quality_tier', 'Standard')
+        filter_reason = doc.get('filter_reason', '기본 선별')
+        search_score = doc.get('score', 0)
+        reranker_score = doc.get('reranker_score', 0)
+        final_score = doc.get('final_score', 0)
         
-        # 주요 정보만 표시
+        # 품질 등급에 따른 이모지와 색상
+        if quality_tier == 'Premium':
+            tier_emoji = "🏆"
+            tier_color = "🟢"
+        else:
+            tier_emoji = "🎯"
+            tier_color = "🟡"
+        
+        st.markdown(f"### {tier_emoji} **문서 {i+1}** - {quality_tier}급 {tier_color}")
+        st.markdown(f"**선별 기준**: {filter_reason}")
+        
+        # 점수 정보 표시
+        score_col1, score_col2, score_col3 = st.columns(3)
+        with score_col1:
+            st.metric("검색 점수", f"{search_score:.2f}")
+        with score_col2:
+            if reranker_score > 0:
+                st.metric("Reranker 점수", f"{reranker_score:.2f}")
+            else:
+                st.metric("Reranker 점수", "N/A")
+        with score_col3:
+            st.metric("최종 점수", f"{final_score:.2f}")
+        
+        # 주요 정보 표시
         col1, col2 = st.columns(2)
         with col1:
             st.write(f"**장애 ID**: {doc['incident_id']}")
@@ -326,7 +461,7 @@ def display_documents(documents):
         if doc['incident_repair']:
             st.write(f"**복구 방법**: {doc['incident_repair'][:200]}...")
         
-        st.write("---")
+        st.markdown("---")
 
 # 입력 검증 함수
 def validate_inputs(service_name, incident_symptom):
@@ -356,9 +491,19 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
         # st.success("Azure 서비스 연결 성공!")
         
         # =================== 상단 고정 영역 시작 ===================
-        # 컨테이너를 사용하여 상단 고정 영역 구성
         with st.container():
-            # st.markdown("---")
+            # Reranker 설정 정보를 사이드바에 표시
+            st.sidebar.header("🎯 Reranker 품질 설정")
+            st.sidebar.markdown(f"""
+            **다단계 품질 필터링**
+            - 🔍 초기 검색: {MAX_INITIAL_RESULTS}개
+            - ✅ 기본 임계값: {SEARCH_SCORE_THRESHOLD}
+            - 🏆 Reranker 임계값: {RERANKER_SCORE_THRESHOLD}
+            - 🎯 하이브리드 임계값: {HYBRID_SCORE_THRESHOLD}
+            - 📋 최종 선별: {MAX_FINAL_RESULTS}개
+            """)
+            
+            st.sidebar.info("💡 Reranker가 의미적 유사도를 정확히 평가하여 최고 품질 문서만 선별합니다.")
             
             # 서비스 정보 입력 섹션
             st.header("📝 서비스 정보 입력")
@@ -389,19 +534,18 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
             # 스타일 CSS 추가
             st.markdown("""
                 <style>
-                       
                 div[data-baseweb="input"] > div {
-                    font-size: 40px;   /* 글자 크기 */
-                    height: 40px;      /* 높이 */
+                    font-size: 40px;
+                    height: 40px;
                 }
                  
                 div.stButton > button:first-child {
-                    font-size: 40px;      /* 글자 크기 */
-                    height: 60px;         /* 버튼 높이 */
-                    width: 450px;         /* 버튼 너비 */
-                    background-color: #4CAF50; /* 버튼 배경색 (옵션) */
-                    color: white;         /* 글자색 */
-                    border-radius: 10px;   /* 버튼 둥글기 */
+                    font-size: 40px;
+                    height: 60px;
+                    width: 450px;
+                    background-color: #4CAF50;
+                    color: white;
+                    border-radius: 10px;
                 }
                 </style>
             """, unsafe_allow_html=True)
@@ -412,30 +556,23 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
                 if st.button("🔧 서비스와 현상에 대해 복구 방법 안내", key="repair_btn"):
                     if validate_inputs(service_name, incident_symptom):
                         search_query = build_search_query(service_name, incident_symptom)
-                        st.session_state.sample_query = f"{search_query}에 대한 복구방법 안내"
+                        st.session_state.sample_query = f"{search_query}에 대한 장애를 해소하기 위한 근본적인 복구방법만 표기해서 복구방법 안내"
                         st.session_state.query_type = "repair"
                 
             with col2:
-                if st.button("🔄 타 서비스에 동일 현상에 대한 복구 방법 참조 (최대5건)", key="similar_btn"):
+                if st.button("🔄 타 서비스에 동일 현상에 대한 복구 방법 참조", key="similar_btn"):
                     if validate_inputs(service_name, incident_symptom):
-                        search_query = build_search_query("", incident_symptom)  # 타 서비스이므로 서비스명 제외
-                        st.session_state.sample_query = f" {incident_symptom} 동일 현상에 대한 복구방법조회"
+                        search_query = build_search_query("", incident_symptom)
+                        st.session_state.sample_query = f"{incident_symptom} 동일 현상에 대한 장애를 해소하기 위한 근본적인 복구방법만 표기해서 복구방법 안내"
                         st.session_state.query_type = "similar"
 
-            # 검색 옵션 설정 (숨김 처리)
-            search_type = 0     #시맨틱 검색 (일반검색보다 답변품질높음)
-            search_count = 5    #검색 결과 수 :5 (10으로하면 오데이터가 같이 포함되어 품질 저하됨)
-
         # =================== 상단 고정 영역 끝 ===================
-        
-        # 채팅 섹션
-        # st.header("💬 채팅")
         
         # 세션 상태 초기화
         if 'messages' not in st.session_state:
             st.session_state.messages = []
         
-        # 채팅 메시지 표시 영역 (스크롤 가능)
+        # 채팅 메시지 표시 영역
         chat_container = st.container()
         
         with chat_container:
@@ -443,78 +580,84 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     if message["role"] == "assistant":
-                        # AI 답변은 접을 수 있도록 expander 사용
-                        with st.expander("🤖 AI 답변 보기", expanded=True):
+                        with st.expander("🤖 AI 답변 보기 (Reranker 강화)", expanded=True):
                             st.write(message["content"])
                     else:
-                        # 사용자 메시지는 그대로 표시
                         st.write(message["content"])
         
-        # 검색 및 응답 처리 함수
-        def process_query(query, query_type="default"):
+        # 검색 및 응답 처리 함수 (Reranker 적용)
+        def process_query_with_reranker(query, query_type="default"):
             with st.chat_message("assistant"):
-                with st.spinner("검색 중..."):
-                    # 검색 방식에 따라 다른 함수 호출
-                    if search_type == 0:  # 시맨틱 검색
-                        documents = semantic_search_documents(search_client, query, search_count)
-                    else:
-                        documents = search_documents(search_client, query, search_count)
-                    
-                    st.write(f"📄 {len(documents)}개의 관련 문서를 찾았습니다.")
+                with st.spinner("🎯 Reranker 기반 고품질 검색 중..."):
+                    # 시맨틱 검색 우선 사용 (Reranker 지원)
+                    documents = semantic_search_with_reranker(search_client, query)
                     
                     if documents:
-                        # 검색된 문서 표시 (접을 수 있는 형태)
-                        with st.expander("검색된 문서 보기"):
-                            display_documents(documents)
+                        premium_count = sum(1 for doc in documents if doc.get('quality_tier') == 'Premium')
+                        standard_count = len(documents) - premium_count
                         
-                        # RAG 응답 생성 (질문 타입 포함) - 접을 수 있도록 변경
-                        with st.spinner("답변 생성 중..."):
-                            response = generate_rag_response(azure_openai_client, query, documents, azure_openai_model, query_type)
+                        st.success(f"🏆 {len(documents)}개의 최고품질 문서 선별 완료! (Premium: {premium_count}개, Standard: {standard_count}개)")
+                        
+                        # 검색된 문서 표시
+                        with st.expander("🔍 선별된 고품질 문서 보기"):
+                            display_documents_with_quality_info(documents)
+                        
+                        # RAG 응답 생성 (Reranker 정보 포함)
+                        with st.spinner("💡 Reranker 기반 정확한 답변 생성 중..."):
+                            response = generate_rag_response_with_reranker(
+                                azure_openai_client, query, documents, azure_openai_model, query_type
+                            )
                             
-                            # AI 답변을 접을 수 있는 expander로 표시
-                            with st.expander("🤖 AI 답변 보기", expanded=True):
+                            with st.expander("🤖 AI 답변 보기 (Reranker 강화)", expanded=True):
                                 st.write(response)
+                                st.info("✨ 이 답변은 Reranker 기술로 선별된 최고품질 문서를 바탕으로 생성되었습니다.")
                             
-                            # 응답을 세션에 저장
                             st.session_state.messages.append({"role": "assistant", "content": response})
                     else:
-                        error_msg = "관련 문서를 찾을 수 없습니다. 다른 키워드로 검색해보세요."
-                        with st.expander("🤖 AI 답변 보기", expanded=True):
+                        error_msg = f"""
+                        🔍 Reranker 기반 검색 결과가 없습니다.
+                        
+                        **원인 분석:**
+                        - 검색 점수가 {SEARCH_SCORE_THRESHOLD} 미만
+                        - Reranker 점수가 {RERANKER_SCORE_THRESHOLD} 미만
+                        - 하이브리드 점수가 {HYBRID_SCORE_THRESHOLD} 미만
+                        
+                        **개선 방안:**
+                        - 더 구체적인 키워드 사용
+                        - 서비스명과 현상을 명확히 입력
+                        - 다른 표현으로 재검색
+                        """
+                        
+                        with st.expander("🤖 AI 답변 보기 (Reranker 강화)", expanded=True):
                             st.write(error_msg)
                         st.session_state.messages.append({"role": "assistant", "content": error_msg})
         
-        # 사용자 입력 (하단 고정)
+        # 사용자 입력
         user_query = st.chat_input("질문을 입력하세요 (예: 마이페이지 최근 장애 발생일자와 장애원인 알려줘)")
         
         if user_query:
-            # 사용자 메시지 추가
             st.session_state.messages.append({"role": "user", "content": user_query})
             
             with st.chat_message("user"):
                 st.write(user_query)
             
-            # 검색 및 응답 생성 (일반 질문은 기본 타입)
-            process_query(user_query, "default")
+            process_query_with_reranker(user_query, "default")
 
         # 주요 질문 처리
         if 'sample_query' in st.session_state:
             query = st.session_state.sample_query
             query_type = st.session_state.get('query_type', 'default')
             
-            # 세션 상태에서 제거
             del st.session_state.sample_query
             if 'query_type' in st.session_state:
                 del st.session_state.query_type
             
-            # 자동으로 질문 처리
             st.session_state.messages.append({"role": "user", "content": query})
             
             with st.chat_message("user"):
                 st.write(query)
             
-            # 검색 및 응답 생성 (질문 타입 포함)
-            process_query(query, query_type)
-            
+            process_query_with_reranker(query, query_type)
             st.rerun()
 
 else:
@@ -524,4 +667,4 @@ else:
     st.write("- OPENAI_KEY")  
     st.write("- SEARCH_ENDPOINT")
     st.write("- SEARCH_API_KEY")
-    st.write("- INDEX_NAME")
+    st.write("- INDEX_ADDCOL_NAME")

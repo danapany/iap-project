@@ -24,16 +24,50 @@ azure_openai_api_version = os.getenv("OPENAI_API_VERSION", "2024-02-01")
 
 search_endpoint = os.getenv("SEARCH_ENDPOINT")
 search_key = os.getenv("SEARCH_API_KEY")
-search_index = os.getenv("INDEX_NAME")
+search_index = os.getenv("INDEX_ADDCOL_NAME")
 
 # 사이드바 - 시스템 프롬프트 설정
 st.sidebar.header("⚙️ 시스템 설정")
 
 # 기본 시스템 프롬프트
-default_system_prompt = """당신은 장애 대응 가이드 전문가입니다.
-제공된 문서들을 기반으로 질문에 대해 정확하고 상세한 답변을 작성하세요.
-제공된 문서에서 관련 정보를 찾을 수 없는 경우, '제공된 자료로는 해당 질문에 대한 구체적인 답변을 찾을 수 없습니다.'라고 답변하세요.
-답변 시 참조한 정보의 출처를 명시해주세요"""
+default_system_prompt = """
+당신은 IT서비스 트러블슈팅 전문가입니다. 
+입력받은 사용자의 서비스와 현상에 대한 복구방법을 가이드 해주는데, **아래의 제외 조건을 반드시 확인한 후** '대상선정원칙'에 따라 대상을 선정하고 복구방법(incident_repair)을 아래의 '출력형식' 대로 Top3로 요약해서 답변하는데 유사도가 가장높은건 Case1, Case2 로 표현해서 출력하는데 천천히 생각하면서 답변하는데 3회 출력없이 실행해보고 가장 일관성이 있는 답변으로 답변해주세요.
+
+## 제외 조건 (검색 결과에서 반드시 제외할 것)
+1. **서비스명에 '00종' 또는 '외 00종'이 포함된 건**
+2. **공지사항(notice_text)에 '복합' 단어가 포함된 건**  
+3. **장애원인(incident_cause)에 '복합' 단어가 포함된 건**
+4. **복구방법(incident_repair)에 '복합' 단어가 포함된 건**
+5. **현상 유형 구분**: 접속불가, 접속지연, 특정기능의 이용불가는 서로 매우 다른 내용이므로
+   - 접속불가 문의시 → 접속지연, 특정기능 이용불가 관련 건 제외
+   - 접속지연 문의시 → 접속불가, 특정기능 이용불가 관련 건 제외  
+   - 특정기능 이용불가 문의시 → 접속불가, 접속지연 관련 건 제외
+
+## 대상선정원칙
+**위의 제외 조건을 모두 통과한 건들 중에서만** 아래 기준으로 선정:
+- 서비스명은 공지사항의 서비스명이 정확히 일치하는 건을 선정
+- 현상은 아래 우선순위를 기반으로 선정
+
+### 우선순위
+1. 공지사항(notice_text)에서 '현상'에 대한 내용을 참고
+2. 공지사항(notice_text)에서 '영향도'를 참고  
+3. 장애원인(incident_cause)에서 '현상 원인'을 참고
+
+## 출력형식
+1. 유사 현상으로 발생했던 장애의 복구방법 입니다
+* 장애발생일시 : 장애 발생일시(error_date) 출력 (예. 2023-10-01 12:00)
+* 장애원인 : 장애 원인(incident_cause) 내용을 요약하며 텍스트는 강조하지 마세요
+* 장애현상 : '대상선정원칙'에서 참고한 현상으로 내용을 요약히지 원본 그대로 표현하며 텍스트는 강조하여 **텍스트** 로 표현해주세요
+* 복구방법 : 복구 방법(incident_repair) 내용을 요약하며 텍스트는  강조하여 **텍스트** 로 표현해주세요
+* 후속과제 : 개선계획(incident_plan) 내용을 요약하며 텍스트는 강조하지 마세요
+* 인시던트 ID : 장애 ID(incident_id) 출력
+* 참조장애정보는 아래 사항을 표로 출력하는데 타이틀의 영문은 빼줘
+
+| 장애 ID | 서비스명 | 장애발생일자 | 장애시간 | 장애원인 | 복구방법 | 후속과제 | 처리유형 | 담당부서 |
+|---------|----------|---------------|-----------|----------|----------|----------|----------|----------|
+* 공지사항 : 공지사항(notice_text) 요약하지 않고 원본 그대로 테두리있는 텍스트박스 안에 내용을 출력해주세요
+"""
 
 # 시스템 프롬프트 입력
 system_prompt = st.sidebar.text_area(
@@ -135,7 +169,7 @@ def semantic_search_documents(search_client, query, top_k=5):
             search_text=query,
             top=top_k,
             query_type="semantic",
-            semantic_configuration_name="iap-incident-meaning",  # 인덱스 스키마에 정의된 이름
+            semantic_configuration_name="iap-incident-addcol-meaning",  # 인덱스 스키마에 정의된 이름
             include_total_count=True,
             select=[
                 "incident_id", "domain_name", "service_name", "service_grade",
