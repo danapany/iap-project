@@ -29,7 +29,7 @@ search_index = os.getenv("INDEX_REPORT_NAME")
 
 # 메인 페이지 제목
 st.title("🤖 트러블 체이서 챗봇")
-st.write("신속한 장애복구를 위해서 서비스정보를 입력하고 복구방법과 유사사례에 대한 이력을 확인해보세요!")
+st.write("2022년 1월~6월 (6개월간)의 장애보고서를 학습시킨 챗봇입니다. 토큰이 많이 사용될수있어서 공용석책임/김용빈선임 외에는 당분간 사용하지 말아주시기 바랍니다.")
 
 # 세션 상태 초기화 (오류 로그용)
 if 'error_logs' not in st.session_state:
@@ -475,7 +475,7 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
                 if st.button("🔄 타 서비스에 동일 현상에 대한 복구 방법 참조 (최대5건)", key="similar_btn"):
                     if validate_inputs(service_name, incident_symptom):
                         search_query = build_search_query("", incident_symptom)  # 타 서비스이므로 서비스명 제외
-                        st.session_state.sample_query = f" {incident_symptom} 동일 현상에 대한 복구방법조회"
+                        st.session_state.sample_query = f" {incident_symptom} 동일 현상에 대한 장애현상, 장애원인, 복구방법 알려주세요"
                         st.session_state.query_type = "similar"
 
             # 검색 옵션 설정 (숨김 처리)
