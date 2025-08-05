@@ -4,9 +4,8 @@ import streamlit as st
 # 네비게이션 설정
 pg = st.navigation([
     # 서비스 페이지
-    st.Page("menu/1_Chatbot.py",  title="[목표1] 트러블 체이서 챗봇1 (orig)", icon="🕵️‍♂️"),
-    st.Page("menu/1_Chatbot2.py", title="[목표1] 트러블 체이서 챗봇2 (addcol)", icon="🕵️‍♂️"),
-    st.Page("menu/1_Chatbot3.py", title="[목표1] 트러블 체이서 챗봇3 (report)", icon="🕵️‍♂️"),
+    st.Page("menu/1_Chatbot.py",  title="[목표1] 트러블 체이서 챗봇", icon="🕵️‍♂️"),
+    st.Page("menu/1_Chatbot2.py", title="[목표1] 트러블 체이서 챗봇 (장애보고서학습)", icon="🕵️‍♂️"),
     st.Page("menu/2_Report_Gen_Assistant.py", title="[목표2] 분석 보고서 초안 생성 도우미", icon="📰"),
     st.Page("menu/3_Process_Chatbot.py", title="[부가] 장애프로세스 안내챗봇", icon="👨‍⚕️"),
     st.Page("menu/4_Process Description.py", title="[부가] 장애프로세스 쉬운설명", icon="📌"),
@@ -18,9 +17,7 @@ pg = st.navigation([
     st.Page("menu/93_Admin-Keyword-based_question_Create.py", title="[부가] 장애프로세스 챗봇 키워드버튼 (생성용)", icon="⚙️"),
 
     # 개발용 (임시)
-    #st.Page("menu/99_azure_test01.py", title="RAG Test", icon="🎯"),    
-    st.Page("menu/99_azure_test02.py", title="[개발용] 프롬프팅 개발용", icon="🎯"),    
-    st.Page("menu/99_azure_test03.py", title="[개발용] 사내용어학습후 RAG", icon="🎯"),    
+    st.Page("menu/99_azure_test01.py", title="[개발용] 프롬프팅 개발용", icon="🎯")  
 ])
 
 pg.run()
