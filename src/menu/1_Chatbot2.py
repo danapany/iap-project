@@ -855,7 +855,7 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, in
             toggle_col1, toggle_col2 = st.columns(2)
             
             with toggle_col1:
-                if st.button("🚨 장애", key="incident_toggle", 
+                if st.button("🚨 장 애 ", key="incident_toggle", 
                            help="장애 관련 정보 검색",
                            type="primary" if st.session_state.search_type == "장애" else "secondary"):
                     try:

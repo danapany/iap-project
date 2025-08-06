@@ -17,6 +17,7 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from openai import AzureOpenAI
 import json
 import re
+import base64  # 추가된 import
 
 # 환경 변수 로드
 load_dotenv()
@@ -36,7 +37,7 @@ EML_DB_NAME = os.getenv("EML_DB_NAME")
 openai_endpoint = os.getenv("OPENAI_ENDPOINT")
 openai_api_key = os.getenv("OPENAI_KEY")
 openai_model = os.getenv("OPENAI_MODEL")
-chat_model = os.getenv("CHAT_MODEL")
+chat_model = os.getenv("CHAT_MODEL3")
 
 # 환경 변수 유효성 검사
 required_env_vars = {
@@ -241,7 +242,7 @@ def display_db_record(record):
     st.write(f"**🕐 등록 시간**: {record['upload_time']}")
 
 def parse_eml_file(eml_content):
-    """EML 파일 내용을 파싱하여 구조화된 데이터로 반환"""
+    """EML 파일 내용을 파싱하여 구조화된 데이터로 반환 (Base64 UTF-8 처리 개선)"""
     try:
         # EML 파일 파싱
         msg = email.message_from_string(eml_content, policy=policy.default)
@@ -271,33 +272,97 @@ def parse_eml_file(eml_content):
                         try:
                             parsed_data['body_text'] = part.get_content()
                         except:
-                            parsed_data['body_text'] = str(part.get_payload(decode=True), 'utf-8', errors='ignore')
+                            payload = part.get_payload(decode=True)
+                            if payload:
+                                parsed_data['body_text'] = payload.decode('utf-8', errors='ignore')
                     elif content_type == "text/html":
                         try:
                             parsed_data['body_html'] = part.get_content()
                         except:
-                            parsed_data['body_html'] = str(part.get_payload(decode=True), 'utf-8', errors='ignore')
+                            payload = part.get_payload(decode=True)
+                            if payload:
+                                parsed_data['body_html'] = payload.decode('utf-8', errors='ignore')
                 else:
                     # 첨부파일 정보
                     filename = part.get_filename()
                     if filename:
                         parsed_data['attachments'].append(filename)
         else:
-            # 단일 파트 메시지
+            # 단일 파트 메시지 (Base64 UTF-8 처리 개선)
             content_type = msg.get_content_type()
+            encoding = msg.get('Content-Transfer-Encoding', '').lower()
+            
             if content_type == "text/plain":
                 try:
                     parsed_data['body_text'] = msg.get_content()
-                except:
-                    parsed_data['body_text'] = str(msg.get_payload(decode=True), 'utf-8', errors='ignore')
+                except Exception as e:
+                    print(f"get_content() 실패, 수동 디코딩 시도: {e}")
+                    try:
+                        if encoding == 'base64':
+                            # Base64 페이로드 추출 및 정제
+                            payload = msg.get_payload()
+                            if payload:
+                                # 줄바꿈과 공백 제거
+                                clean_payload = payload.replace('\n', '').replace('\r', '').replace(' ', '')
+                                # Base64 디코딩
+                                decoded_bytes = base64.b64decode(clean_payload)
+                                # UTF-8로 디코딩
+                                parsed_data['body_text'] = decoded_bytes.decode('utf-8', errors='ignore')
+                        else:
+                            payload = msg.get_payload(decode=True)
+                            if payload:
+                                parsed_data['body_text'] = payload.decode('utf-8', errors='ignore')
+                    except Exception as decode_error:
+                        print(f"텍스트 디코딩 오류: {decode_error}")
+                        parsed_data['body_text'] = str(msg.get_payload())
+                        
             elif content_type == "text/html":
                 try:
                     parsed_data['body_html'] = msg.get_content()
-                except:
-                    parsed_data['body_html'] = str(msg.get_payload(decode=True), 'utf-8', errors='ignore')
+                except Exception as e:
+                    print(f"HTML get_content() 실패, 수동 디코딩 시도: {e}")
+                    try:
+                        if encoding == 'base64':
+                            # Base64 페이로드 추출 및 정제
+                            payload = msg.get_payload()
+                            if payload:
+                                # 줄바꿈과 공백 제거 (더 강력한 정제)
+                                clean_payload = payload.replace('\n', '').replace('\r', '').replace(' ', '')
+                                # Base64 디코딩
+                                decoded_bytes = base64.b64decode(clean_payload)
+                                # UTF-8로 디코딩
+                                parsed_data['body_html'] = decoded_bytes.decode('utf-8', errors='ignore')
+                        else:
+                            payload = msg.get_payload(decode=True)
+                            if payload:
+                                parsed_data['body_html'] = payload.decode('utf-8', errors='ignore')
+                    except Exception as decode_error:
+                        print(f"HTML 디코딩 오류: {decode_error}")
+                        parsed_data['body_html'] = str(msg.get_payload())
+        
+        # HTML에서 텍스트 추출 (body_text가 비어있을 때)
+        if not parsed_data['body_text'] and parsed_data['body_html']:
+            try:
+                import re
+                # HTML 태그 제거하여 텍스트만 추출
+                html_text = re.sub(r'<[^>]+>', '', parsed_data['body_html'])
+                # HTML 엔티티 처리 (개선)
+                html_text = html_text.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+                # 연속 공백/줄바꿈 정리
+                html_text = re.sub(r'\s+', ' ', html_text).strip()
+                parsed_data['body_text'] = html_text
+                print(f"HTML에서 텍스트 추출 완료: {len(html_text)}자")
+            except Exception as html_error:
+                print(f"HTML 텍스트 추출 오류: {html_error}")
+        
+        # 추출된 텍스트 확인용 로그 (디버깅용)
+        if parsed_data['body_text']:
+            print(f"추출된 텍스트 길이: {len(parsed_data['body_text'])}자")
+            print(f"텍스트 시작: {parsed_data['body_text'][:200]}...")
         
         return parsed_data, None
     except Exception as e:
+        print(f"EML 파싱 전체 오류: {str(e)}")
         return None, str(e)
 
 def upload_to_azure_eml_blob(file_content, filename):
@@ -397,7 +462,7 @@ def extract_precise_data(body_text: str) -> dict:
    - 담당자명과 직급 (예: "여재윤 책임")
 4. "장애현상"이라는 키워드 다음에 나오는 장애 현상 설명과 요약 정보
 5. "장애시간"이라는 키워드 다음에 나오는 괄호 안의 시간 정보
-6. "장애 조치 결과"라는 키워드 다음에 나오는 장애 조치 결과 HH:MM : 내용 패턴의 반복 정보
+6. "장애 조치 결과"라는 키워드 다음에 나오는 장애 조치 결과 HH:MM : 내용 패턴의 반복 정보 (반드시 누락없이 전체 추출할것)
 7. "장애원인"이라는 키워드 다음에 나오는 장애 원인 분석 정보
    
 
@@ -456,7 +521,7 @@ JSON 응답:
                 {"role": "system", "content": "정확한 정보만 추출하는 전문가. 특히 '대상서비스', '상황반장', '복구반장', '장애현상', '장애 조치 결과' 등 키워드 뒤의 정보를 정확히 찾아서 추출함."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=1500,
+            max_tokens=3000,
             temperature=0.0
         )
         
