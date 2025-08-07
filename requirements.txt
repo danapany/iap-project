@@ -10,3 +10,4 @@ azure-ai-textanalytics
 azure-storage-blob
 python-docx
 markdown2
+matplotlib

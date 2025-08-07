@@ -6,8 +6,8 @@ from datetime import datetime
 # -----------------------------
 # 📥 1. 데이터 업로드 / 로드
 # -----------------------------
-st.title("🔍 서비스별 오류 시즌성 분석기")
-st.write("서비스별 오류 발생 데이터를 분석해 현재 월/일 기준 오류가 자주 발생할 가능성이 높은 서비스를 예측합니다.")
+st.title("🔍 시즈널리티 통계 정보")
+st.write("서비스별 오류 발생 데이터를 분석해 현재 월/일 기준 오류가 자주 발생하는 서비스 통계를 제공합니다.")
 
 # 업로드 대신 정해진 경로의 파일을 자동 로드
 csv_path = "./data/csv/seasonality.csv"
@@ -64,21 +64,11 @@ top_services_day = (
 # -----------------------------
 # 📈 5. 결과 표시
 # -----------------------------
-st.subheader(f"📅 현재 월({current_month}월) 기준")
+st.subheader(f"📅 현재 월({current_month}월) 기준 정보")
 st.dataframe(top_services_month, use_container_width=True)
 
-st.subheader(f"📆 오늘({current_mmdd}) 기준")
+st.subheader(f"📆 오늘({current_mmdd}) 기준 정보")
 st.dataframe(top_services_day, use_container_width=True)
-
-# -----------------------------
-# 기본 서비스 선택을 위한 설정
-# -----------------------------
-# 현재 월 기준 가장 오류가 많은 서비스를 기본값으로 설정
-if not top_services_month.empty:
-    default_service = top_services_month.iloc[0]["service"]
-else:
-    # 현재 월에 데이터가 없으면 전체 서비스 중 첫 번째
-    default_service = df["service"].unique().tolist()[0]
 
 # -----------------------------
 # 📉 6. 특정 서비스 시각화
@@ -100,11 +90,6 @@ plt.rc('font', family=font_name)
 st.subheader("📊 서비스별 월별 오류 시즌성 그래프")
 
 unique_services = df["service"].unique().tolist()
-# 기본 서비스를 리스트 앞쪽으로 이동
-if default_service in unique_services:
-    unique_services.remove(default_service)
-    unique_services.insert(0, default_service)
-
 selected_service = st.selectbox("서비스 선택", unique_services)
 
 service_monthly = monthly_counts[monthly_counts["service"] == selected_service]
@@ -124,13 +109,7 @@ st.pyplot(fig)
 # -----------------------------
 st.subheader("📊 서비스별 일별 오류 시즌성 그래프 (월 선택 가능)")
 
-# 기본 서비스를 리스트 앞쪽으로 이동
-unique_services_day = df["service"].unique().tolist()
-if default_service in unique_services_day:
-    unique_services_day.remove(default_service)
-    unique_services_day.insert(0, default_service)
-
-selected_service_day = st.selectbox("서비스 선택 (일별 시즌성)", unique_services_day, key="day_select")
+selected_service_day = st.selectbox("서비스 선택 (일별 시즌성)", unique_services, key="day_select")
 selected_month_option = st.selectbox(
     "월 선택 (전체 또는 특정 월)",
     options=["전체"] + [f"{i}월" for i in range(1, 13)],
@@ -179,13 +158,7 @@ st.pyplot(fig2)
 # 📆 8. 서비스별 요일별 오류 그래프
 st.subheader("📆 서비스별 요일별 오류 발생 패턴")
 
-# 기본 서비스를 리스트 앞쪽으로 이동
-unique_services_week = df["service"].unique().tolist()
-if default_service in unique_services_week:
-    unique_services_week.remove(default_service)
-    unique_services_week.insert(0, default_service)
-
-selected_service_week = st.selectbox("서비스 선택 (요일)", unique_services_week, key="weekday_select")
+selected_service_week = st.selectbox("서비스 선택 (요일)", unique_services, key="weekday_select")
 
 weekday_order_kr = ["월", "화", "수", "목", "금", "토", "일"]
 
@@ -207,13 +180,7 @@ st.pyplot(fig3)
 # 🌙 9. 서비스별 주간/야간 오류 그래프
 st.subheader("🌙 서비스별 주간/야간 오류 발생 패턴")
 
-# 기본 서비스를 리스트 앞쪽으로 이동
-unique_services_daynight = df["service"].unique().tolist()
-if default_service in unique_services_daynight:
-    unique_services_daynight.remove(default_service)
-    unique_services_daynight.insert(0, default_service)
-
-selected_service_daynight = st.selectbox("서비스 선택 (주간/야간)", unique_services_daynight, key="daynight_select")
+selected_service_daynight = st.selectbox("서비스 선택 (주간/야간)", unique_services, key="daynight_select")
 
 time_df = df[df["service"] == selected_service_daynight]
 time_counts = (
