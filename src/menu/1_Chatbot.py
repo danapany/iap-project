@@ -329,9 +329,9 @@ Case1. ~~서비스의 ~~~ 장애현상에 대한 복구방법입니다
 """
 }
 
-# 개선된 고급 문서 필터링 함수 (서비스명 정확 매칭 포함)
-def advanced_filter_documents_v2(documents, query_type="default", query_text="", target_service_name=None):
-    """서비스명 정확 매칭을 포함한 개선된 필터링"""
+# 서비스명 포함 매칭을 지원하는 개선된 필터링 함수
+def advanced_filter_documents_v3(documents, query_type="default", query_text="", target_service_name=None):
+    """서비스명 포함 매칭을 지원하는 개선된 필터링"""
     
     # 동적 임계값 획득
     thresholds = get_dynamic_thresholds(query_type, query_text)
@@ -340,6 +340,8 @@ def advanced_filter_documents_v2(documents, query_type="default", query_text="",
     filter_stats = {
         'total': len(documents),
         'search_filtered': 0,
+        'service_exact_match': 0,
+        'service_partial_match': 0,
         'service_filtered': 0,
         'reranker_qualified': 0,
         'hybrid_qualified': 0,
@@ -357,23 +359,36 @@ def advanced_filter_documents_v2(documents, query_type="default", query_text="",
             continue
         filter_stats['search_filtered'] += 1
         
-        # 2단계: 서비스명 정확 매칭 (새로 추가)
+        # 2단계: 서비스명 포함 매칭 (개선된 방식)
         if target_service_name:
             doc_service_name = doc.get('service_name', '').strip()
-            if doc_service_name.lower() != target_service_name.lower():
+            
+            # 정확한 매칭 우선 확인
+            if doc_service_name.lower() == target_service_name.lower():
+                filter_stats['service_exact_match'] += 1
+                doc['service_match_type'] = 'exact'
+            # 포함 매칭 확인
+            elif target_service_name.lower() in doc_service_name.lower() or doc_service_name.lower() in target_service_name.lower():
+                filter_stats['service_partial_match'] += 1
+                doc['service_match_type'] = 'partial'
+            else:
                 excluded_docs.append({
                     'incident_id': doc.get('incident_id', ''),
                     'service_name': doc_service_name,
                     'expected_service': target_service_name,
-                    'reason': '서비스명 불일치'
+                    'reason': '서비스명 불일치 (정확/포함 모두 해당없음)'
                 })
                 continue
+        else:
+            doc['service_match_type'] = 'all'
+            
         filter_stats['service_filtered'] += 1
         
         # 3단계: Reranker 점수 우선 평가 (동적 임계값 적용)
         if reranker_score >= thresholds['reranker_threshold']:
             filter_stats['reranker_qualified'] += 1
-            doc['filter_reason'] = f"서비스명 매칭 + Reranker 고품질 (점수: {reranker_score:.2f})"
+            match_type = doc.get('service_match_type', 'unknown')
+            doc['filter_reason'] = f"서비스명 {match_type} 매칭 + Reranker 고품질 (점수: {reranker_score:.2f})"
             doc['final_score'] = reranker_score
             doc['quality_tier'] = 'Premium'
             filtered_docs.append(doc)
@@ -384,26 +399,33 @@ def advanced_filter_documents_v2(documents, query_type="default", query_text="",
         hybrid_score = calculate_hybrid_score(search_score, reranker_score)
         if hybrid_score >= thresholds['hybrid_threshold']:
             filter_stats['hybrid_qualified'] += 1
-            doc['filter_reason'] = f"서비스명 매칭 + 하이브리드 점수 통과 (점수: {hybrid_score:.2f})"
+            match_type = doc.get('service_match_type', 'unknown')
+            doc['filter_reason'] = f"서비스명 {match_type} 매칭 + 하이브리드 점수 통과 (점수: {hybrid_score:.2f})"
             doc['final_score'] = hybrid_score
             doc['quality_tier'] = 'Standard'
             filtered_docs.append(doc)
             filter_stats['final_selected'] += 1
     
-    # 점수 기준으로 정렬 (높은 점수 우선)
-    filtered_docs.sort(key=lambda x: x['final_score'], reverse=True)
+    # 정확한 매칭을 우선으로 정렬 (exact > partial), 그 다음 점수순
+    def sort_key(doc):
+        match_priority = {'exact': 3, 'partial': 2, 'all': 1}
+        return (match_priority.get(doc.get('service_match_type', 'all'), 0), doc['final_score'])
+    
+    filtered_docs.sort(key=sort_key, reverse=True)
     
     # 최종 결과 수 제한 (동적 적용)
     final_docs = filtered_docs[:thresholds['max_results']]
    
-    # 개선된 필터링 통계 표시 (임계값 정보 포함)
+    # 개선된 필터링 통계 표시 (포함 매칭 정보 포함)
     st.info(f"""
-    📊 **개선된 서비스명 매칭 기반 문서 필터링 결과**
+    📊 **서비스명 포함 매칭 기반 문서 필터링 결과**
     - 🎯 대상 서비스: {target_service_name or '전체 서비스'}
     - 🎯 적용된 임계값: 검색({thresholds['search_threshold']}) | Reranker({thresholds['reranker_threshold']}) | 하이브리드({thresholds['hybrid_threshold']})
     - 🔍 전체 검색 결과: {filter_stats['total']}개
     - ✅ 기본 점수 통과: {filter_stats['search_filtered']}개
-    - 🎯 서비스명 정확 매칭: {filter_stats['service_filtered']}개
+    - 🎯 서비스명 정확 매칭: {filter_stats['service_exact_match']}개
+    - 🔍 서비스명 포함 매칭: {filter_stats['service_partial_match']}개
+    - ✅ 총 서비스명 매칭: {filter_stats['service_filtered']}개
     - 🏆 Reranker 고품질: {filter_stats['reranker_qualified']}개
     - 🎯 하이브리드 통과: {filter_stats['hybrid_qualified']}개
     - 📋 최종 선별: {len(final_docs)}개
@@ -411,16 +433,17 @@ def advanced_filter_documents_v2(documents, query_type="default", query_text="",
     
     return final_docs
 
-# 개선된 시맨틱 검색 함수 (서비스명 필터링 포함)
+# 서비스명 포함 검색을 지원하는 개선된 시맨틱 검색 함수
 def semantic_search_with_service_filter(search_client, query, target_service_name=None, query_type="default", top_k=MAX_INITIAL_RESULTS):
-    """서비스명 필터링을 포함한 개선된 시맨틱 검색"""
+    """서비스명 포함 검색을 지원하는 개선된 시맨틱 검색"""
     try:
-        # 정확한 서비스명 매칭을 위한 검색 쿼리 구성
+        # 서비스명 포함 검색을 위한 검색 쿼리 구성
         if target_service_name:
-            enhanced_query = f'service_name:"{target_service_name}"'
+            # 정확한 매칭과 포함 검색을 모두 지원
+            enhanced_query = f'(service_name:"{target_service_name}" OR service_name:*{target_service_name}*)'
             if query != target_service_name:  # 원래 쿼리에 추가 조건이 있는 경우
                 enhanced_query += f" AND ({query})"
-            st.info(f"🎯 정확한 서비스명 매칭 검색: {enhanced_query}")
+            st.info(f"🎯 서비스명 포함 검색: {enhanced_query}")
         else:
             enhanced_query = query
             
@@ -465,10 +488,10 @@ def semantic_search_with_service_filter(search_client, query, target_service_nam
                 "reranker_score": result.get("@search.reranker_score", 0)
             })
         
-        st.info(f"🎯 2단계: 서비스명 매칭 + 동적 임계값 기반 고품질 문서 선별 중...")
+        st.info(f"🎯 2단계: 서비스명 포함 매칭 + 동적 임계값 기반 고품질 문서 선별 중...")
         
-        # 개선된 필터링 적용 (서비스명 매칭 포함)
-        filtered_documents = advanced_filter_documents_v2(documents, query_type, query, target_service_name)
+        # 개선된 필터링 적용 (서비스명 포함 매칭)
+        filtered_documents = advanced_filter_documents_v3(documents, query_type, query, target_service_name)
         
         return filtered_documents
         
@@ -476,13 +499,13 @@ def semantic_search_with_service_filter(search_client, query, target_service_nam
         st.warning(f"시맨틱 검색 실패, 일반 검색으로 대체: {str(e)}")
         return search_documents_with_service_filter(search_client, query, target_service_name, query_type, top_k)
 
-# 일반 검색도 서비스명 필터링 적용
+# 일반 검색에 서비스명 포함 필터링 적용
 def search_documents_with_service_filter(search_client, query, target_service_name=None, query_type="default", top_k=MAX_INITIAL_RESULTS):
-    """일반 검색에 서비스명 필터링 적용"""
+    """일반 검색에 서비스명 포함 필터링 적용"""
     try:
-        # 정확한 서비스명 매칭을 위한 검색 쿼리 구성
+        # 서비스명 포함 검색을 위한 검색 쿼리 구성
         if target_service_name:
-            enhanced_query = f'service_name:"{target_service_name}"'
+            enhanced_query = f'(service_name:"{target_service_name}" OR service_name:*{target_service_name}*)'
             if query != target_service_name:
                 enhanced_query += f" AND ({query})"
         else:
@@ -531,10 +554,10 @@ def search_documents_with_service_filter(search_client, query, target_service_na
                 "reranker_score": 0  # 일반 검색에서는 0
             })
         
-        st.info(f"🎯 2단계: 서비스명 매칭 + 동적 임계값 기반 고품질 문서 선별 중...")
+        st.info(f"🎯 2단계: 서비스명 포함 매칭 + 동적 임계값 기반 고품질 문서 선별 중...")
         
-        # 개선된 필터링 적용 (서비스명 매칭 포함)
-        filtered_documents = advanced_filter_documents_v2(documents, query_type, query, target_service_name)
+        # 개선된 필터링 적용 (서비스명 포함 매칭)
+        filtered_documents = advanced_filter_documents_v3(documents, query_type, query, target_service_name)
         
         return filtered_documents
         
@@ -542,13 +565,13 @@ def search_documents_with_service_filter(search_client, query, target_service_na
         st.error(f"검색 실패: {str(e)}")
         return []
 
-# 대체 검색 함수 (매우 관대한 기준)
+# 대체 검색 함수 (매우 관대한 기준, 포함 매칭 지원)
 def search_documents_fallback(search_client, query, target_service_name=None, top_k=15):
-    """매우 관대한 기준의 대체 검색"""
+    """매우 관대한 기준의 대체 검색 (포함 매칭 지원)"""
     try:
-        # 서비스명 필터링이 있는 경우에도 적용
+        # 서비스명 포함 검색을 위한 검색 쿼리 구성
         if target_service_name:
-            enhanced_query = f'service_name:"{target_service_name}"'
+            enhanced_query = f'(service_name:"{target_service_name}" OR service_name:*{target_service_name}*)'
             if query != target_service_name:
                 enhanced_query += f" AND ({query})"
         else:
@@ -571,9 +594,13 @@ def search_documents_fallback(search_client, query, target_service_name=None, to
             score = result.get("@search.score", 0)
             if score >= 0.1:  # 매우 낮은 기준
                 doc_service_name = result.get("service_name", "").strip()
-                # 서비스명 필터링 (대체 검색에서도 적용)
-                if target_service_name and doc_service_name.lower() != target_service_name.lower():
-                    continue
+                
+                # 서비스명 포함 필터링 (대체 검색에서도 적용)
+                if target_service_name:
+                    if not (doc_service_name.lower() == target_service_name.lower() or 
+                           target_service_name.lower() in doc_service_name.lower() or 
+                           doc_service_name.lower() in target_service_name.lower()):
+                        continue
                     
                 documents.append({
                     "incident_id": result.get("incident_id", ""),
@@ -597,7 +624,8 @@ def search_documents_fallback(search_client, query, target_service_name=None, to
                     "reranker_score": 0,
                     "final_score": score,
                     "quality_tier": "Basic",
-                    "filter_reason": "대체 검색 통과"
+                    "filter_reason": "대체 검색 통과 (포함 매칭)",
+                    "service_match_type": "partial" if target_service_name else "all"
                 })
         
         return documents[:8]  # 최대 8개까지
@@ -659,8 +687,9 @@ def generate_rag_response_with_accurate_count(azure_openai_client, query, docume
             final_score = doc.get('final_score', 0)
             quality_tier = doc.get('quality_tier', 'Standard')
             filter_reason = doc.get('filter_reason', '기본 선별')
+            service_match_type = doc.get('service_match_type', 'unknown')
             
-            context_part = f"""문서 {i+1} [{quality_tier}급 - {filter_reason}]:
+            context_part = f"""문서 {i+1} [{quality_tier}급 - {filter_reason} - {service_match_type} 매칭]:
 장애 ID: {doc['incident_id']}
 서비스명: {doc['service_name']}
 장애시간: {doc['error_time']}
@@ -689,7 +718,7 @@ def generate_rag_response_with_accurate_count(azure_openai_client, query, docume
 
         user_prompt = f"""
 다음 장애 이력 문서들을 참고하여 질문에 답변해주세요.
-(모든 문서는 서비스명 정확 매칭 + 동적 임계값 기반 고품질 필터링을 통과한 최고 품질의 검색 결과입니다):
+(모든 문서는 서비스명 포함 매칭 + 동적 임계값 기반 고품질 필터링을 통과한 검색 결과입니다):
 
 중요! 집계 관련 질문인 경우 위의 "정확한 집계 정보" 섹션을 참조하여 정확한 숫자를 제공하세요.
 - 전체 건수: {total_count}건
@@ -718,30 +747,36 @@ def generate_rag_response_with_accurate_count(azure_openai_client, query, docume
     except Exception as e:
         st.error(f"응답 생성 실패: {str(e)}")
         return "죄송합니다. 응답을 생성하는 중 오류가 발생했습니다."
-    
-# 수정된 메인 쿼리 처리 함수 (정확한 집계 적용)
+
+# 서비스명 포함 검색을 지원하는 개선된 쿼리 처리 함수
 def process_query_with_enhanced_filtering(query, query_type="default"):
-    """개선된 서비스명 필터링을 적용한 쿼리 처리"""
+    """서비스명 포함 검색을 지원하는 개선된 쿼리 처리"""
     with st.chat_message("assistant"):
         # 서비스명 추출
         target_service_name = extract_service_name_from_query(query)
         
         if target_service_name:
-            st.success(f"🎯 감지된 대상 서비스: **{target_service_name}**")
+            st.success(f"🎯 감지된 대상 서비스: **{target_service_name}** (정확/포함 매칭 모두 지원)")
         
-        with st.spinner("🎯 서비스명 정확 매칭 + 동적 임계값 기반 고품질 검색 중..."):
+        with st.spinner("🎯 서비스명 포함 매칭 + 동적 임계값 기반 고품질 검색 중..."):
             # 개선된 검색 함수 호출
             documents = semantic_search_with_service_filter(
                 search_client, query, target_service_name, query_type
             )
             
             if documents:
-                # 서비스명 매칭 검증
-                service_names = set(doc.get('service_name', '') for doc in documents)
-                if target_service_name and len(service_names) == 1 and target_service_name in service_names:
-                    st.success(f"✅ 모든 결과가 '{target_service_name}' 서비스로 정확히 매칭되었습니다!")
+                # 서비스명 매칭 검증 및 분류
+                exact_matches = [doc for doc in documents if doc.get('service_match_type') == 'exact']
+                partial_matches = [doc for doc in documents if doc.get('service_match_type') == 'partial']
+                
+                if exact_matches and partial_matches:
+                    st.success(f"✅ '{target_service_name}' 서비스: 정확 매칭 {len(exact_matches)}개, 포함 매칭 {len(partial_matches)}개")
+                elif exact_matches:
+                    st.success(f"✅ '{target_service_name}' 서비스: 정확 매칭 {len(exact_matches)}개")
+                elif partial_matches:
+                    st.info(f"📋 '{target_service_name}' 서비스: 포함 매칭 {len(partial_matches)}개")
                 elif target_service_name:
-                    st.info(f"📋 '{target_service_name}' 서비스 관련 {len(documents)}개 문서가 선별되었습니다.")
+                    st.info(f"📋 '{target_service_name}' 관련 {len(documents)}개 문서가 선별되었습니다.")
                 
                 premium_count = sum(1 for doc in documents if doc.get('quality_tier') == 'Premium')
                 standard_count = sum(1 for doc in documents if doc.get('quality_tier') == 'Standard')
@@ -782,37 +817,33 @@ def process_query_with_enhanced_filtering(query, query_type="default"):
                     - 검증 상태: {'✅ 일치' if yearly_total == len(documents) else '❌ 불일치'}
                     """)
                 
-                st.success(f"🏆 {len(documents)}개의 정확한 매칭 문서 선별 완료! (Premium: {premium_count}개, Standard: {standard_count}개, Basic: {basic_count}개)")
+                st.success(f"🏆 {len(documents)}개의 매칭 문서 선별 완료! (Premium: {premium_count}개, Standard: {standard_count}개, Basic: {basic_count}개)")
                 
                 # 검색된 문서 표시
-                with st.expander("🔍 정확히 매칭된 문서 보기"):
+                with st.expander("🔍 매칭된 문서 보기"):
                     display_documents_with_quality_info(documents)
                 
-                # RAG 응답 생성 (개선된 집계 함수 사용)
-                with st.spinner("💡 정확한 집계 기반 답변 생성 중..."):
+                # RAG 응답 생성
+                with st.spinner("💡 포함 매칭 기반 답변 생성 중..."):
                     response = generate_rag_response_with_accurate_count(
                         azure_openai_client, query, documents, azure_openai_model, query_type
                     )
                     
-                    with st.expander("🤖 AI 답변 보기 (정확한 집계)", expanded=True):
+                    with st.expander("🤖 AI 답변 보기 (포함 매칭 지원)", expanded=True):
                         st.write(response)
-                        st.info(f"✨ 이 답변은 '{target_service_name or '모든 서비스'}'에 정확히 매칭된 {len(documents)}개 문서를 바탕으로 생성되었습니다.")
+                        match_info = "정확/포함 매칭" if exact_matches and partial_matches else "정확 매칭" if exact_matches else "포함 매칭"
+                        st.info(f"✨ 이 답변은 '{target_service_name or '모든 서비스'}'에 {match_info}된 문서를 바탕으로 생성되었습니다.")
                     
                     st.session_state.messages.append({"role": "assistant", "content": response})
             else:
                 # 대체 검색 시도
-                st.warning("🔄 정확한 매칭으로도 결과가 없어 더 관대한 기준으로 재검색 중...")
+                st.warning("🔄 포함 매칭으로도 결과가 없어 더 관대한 기준으로 재검색 중...")
                 
-                # 매우 관대한 기준으로 재검색 (서비스명 필터링 유지)
+                # 매우 관대한 기준으로 재검색 (서비스명 포함 필터링 유지)
                 fallback_documents = search_documents_fallback(search_client, query, target_service_name)
                 
                 if fallback_documents:
                     st.info(f"📋 대체 검색으로 {len(fallback_documents)}개 문서 발견")
-                    
-                    # 서비스명 확인
-                    service_names = set(doc.get('service_name', '') for doc in fallback_documents)
-                    if target_service_name and target_service_name in service_names:
-                        st.success(f"✅ 대체 검색에서도 '{target_service_name}' 서비스로 매칭되었습니다!")
                     
                     response = generate_rag_response_with_accurate_count(
                         azure_openai_client, query, fallback_documents, azure_openai_model, query_type
@@ -826,22 +857,23 @@ def process_query_with_enhanced_filtering(query, query_type="default"):
                     🔍 '{target_service_name or '해당 조건'}'에 해당하는 문서를 찾을 수 없습니다.
                     
                     **개선 방안:**
-                    - 서비스명이 정확한지 확인해주세요 (예: KOS-CRM(B2C), API_Link_GW 등)
+                    - 서비스명의 일부만 입력해보세요 (예: 'API' 대신 'API_Link')
                     - 다른 검색어를 시도해보세요
                     - 전체 검색을 원하시면 서비스명을 제외하고 검색해주세요
                     
-                    **참고**: 현재 시스템은 서비스명을 정확히 매칭하여 더 정확한 결과를 제공합니다.
+                    **참고**: 현재 시스템은 서비스명 정확 매칭과 포함 매칭을 모두 지원합니다.
                     """
                     with st.expander("🤖 AI 답변 보기", expanded=True):
                         st.write(error_msg)
                     st.session_state.messages.append({"role": "assistant", "content": error_msg})
 
-# 고급 문서 표시 함수
+# 고급 문서 표시 함수 (서비스 매칭 타입 정보 포함)
 def display_documents_with_quality_info(documents):
-    """품질 정보와 함께 문서 표시"""
+    """품질 정보와 서비스 매칭 타입과 함께 문서 표시"""
     for i, doc in enumerate(documents):
         quality_tier = doc.get('quality_tier', 'Standard')
         filter_reason = doc.get('filter_reason', '기본 선별')
+        service_match_type = doc.get('service_match_type', 'unknown')
         search_score = doc.get('score', 0)
         reranker_score = doc.get('reranker_score', 0)
         final_score = doc.get('final_score', 0)
@@ -857,7 +889,11 @@ def display_documents_with_quality_info(documents):
             tier_emoji = "📋"
             tier_color = "🔵"
         
-        st.markdown(f"### {tier_emoji} **문서 {i+1}** - {quality_tier}급 {tier_color}")
+        # 서비스 매칭 타입에 따른 표시
+        match_emoji = {"exact": "🎯", "partial": "🔍", "all": "📋"}.get(service_match_type, "❓")
+        match_label = {"exact": "정확 매칭", "partial": "포함 매칭", "all": "전체", "unknown": "알 수 없음"}.get(service_match_type, "알 수 없음")
+        
+        st.markdown(f"### {tier_emoji} **문서 {i+1}** - {quality_tier}급 {tier_color} {match_emoji} {match_label}")
         st.markdown(f"**선별 기준**: {filter_reason}")
         
         # 점수 정보 표시
@@ -910,89 +946,6 @@ def validate_inputs(service_name, incident_symptom):
 def build_search_query(service_name, incident_symptom):
     """기본 검색 쿼리를 구성"""
     return f"{service_name} {incident_symptom}"
-
-# 개선된 메인 쿼리 처리 함수
-def process_query_with_enhanced_filtering(query, query_type="default"):
-    """개선된 서비스명 필터링을 적용한 쿼리 처리"""
-    with st.chat_message("assistant"):
-        # 서비스명 추출
-        target_service_name = extract_service_name_from_query(query)
-        
-        if target_service_name:
-            st.success(f"🎯 감지된 대상 서비스: **{target_service_name}**")
-        
-        with st.spinner("🎯 서비스명 정확 매칭 + 동적 임계값 기반 고품질 검색 중..."):
-            # 개선된 검색 함수 호출
-            documents = semantic_search_with_service_filter(
-                search_client, query, target_service_name, query_type
-            )
-            
-            if documents:
-                # 서비스명 매칭 검증
-                service_names = set(doc.get('service_name', '') for doc in documents)
-                if target_service_name and len(service_names) == 1 and target_service_name in service_names:
-                    st.success(f"✅ 모든 결과가 '{target_service_name}' 서비스로 정확히 매칭되었습니다!")
-                elif target_service_name:
-                    st.info(f"📋 '{target_service_name}' 서비스 관련 {len(documents)}개 문서가 선별되었습니다.")
-                
-                premium_count = sum(1 for doc in documents if doc.get('quality_tier') == 'Premium')
-                standard_count = sum(1 for doc in documents if doc.get('quality_tier') == 'Standard')
-                basic_count = sum(1 for doc in documents if doc.get('quality_tier') == 'Basic')
-                
-                st.success(f"🏆 {len(documents)}개의 정확한 매칭 문서 선별 완료! (Premium: {premium_count}개, Standard: {standard_count}개, Basic: {basic_count}개)")
-                
-                # 검색된 문서 표시
-                with st.expander("🔍 정확히 매칭된 문서 보기"):
-                    display_documents_with_quality_info(documents)
-                
-                # RAG 응답 생성
-                with st.spinner("💡 정확한 매칭 기반 답변 생성 중..."):
-                    response = generate_rag_response_with_accurate_count(
-                        azure_openai_client, query, documents, azure_openai_model, query_type
-                    )
-                    
-                    with st.expander("🤖 AI 답변 보기 (정확한 서비스명 매칭)", expanded=True):
-                        st.write(response)
-                        st.info(f"✨ 이 답변은 '{target_service_name or '모든 서비스'}'에 정확히 매칭된 문서만을 바탕으로 생성되었습니다.")
-                    
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-            else:
-                # 대체 검색 시도
-                st.warning("🔄 정확한 매칭으로도 결과가 없어 더 관대한 기준으로 재검색 중...")
-                
-                # 매우 관대한 기준으로 재검색 (서비스명 필터링 유지)
-                fallback_documents = search_documents_fallback(search_client, query, target_service_name)
-                
-                if fallback_documents:
-                    st.info(f"📋 대체 검색으로 {len(fallback_documents)}개 문서 발견")
-                    
-                    # 서비스명 확인
-                    service_names = set(doc.get('service_name', '') for doc in fallback_documents)
-                    if target_service_name and target_service_name in service_names:
-                        st.success(f"✅ 대체 검색에서도 '{target_service_name}' 서비스로 매칭되었습니다!")
-                    
-                    response = generate_rag_response_with_accurate_count(
-                        azure_openai_client, query, fallback_documents, azure_openai_model, query_type
-                    )
-                    with st.expander("🤖 AI 답변 보기 (대체 검색)", expanded=True):
-                        st.write(response)
-                        st.warning(f"⚠️ 이 답변은 '{target_service_name or '해당 조건'}'에 대한 관대한 기준의 검색 결과를 바탕으로 생성되었습니다.")
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                else:
-                    error_msg = f"""
-                    🔍 '{target_service_name or '해당 조건'}'에 해당하는 문서를 찾을 수 없습니다.
-                    
-                    **개선 방안:**
-                    - 서비스명이 정확한지 확인해주세요 (예: API_Link_GW, 마이페이지 등)
-                    - 다른 검색어를 시도해보세요
-                    - 전체 검색을 원하시면 서비스명을 제외하고 검색해주세요
-                    
-                    **참고**: 현재 시스템은 서비스명을 정확히 매칭하여 더 정확한 결과를 제공합니다.
-                    """
-                    with st.expander("🤖 AI 답변 보기", expanded=True):
-                        st.write(error_msg)
-                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
-
 
 # 메인 애플리케이션 로직
 if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, search_index]):
