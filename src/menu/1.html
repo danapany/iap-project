@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>트러블 체이서 챗봇</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #f0f8ff;
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+        }
+        
+        .ghibli-container {
+            background: linear-gradient(180deg, #e8f4fd 0%, #c3e9ff 100%);
+            padding: 60px 40px;
+            border-radius: 25px;
+            margin: 20px auto;
+            position: relative;
+            min-height: 350px;
+            overflow: hidden;
+            max-width: 1000px;
+            box-shadow: 0 20px 60px rgba(135, 206, 250, 0.2);
+        }
+        
+        /* 지브리 스타일 구름들 */
+        .cloud {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50px;
+            opacity: 0.8;
+            animation: float-gentle 8s ease-in-out infinite;
+        }
+        
+        .cloud1 {
+            width: 100px;
+            height: 40px;
+            top: 20px;
+            left: 10%;
+        }
+        
+        .cloud2 {
+            width: 80px;
+            height: 35px;
+            top: 15px;
+            right: 15%;
+            animation-delay: -2s;
+        }
+        
+        .cloud3 {
+            width: 60px;
+            height: 25px;
+            bottom: 30px;
+            left: 20%;
+            animation-delay: -4s;
+        }
+        
+        @keyframes float-gentle {
+            0%, 100% { transform: translateY(0px) translateX(0px); }
+            33% { transform: translateY(-8px) translateX(5px); }
+            66% { transform: translateY(3px) translateX(-3px); }
+        }
+        
+        .title {
+            text-align: center;
+            color: #2c3e50;
+            font-size: 22px;
+            font-weight: 400;
+            margin-bottom: 50px;
+            font-family: 'Arial', sans-serif;
+            letter-spacing: 1px;
+        }
+        
+        .journey-path {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            position: relative;
+            flex-wrap: wrap;
+        }
+        
+        .step-circle {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 0 8px 25px rgba(135, 206, 250, 0.3);
+            transition: all 0.4s ease;
+            position: relative;
+            animation: breathe 4s ease-in-out infinite;
+            border: 2px solid rgba(135, 206, 250, 0.2);
+        }
+        
+        .step-circle:nth-child(1) { animation-delay: 0s; }
+        .step-circle:nth-child(3) { animation-delay: 0.8s; }
+        .step-circle:nth-child(5) { animation-delay: 1.6s; }
+        .step-circle:nth-child(7) { animation-delay: 2.4s; }
+        .step-circle:nth-child(9) { animation-delay: 3.2s; }
+        
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); box-shadow: 0 8px 25px rgba(135, 206, 250, 0.3); }
+            50% { transform: scale(1.05); box-shadow: 0 12px 35px rgba(135, 206, 250, 0.5); }
+        }
+        
+        .step-circle:hover {
+            transform: scale(1.1) translateY(-5px);
+            box-shadow: 0 15px 40px rgba(135, 206, 250, 0.6);
+        }
+        
+        .step-label {
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #34495e;
+            white-space: nowrap;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+        
+        .path-line {
+            width: 30px;
+            height: 2px;
+            background: linear-gradient(90deg, #87ceeb, #add8e6);
+            border-radius: 1px;
+            position: relative;
+            animation: flow 3s ease-in-out infinite;
+        }
+        
+        @keyframes flow {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        
+        .path-line::before {
+            content: '';
+            position: absolute;
+            right: -3px;
+            top: -1px;
+            width: 0;
+            height: 0;
+            border-left: 4px solid #87ceeb;
+            border-top: 2px solid transparent;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .subtitle {
+            text-align: center;
+            margin-top: 60px;
+            color: #5d6d7e;
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            font-style: italic;
+        }
+        
+        /* 작은 장식 요소들 */
+        .decoration {
+            position: absolute;
+            color: rgba(135, 206, 250, 0.6);
+            font-size: 12px;
+            animation: twinkle 3s ease-in-out infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        
+        .deco1 { top: 40px; left: 5%; animation-delay: 0s; }
+        .deco2 { top: 80px; right: 8%; animation-delay: 1.5s; }
+        .deco3 { bottom: 50px; left: 12%; animation-delay: 3s; }
+        
+        /* 모바일 대응 */
+        @media (max-width: 768px) {
+            .journey-path {
+                flex-direction: column;
+                gap: 25px;
+            }
+            
+            .path-line {
+                width: 2px;
+                height: 25px;
+                transform: rotate(90deg);
+            }
+            
+            .path-line::before {
+                right: -1px;
+                top: -3px;
+                border-left: 2px solid transparent;
+                border-right: 2px solid transparent;
+                border-top: 4px solid #87ceeb;
+            }
+            
+            .ghibli-container {
+                padding: 40px 20px;
+                min-height: 600px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="ghibli-container">
+
+        
+        <!-- 작은 장식들 -->
+        <div class="decoration deco1">✦</div>
+        <div class="decoration deco2">✧</div>
+        <div class="decoration deco3">✦</div>
+        
+        <div class="title">AI를 통한 신속한 장애복구에 활용해보세요!</div>
+        
+        <div class="journey-path">
+            <div class="step-circle">
+                🤔
+                <div class="step-label"><b>복구방법</b></div>
+            </div>
+            
+            <div class="path-line"></div>
+            
+            <div class="step-circle">
+                🎯
+                <div class="step-label"><b>장애원인</b></div>
+            </div>
+            
+            <div class="path-line"></div>
+            
+            <div class="step-circle">
+                🔍
+                <div class="step-label"><b>장애현상</b></div>
+            </div>
+            
+            <div class="path-line"></div>
+            <div class="step-circle">
+                ⚖️
+                <div class="step-label"><b>이력조회</b></div>
+            </div>
+            
+            <div class="path-line"></div>
+            
+            <div class="step-circle">
+                ✨
+                <div class="step-label"><b>장애건수</b></div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

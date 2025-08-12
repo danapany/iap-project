@@ -35,10 +35,10 @@ HYBRID_SCORE_THRESHOLD = 0.5      # 0.7 → 0.5 (더 관대하게)
 MAX_INITIAL_RESULTS = 20          # 초기 검색 결과 수 (Reranker 입력용)
 MAX_FINAL_RESULTS = 8             # 5 → 8 (최종 선별 문서 수 증가)
 
+
 # 메인 페이지 제목
 st.title("🤖 트러블 체이서 챗봇")
-st.write("신속한 장애복구를 위해서 서비스정보를 입력하고 복구방법과 유사사례에 대한 이력을 확인해보세요!")
-
+st.image("./src/img/chatbot.jpg")
 # 개선된 서비스명 추출 함수 (모든 특수문자 포함)
 def extract_service_name_from_query(query):
     """쿼리에서 서비스명을 추출 - 스페이스바, 대시(-), 슬러쉬(/), 플러스(+), 괄호(), 언더스코어(_) 모두 지원"""
