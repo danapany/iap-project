@@ -38,16 +38,269 @@ MAX_FINAL_RESULTS = 8             # 5 → 8 (최종 선별 문서 수 증가)
 
 # 메인 페이지 제목
 st.title("🤖 트러블 체이서 챗봇")
-st.image("./src/img/chatbot.jpg")
+
+#html디자인출력
+html_code = """
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #f0f8ff;
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+        }
+        
+        .ghibli-container {
+            background: linear-gradient(180deg, #e8f4fd 0%, #c3e9ff 100%);
+            padding: 60px 40px;
+            border-radius: 25px;
+            margin: 20px 0;
+            position: relative;
+            min-height: 350px;
+            overflow: hidden;
+            max-width: 1000px;
+            box-shadow: 0 20px 60px rgba(135, 206, 250, 0.2);
+        }
+        
+        .cloud {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50px;
+            opacity: 0.8;
+            animation: float-gentle 8s ease-in-out infinite;
+        }
+        
+        .cloud1 {
+            width: 100px;
+            height: 40px;
+            top: 20px;
+            left: 10%;
+        }
+        
+        .cloud2 {
+            width: 80px;
+            height: 35px;
+            top: 15px;
+            right: 15%;
+            animation-delay: -2s;
+        }
+        
+        .cloud3 {
+            width: 60px;
+            height: 25px;
+            bottom: 30px;
+            left: 20%;
+            animation-delay: -4s;
+        }
+        
+        @keyframes float-gentle {
+            0%, 100% { transform: translateY(0px) translateX(0px); }
+            33% { transform: translateY(-8px) translateX(5px); }
+            66% { transform: translateY(3px) translateX(-3px); }
+        }
+        
+        .title {
+            text-align: center;
+            color: #2c3e50;
+            font-size: 22px;
+            font-weight: 400;
+            margin-bottom: 50px;
+            font-family: 'Arial', sans-serif;
+            letter-spacing: 1px;
+        }
+        
+        .journey-path {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            position: relative;
+            flex-wrap: wrap;
+        }
+        
+        .step-circle {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 0 8px 25px rgba(135, 206, 250, 0.3);
+            transition: all 0.4s ease;
+            position: relative;
+            animation: breathe 4s ease-in-out infinite;
+            border: 2px solid rgba(135, 206, 250, 0.2);
+        }
+        
+        .step-circle:nth-child(1) { animation-delay: 0s; }
+        .step-circle:nth-child(3) { animation-delay: 0.8s; }
+        .step-circle:nth-child(5) { animation-delay: 1.6s; }
+        .step-circle:nth-child(7) { animation-delay: 2.4s; }
+        .step-circle:nth-child(9) { animation-delay: 3.2s; }
+        
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); box-shadow: 0 8px 25px rgba(135, 206, 250, 0.3); }
+            50% { transform: scale(1.05); box-shadow: 0 12px 35px rgba(135, 206, 250, 0.5); }
+        }
+        
+        .step-circle:hover {
+            transform: scale(1.1) translateY(-5px);
+            box-shadow: 0 15px 40px rgba(135, 206, 250, 0.6);
+        }
+        
+        .step-label {
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #34495e;
+            white-space: nowrap;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+        
+        .path-line {
+            width: 30px;
+            height: 2px;
+            background: linear-gradient(90deg, #87ceeb, #add8e6);
+            border-radius: 1px;
+            position: relative;
+            animation: flow 3s ease-in-out infinite;
+        }
+        
+        @keyframes flow {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        
+        .path-line::before {
+            content: '';
+            position: absolute;
+            right: -3px;
+            top: -1px;
+            width: 0;
+            height: 0;
+            border-left: 4px solid #87ceeb;
+            border-top: 2px solid transparent;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .subtitle {
+            text-align: center;
+            margin-top: 60px;
+            color: #5d6d7e;
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            font-style: italic;
+        }
+        
+        .decoration {
+            position: absolute;
+            color: rgba(135, 206, 250, 0.6);
+            font-size: 12px;
+            animation: twinkle 3s ease-in-out infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        
+        .deco1 { top: 40px; left: 5%; animation-delay: 0s; }
+        .deco2 { top: 80px; right: 8%; animation-delay: 1.5s; }
+        .deco3 { bottom: 50px; left: 12%; animation-delay: 3s; }
+        
+        @media (max-width: 768px) {
+            .journey-path {
+                flex-direction: column;
+                gap: 25px;
+            }
+            
+            .path-line {
+                width: 2px;
+                height: 25px;
+                transform: rotate(90deg);
+            }
+            
+            .path-line::before {
+                right: -1px;
+                top: -3px;
+                border-left: 2px solid transparent;
+                border-right: 2px solid transparent;
+                border-top: 4px solid #87ceeb;
+            }
+            
+            .ghibli-container {
+                padding: 40px 20px;
+                min-height: 600px;
+                margin: 20px 0;
+            }
+        }
+
+    </style>
+    <div class="ghibli-container">
+        <div class="decoration deco1">✦</div>
+        <div class="decoration deco2">✧</div>
+        <div class="decoration deco3">✦</div>
+        <div class="title">AI를  신속한 장애복구에 활용해보세요!</div>
+        <div class="journey-path">
+            <div class="step-circle">
+                🤔
+                <div class="step-label"><b>복구방법</b></div>
+            </div>
+            <div class="path-line"></div>
+            <div class="step-circle">
+                🎯
+                <div class="step-label"><b>장애원인</b></div>
+            </div>
+            <div class="path-line"></div>
+            <div class="step-circle">
+                💡
+                <div class="step-label"><b>장애현상</b></div>
+            </div>
+            <div class="path-line"></div>
+            <div class="step-circle">
+                ⚖️
+                <div class="step-label"><b>이력조회</b></div>
+            </div>
+            <div class="path-line"></div>
+            <div class="step-circle">
+                ✨
+                <div class="step-label"><b>장애건수</b></div>
+            </div>
+        </div>
+    </div>
+    <div>
+    <h4>💬 질문예시</h4>
+    <h6>* 복구방법 : 마이페이지 보험가입불가 현상 복구방법 알려줘<br>
+    * 장애원인 : ERP EP업무 처리시 간헐적 접속불가현상에 대한 장애원인이 뭐야?<br>
+    * 장애현상 : 문자발송 불가 현상에 대한 과거 조치방법들 알려줘<br>
+    * 장애이력 : 야간에 발생한 블록체인기반지역화폐 장애내역 알려줘<br>
+    * 장애건수 : 2025년 ERP 장애가 몇건이야? ※ 통계에 대한질의는 일부 부정확할 수 있습니다
+    </h6>
+    </div>
+"""
+
+st.markdown(html_code, unsafe_allow_html=True)
+
+
 # 개선된 서비스명 추출 함수 (모든 특수문자 포함)
 def extract_service_name_from_query(query):
-    """쿼리에서 서비스명을 추출 - 스페이스바, 대시(-), 슬러쉬(/), 플러스(+), 괄호(), 언더스코어(_) 모두 지원"""
+    """쿼리에서 서비스명을 추출 - 스페이스바, 대시(-), 슬러시(/), 플러스(+), 괄호(), 언더스코어(_) 모두 지원"""
     import re
     
     # 개선된 서비스명 패턴들 (모든 특수문자 포함)
     service_patterns = [
         # 패턴 1: 서비스명 + 키워드 (모든 특수문자 조합)
-        r'([A-Za-z][A-Za-z0-9_\-/\+\(\)\s]*[A-Za-z0-9_\-/\+\)])\s+(?:년도별|월별|건수|장애|현상|복구|서비스|통계|발생|이력)',
+        r'([A-Za-z][A-Za-z0-9_\-/\+\(\)\s]*[A-Za-z0-9_\-/\+\)])\s+(?:년도별|월별|건수|장애|현상|복구|서비스|통계|발생|발생일자|언제)',
         
         # 패턴 2: "서비스" 키워드 뒤의 서비스명
         r'서비스.*?([A-Za-z][A-Za-z0-9_\-/\+\(\)\s]*[A-Za-z0-9_\-/\+\)])',
@@ -61,11 +314,11 @@ def extract_service_name_from_query(query):
         # 패턴 5: 괄호로 둘러싸인 서비스명
         r'\(([A-Za-z][A-Za-z0-9_\-/\+\s]*[A-Za-z0-9_\-/\+])\)',
         
-        # 패턴 6: 슬러쉬로 구분된 서비스명 (path 형태)
-        r'([A-Za-z][A-Za-z0-9_\-]*(?:/[A-Za-z0-9_\-]+)+)\s+(?:년도별|월별|건수|장애|현상|복구|서비스|통계|발생|이력)',
+        # 패턴 6: 슬러시로 구분된 서비스명 (path 형태)
+        r'([A-Za-z][A-Za-z0-9_\-]*(?:/[A-Za-z0-9_\-]+)+)\s+(?:년도별|월별|건수|장애|현상|복구|서비스|통계|발생|발생일자|언제)',
         
         # 패턴 7: 플러스로 연결된 서비스명
-        r'([A-Za-z][A-Za-z0-9_\-]*(?:\+[A-Za-z0-9_\-]+)+)\s+(?:년도별|월별|건수|장애|현상|복구|서비스|통계|발생|이력)',
+        r'([A-Za-z][A-Za-z0-9_\-]*(?:\+[A-Za-z0-9_\-]+)+)\s+(?:년도별|월별|건수|장애|현상|복구|서비스|통계|발생|발생일자|언제)',
         
         # 패턴 8: 단독으로 나타나는 서비스명 (최소 3자 이상)
         r'\b([A-Za-z][A-Za-z0-9_\-/\+\(\)]{2,}(?:\s+[A-Za-z0-9_\-/\+\(\)]+)*)\b'
@@ -96,7 +349,7 @@ def is_valid_service_name(service_name):
     if service_name.count('(') != service_name.count(')'):
         return False
     
-    # 슬러쉬가 연속으로 나오지 않아야 함 (//)
+    # 슬러시가 연속으로 나오지 않아야 함 (//)
     if '//' in service_name:
         return False
     
@@ -112,7 +365,7 @@ def is_valid_service_name(service_name):
     validation_criteria = [
         '_' in service_name,                    # 언더스코어 포함
         '-' in service_name,                    # 하이픈 포함
-        '/' in service_name,                    # 슬러쉬 포함
+        '/' in service_name,                    # 슬러시 포함
         '+' in service_name,                    # 플러스 포함
         '(' in service_name,                    # 괄호 포함
         any(c.isupper() for c in service_name), # 대문자 포함
@@ -133,7 +386,7 @@ def is_valid_service_name(service_name):
         '년도별', '월별', '건수', '장애', '현상', '복구', '통계', '발생'
     ]
     
-    # 괄호, 슬러쉬, 플러스 등을 제외한 기본 이름 추출해서 검증
+    # 괄호, 슬러시, 플러스 등을 제외한 기본 이름 추출해서 검증
     clean_name = re.sub(r'[\(\)/\+_\-\s]', '', service_name).lower()
     if clean_name in excluded_words:
         return False
@@ -159,8 +412,8 @@ def get_dynamic_thresholds(query_type, query_text):
             'hybrid_threshold': 0.4,
             'max_results': 10
         }
-    elif query_type in ["repair", "similar"]:
-        # 복구방법이나 유사사례는 품질 중심
+    elif query_type in ["repair", "cause", "similar"]:
+        # 복구방법, 장애원인, 유사사례는 품질 중심
         return {
             'search_threshold': 0.4,
             'reranker_threshold': 1.8,
@@ -217,7 +470,7 @@ def calculate_hybrid_score(search_score, reranker_score):
     
     return hybrid_score
 
-# 질문 타입별 시스템 프롬프트 정의
+# 질문 타입별 시스템 프롬프트 정의 (cause 추가)
 SYSTEM_PROMPTS = {
    "repair": """
 당신은 IT서비스 트러블슈팅 전문가입니다. 
@@ -245,7 +498,29 @@ Case1. ~~서비스의 ~~~ 장애현상에 대한 복구방법입니다
 
 | 장애 ID | 서비스명 | 발생일자 | 장애시간 | 장애원인 | 복구방법 | 후속과제 | 처리유형 | 담당부서 |
 |---------|----------|---------------|-----------|----------|----------|----------|----------|----------|
-""",   
+""",
+
+    "cause": """
+당신은 ITservices 장애원인 분석 전문가입니다.
+사용자의 질문에 대해 제공된 장애 이력 문서를 기반으로 장애원인을 우선으로 검색해서 정확하고 유용한 답변을 제공해주는데 절대 임의로 데이터를 만들지 마세요.
+장애원인 분석시 root_cause, cause_type을 중심으로 분석하며, 관련 현상(symptom)과 영향도(effect)를 함께 고려해주세요.
+답변은 한국어로 작성하며, 구체적인 해결방안이나 원인을 명시해주세요.
+천천히 생각하면서 답변을 3회 출력없이 실행해보고 가장 일관성이 있는 답변을 아래 **출력형식** 으로 답변해주는데 장애원인관련 부분은 **bold** 로 강조 주세요.
+만약 제공된 문서에서 관련 정보를 찾을 수 없다면, 그렇게 명시해주세요.
+만약 제공된 문서에서 관련 정보를 찾을 수 있다면 아래내용은 답변 하단에 항상포함해주세요
+
+## 출력형식
+### 1. 서비스명 : KT AICC SaaS/PaaS
+* 장애 ID: INM23022026178
+* 주요 장애원인: **DB 커넥션 풀 고갈로 인한 서비스 중단** 로 표현
+* 원인 유형: **시스템 리소스 부족** 으로 표현
+* 관련 현상: 페이지 로딩 불가, 응답 지연 현상 발생
+* 영향 범위: 전체 사용자 서비스 중단 (400분간)
+* 발생 배경: 트래픽 급증에 따른 DB 과부하 및 커넥션 리소스 소진
+* 근본 원인: **시스템 확장성 부족 및 모니터링 체계 미비**
+* 유사도점수 : 99.5
+""",
+    
     "similar": """당신은 당신은 IT서비스 트러블슈팅 전문가이며 유사 사례 추천 전문가입니다. 
 사용자의 질문에 대해 제공된 장애 이력 문서를 기반으로 장애현상, 장애영향도를 우선으로 검색해서 모든 자료를 찾아주는데 정확하고 유용한 답변을 제공해주는데 절대 임의로 데이터를 만들지 마세요.
 답변은 한국어로 작성하며, 구체적인 해결방안이나 원인을 명시해주세요.
@@ -258,7 +533,7 @@ Case1. ~~서비스의 ~~~ 장애현상에 대한 복구방법입니다
 ### 1. 서비스명 : KT AICC SaaS/PaaS
 * 장애 ID: INM23022026178
 * 장애 현상: 상담정보 열람불가 (상담 및 웹페이지 접속은 정상) 로 표현
-* 장애 원인: mecab 사전에 잘못 등록된 상품명(쌍따옴표")으로 인해 TA 분석 오류 발생. 로 표현
+* 장애 원인: mecab 사전에 잘못 등록된 상품명(음따옴표")으로 인해 TA 분석 오류 발생. 로 표현
 * 복구 방법: 오류 상품명 삭제 및 mecab 리빌드 조치. 로 표현
 * 개선 계획: mecab 사전 백업 및 로그 처리, Skip 처리 진행 예정.
 * 유사도점수 : 99.5
@@ -446,7 +721,7 @@ def semantic_search_with_service_filter(search_client, query, target_service_nam
         else:
             enhanced_query = query
             
-        st.info(f"🔄 1단계: {top_k}개 초기 검색 결과 수집 중...")
+        st.info(f"📄 1단계: {top_k}개 초기 검색 결과 수집 중...")
         
         # 시맨틱 검색 실행
         results = search_client.search(
@@ -511,7 +786,7 @@ def search_documents_with_service_filter(search_client, query, target_service_na
         else:
             enhanced_query = query
             
-        st.info(f"🔄 1단계: {top_k}개 초기 검색 결과 수집 중...")
+        st.info(f"📄 1단계: {top_k}개 초기 검색 결과 수집 중...")
         
         results = search_client.search(
             search_text=enhanced_query,
@@ -763,15 +1038,18 @@ def classify_query_type_with_llm(azure_openai_client, query, model_name):
 1. **repair**: 서비스명과 장애현상이 모두 포함된 복구방법 문의
    - 예: "ERP 접속불가 복구방법", "API_Link 응답지연 해결방법"
    
-2. **similar**: 서비스명 없이 장애현상만으로 유사사례 문의
+2. **cause**: 장애원인 분석이나 원인 파악을 요청하는 문의
+   - 예: "ERP 접속불가 원인이 뭐야?", "API 응답지연 장애원인", "왜 장애가 발생했어?"
+   
+3. **similar**: 서비스명 없이 장애현상만으로 유사사례 문의
    - 예: "접속불가 현상 유사사례", "응답지연 동일현상 복구방법"
    
-3. **default**: 그 외의 모든 경우 (통계, 건수, 일반 문의 등)
+4. **default**: 그 외의 모든 경우 (통계, 건수, 일반 문의 등)
    - 예: "년도별 건수", "장애 통계", "서비스 현황"
 
 **사용자 질문:** {query}
 
-**응답 형식:** repair, similar, default 중 하나만 출력하세요.
+**응답 형식:** repair, cause, similar, default 중 하나만 출력하세요.
 """
 
         response = azure_openai_client.chat.completions.create(
@@ -787,7 +1065,7 @@ def classify_query_type_with_llm(azure_openai_client, query, model_name):
         query_type = response.choices[0].message.content.strip().lower()
         
         # 유효한 타입인지 확인
-        if query_type not in ['repair', 'similar', 'default']:
+        if query_type not in ['repair', 'cause', 'similar', 'default']:
             query_type = 'default'
             
         return query_type
@@ -808,7 +1086,8 @@ def process_query_with_enhanced_filtering(query, query_type=None):
                 # 분류 결과 표시
                 type_labels = {
                     'repair': '🔧 복구방법 안내',
-                    'similar': '🔄 유사사례 참조', 
+                    'cause': '🔍 장애원인 분석',
+                    'similar': '📄 유사사례 참조', 
                     'default': '📊 일반 문의'
                 }
                 st.info(f"📋 질문 유형: **{type_labels.get(query_type, '📊 일반 문의')}**")
@@ -875,7 +1154,7 @@ def process_query_with_enhanced_filtering(query, query_type=None):
                     - 전체 건수: {len(documents)}건
                     - 년도별 분포: {dict(sorted(yearly_stats.items()))}
                     - 년도별 합계: {yearly_total}건
-                    - 검증 상태: {'✅ 일치' if yearly_total == len(documents) else '❌ 불일치'}
+                    - 검증 상태: {'✅ 일치' if yearly_total == len(documents) else '⚠ 불일치'}
                     """)
                 
                 st.success(f"🏆 {len(documents)}개의 매칭 문서 선별 완료! (Premium: {premium_count}개, Standard: {standard_count}개, Basic: {basic_count}개)")
@@ -893,12 +1172,13 @@ def process_query_with_enhanced_filtering(query, query_type=None):
                     with st.expander("🤖 AI 답변 보기 (포함 매칭 지원)", expanded=True):
                         st.write(response)
                         match_info = "정확/포함 매칭" if exact_matches and partial_matches else "정확 매칭" if exact_matches else "포함 매칭"
-                        st.info(f"✨ 이 답변은 '{target_service_name or '모든 서비스'}'에 {match_info}된 문서를 바탕으로 생성되었습니다.")
+                        type_info = type_labels.get(query_type, '일반 문의')
+                        st.info(f"✨ 이 답변은 '{target_service_name or '모든 서비스'}'에 {match_info}된 문서를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
                     
                     st.session_state.messages.append({"role": "assistant", "content": response})
             else:
                 # 대체 검색 시도
-                st.warning("🔄 포함 매칭으로도 결과가 없어 더 관대한 기준으로 재검색 중...")
+                st.warning("📄 포함 매칭으로도 결과가 없어 더 관대한 기준으로 재검색 중...")
                 
                 # 매우 관대한 기준으로 재검색 (서비스명 포함 필터링 유지)
                 fallback_documents = search_documents_fallback(search_client, query, target_service_name)
@@ -911,7 +1191,8 @@ def process_query_with_enhanced_filtering(query, query_type=None):
                     )
                     with st.expander("🤖 AI 답변 보기 (대체 검색)", expanded=True):
                         st.write(response)
-                        st.warning(f"⚠️ 이 답변은 '{target_service_name or '해당 조건'}'에 대한 관대한 기준의 검색 결과를 바탕으로 생성되었습니다.")
+                        type_info = type_labels.get(query_type, '일반 문의')
+                        st.warning(f"⚠️ 이 답변은 '{target_service_name or '해당 조건'}'에 대한 관대한 기준의 검색 결과를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
                     st.session_state.messages.append({"role": "assistant", "content": response})
                 else:
                     error_msg = f"""
@@ -922,7 +1203,7 @@ def process_query_with_enhanced_filtering(query, query_type=None):
                     - 다른 검색어를 시도해보세요
                     - 전체 검색을 원하시면 서비스명을 제외하고 검색해주세요
                     
-                    **참고**: 현재 시스템은 서비스명 정확 매칭과 포함 매칭을 모두 지원합니다.
+                    **참고**: 현재 시스템은 서비스명 정확 매칭과 포함 매칭을 모두 지원하며, **{type_labels.get(query_type, '일반 문의')}** 유형으로 분류되었습니다.
                     """
                     with st.expander("🤖 AI 답변 보기", expanded=True):
                         st.write(error_msg)
@@ -1022,7 +1303,7 @@ if all([azure_openai_endpoint, azure_openai_key, search_endpoint, search_key, se
                         st.write(message["content"])
         
         # 사용자 입력
-        user_query = st.chat_input("질문을 입력하세요 (예: API_Link_GW 년도별 건수 알려줘)")
+        user_query = st.chat_input("질문을 입력하세요")
         
         if user_query:
             st.session_state.messages.append({"role": "user", "content": user_query})
