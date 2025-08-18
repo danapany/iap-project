@@ -13,4 +13,6 @@ markdown2
 matplotlib
 bs4
 openai
-requests 
+requests
+pandas
+openpyxl

@@ -15,6 +15,7 @@ pg = st.navigation([
     st.Page("menu/5_Process_FAQ.py", title="[부가] 장애프로세스 FAQ", icon="❓"),
 
     # 관리자용
+    st.Page("menu/90_Chatbot_Rag_Datapreprocess.py", title="[필수] 챗봇 학습데이터 전처리기", icon="⚙️"),
     st.Page("menu/91_Admin-Process_Description_Create.py", title="[부가] 장애프로세스 쉬운설명 (생성용)", icon="⚙️"),
     st.Page("menu/92_Admin-FAQ_Create.py", title="[부가] 장애프로세스 FAQ (생성용)", icon="⚙️"),
     st.Page("menu/93_Admin-Keyword-based_question_Create.py", title="[부가] 장애프로세스 챗봇 키워드버튼 (생성용)", icon="⚙️"),
