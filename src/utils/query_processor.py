@@ -1,4 +1,5 @@
 import streamlit as st
+import re
 from config.prompts import SystemPrompts
 from config.settings import AppConfig
 from utils.search_utils import SearchManager
@@ -179,6 +180,444 @@ class QueryProcessor:
             st.error(f"응답 생성 실패: {str(e)}")
             return "죄송합니다. 응답을 생성하는 중 오류가 발생했습니다."
 
+    def _should_skip_internet_search(self, query, query_type):
+        """인터넷 검색을 건너뛸지 판단"""
+        # 내부 데이터 전용 키워드들
+        internal_only_keywords = [
+            '장애이력', '장애내역', '장애건수', '장애통계', '장애현황',
+            '건수', '개수', '몇건', '년도별', '월별', '일별', '통계', '현황',
+            '발생건수', '발생현황', '집계', '합계', '이계', '이건수',
+            '이력조회', '내역조회', '발생일자', '언제', '기간별',
+            '분포', '추이', '경향', '트렌드'
+        ]
+        
+        # 쿼리에 내부 전용 키워드가 포함되어 있는지 확인
+        query_lower = query.lower()
+        for keyword in internal_only_keywords:
+            if keyword in query_lower:
+                return True
+        
+        # default 타입이고 통계성 질문인 경우 건너뛰기
+        if query_type == 'default':
+            statistical_patterns = ['몇', '얼마', '수치', '데이터', '정보']
+            if any(pattern in query_lower for pattern in statistical_patterns):
+                return True
+        
+        return False
+
+    def _extract_technical_search_terms(self, query, target_service_name=None):
+        """IT 전문가 관점에서 기술적 검색어 추출 및 강화"""
+        # 서비스명만 제거 (있는 경우)
+        if target_service_name:
+            general_query = re.sub(r'\b' + re.escape(target_service_name) + r'\b', '', query, flags=re.IGNORECASE)
+            general_query = re.sub(r'\s+', ' ', general_query).strip()
+        else:
+            general_query = query.strip()
+        
+        # 빈 문자열이 되지 않도록 처리
+        if not general_query.strip():
+            general_query = query
+        
+        # IT 기술 분야별 전문 용어 매핑
+        technical_keywords = {
+            # 네트워크 관련
+            'connectivity': ['network connectivity issues', 'connection timeout', 'network troubleshooting'],
+            'timeout': ['connection timeout', 'request timeout', 'network latency issues'],
+            'dns': ['DNS resolution failure', 'DNS server issues', 'DNS troubleshooting'],
+            
+            # 시스템 관련
+            'server': ['server down', 'server performance issues', 'server monitoring'],
+            'database': ['database connection issues', 'DB performance tuning', 'database troubleshooting'],
+            'application': ['application error', 'software bug', 'application performance'],
+            
+            # 장애 유형별
+            'performance': ['system performance degradation', 'slow response time', 'performance optimization'],
+            'security': ['security incident', 'cybersecurity issues', 'security vulnerability'],
+            'hardware': ['hardware failure', 'hardware diagnostics', 'server hardware issues']
+        }
+        
+        # 쿼리에서 기술적 키워드 감지 및 전문 용어 추가
+        enhanced_keywords = []
+        query_lower = general_query.lower()
+        
+        # 장애 현상 기반 기술 키워드 추가
+        if any(keyword in query_lower for keyword in ['접속', '연결', 'connection', 'connect']):
+            enhanced_keywords.extend(technical_keywords['connectivity'])
+        
+        if any(keyword in query_lower for keyword in ['지연', '느림', 'slow', 'delay', 'timeout']):
+            enhanced_keywords.extend(technical_keywords['timeout'])
+            enhanced_keywords.extend(technical_keywords['performance'])
+        
+        if any(keyword in query_lower for keyword in ['서버', 'server']):
+            enhanced_keywords.extend(technical_keywords['server'])
+        
+        if any(keyword in query_lower for keyword in ['데이터베이스', 'database', 'db']):
+            enhanced_keywords.extend(technical_keywords['database'])
+        
+        if any(keyword in query_lower for keyword in ['어플리케이션', 'application', 'app']):
+            enhanced_keywords.extend(technical_keywords['application'])
+        
+        # 기본 IT 전문 키워드 추가
+        base_technical_terms = [
+            'IT troubleshooting',
+            'system administration', 
+            'technical support',
+            'root cause analysis',
+            'incident management'
+        ]
+        
+        # 최종 검색 쿼리 구성 (원본 + 기술 키워드)
+        all_keywords = enhanced_keywords + base_technical_terms
+        final_query = f"{general_query} {' '.join(all_keywords[:5])}"  # 상위 5개만 사용
+        
+        return final_query.strip()
+
+    def _validate_search_results_quality(self, search_results, query, target_service_name):
+        """검색 결과의 품질과 관련성을 검증"""
+        if not search_results:
+            return False, "검색 결과가 없습니다.", []
+        
+        # IT/기술 관련성 검증 키워드
+        it_keywords = [
+            'troubleshooting', 'error', 'fix', 'solution', 'problem', 'issue',
+            'server', 'network', 'database', 'application', 'system', 'software',
+            '오류', '해결', '문제', '장애', '복구', '원인', '서버', '네트워크', '시스템'
+        ]
+        
+        relevant_results = []
+        for result in search_results:
+            title = result.get('title', '').lower()
+            snippet = result.get('snippet', '').lower()
+            
+            # IT 관련성 점수 계산
+            relevance_score = 0
+            for keyword in it_keywords:
+                if keyword.lower() in title:
+                    relevance_score += 2
+                if keyword.lower() in snippet:
+                    relevance_score += 1
+            
+            # 최소 관련성 점수 기준 (낮춤)
+            if relevance_score >= 1:
+                relevant_results.append(result)
+        
+        if not relevant_results:
+            return False, "IT 기술 관련 정보를 찾을 수 없습니다.", search_results
+        
+        if len(relevant_results) < 2:
+            return False, f"관련 기술 정보가 부족합니다. ({len(relevant_results)}개 발견)", search_results
+        
+        return True, f"검증된 IT 기술 정보 {len(relevant_results)}개를 발견했습니다.", relevant_results
+
+    def _generate_enhanced_technical_response(self, search_query, original_query, search_results, query_type, type_labels):
+        """향상된 IT 전문가 관점의 기술적 응답 생성"""
+        try:
+            # 검색 결과 품질 검증
+            is_quality, quality_message, filtered_results = self._validate_search_results_quality(
+                search_results, original_query, None
+            )
+            
+            # 정보 부족 시에도 일반적인 답변 제공
+            if not is_quality:
+                response_prefix = """
+**🔍 IT 전문가 분석 결과**
+
+⚠️ **정보가 부족하여 일반적인 내용으로 답변드립니다.**
+
+"""
+                # 일반적인 IT 지식 기반 답변 생성
+                general_system_prompt = f"""당신은 20년 경력의 IT 전문가입니다. 
+검색된 정보가 부족하지만, 일반적인 IT 지식과 경험을 바탕으로 도움이 되는 답변을 제공해주세요.
+
+**답변 방침:**
+1. **일반적 접근법**: 해당 유형의 문제에 대한 일반적인 해결 접근법 제시
+2. **경험 기반**: IT 현장에서 자주 발생하는 유사 상황과 대응 방법
+3. **단계적 가이드**: 체계적인 문제 해결 단계 제공
+4. **주의사항**: 일반적인 내용임을 명시하고 구체적 환경 고려 필요성 강조
+5. **추가 조치**: 더 정확한 진단을 위한 추가 정보 수집 방법 안내
+
+검색된 정보가 제한적이므로 일반적이고 안전한 접근법을 중심으로 답변해주세요."""
+                
+                # 검색 결과가 있다면 활용, 없다면 일반 지식만 사용
+                if search_results:
+                    search_context = self.internet_search.format_search_results_for_llm(search_results)
+                    context_info = f"\n\n**제한적 검색 정보:**\n{search_context}\n"
+                else:
+                    context_info = "\n**검색 정보:** 관련 정보를 찾을 수 없어 일반적인 IT 지식으로 답변합니다.\n"
+                
+            else:
+                # 충분한 정보가 있는 경우 기존 로직 유지
+                response_prefix = """
+**🔍 IT 전문가 분석 결과**
+
+✅ **검색된 기술 정보를 바탕으로 답변드립니다.**
+
+"""
+                # 검증된 결과만 사용
+                search_context = self.internet_search.format_search_results_for_llm(filtered_results)
+                context_info = f"\n\n**검증된 기술 정보:**\n{search_context}\n"
+                
+                # 쿼리 타입별 엄격한 시스템 프롬프트
+                if query_type == 'repair':
+                    general_system_prompt = """당신은 20년 경력의 IT 트러블슈팅 시니어 전문가입니다. 
+검색된 기술 문서에 근거하여 정확하고 검증된 복구방법을 제시해주세요."""
+                elif query_type == 'cause':
+                    general_system_prompt = """당신은 20년 경력의 IT 시스템 분석 시니어 전문가입니다.
+검색된 기술 문서에 근거하여 정확하고 논리적인 원인 분석을 제시해주세요."""
+                else:
+                    general_system_prompt = """당신은 20년 경력의 IT 컨설팅 시니어 전문가입니다.
+검색된 기술 문서에 근거하여 정확하고 실무적인 기술 정보를 제시해주세요."""
+            
+            user_prompt = f"""
+다음 정보를 바탕으로 IT 전문가 수준의 답변을 제공해주세요:
+
+{context_info}
+
+**원본 질문:** {original_query}
+**기술 검색어:** {search_query}
+
+**IT 전문가 답변 요구사항:**
+1. **실용적 접근**: 현장에서 실행 가능한 구체적 방안
+2. **단계적 가이드**: 체계적인 문제 해결 단계
+3. **안전성 고려**: 시스템에 영향을 주지 않는 안전한 방법 우선
+4. **추가 진단**: 더 정확한 문제 파악을 위한 방법 제시
+5. **환경 고려**: 다양한 환경에서의 적용 고려사항
+
+**답변 구조:**
+- **🔍 상황 분석**: 문제 상황에 대한 기술적 분석
+- **💡 권장 해결방안**: 단계별 실행 가능한 조치
+- **⚠️ 주의사항**: 적용 시 고려해야 할 사항
+- **🔄 추가 진단**: 근본 원인 파악을 위한 방법
+- **📚 참고사항**: 관련 기술 문서나 모범 사례
+
+전문가 답변:"""
+
+            # LLM 응답 생성
+            response = self.azure_openai_client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": general_system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.2,  # 일관된 전문가 답변
+                max_tokens=2500
+            )
+            
+            # 응답에 정보 부족 알림 추가
+            final_response = response_prefix + response.choices[0].message.content
+            
+            if not is_quality:
+                final_response += f"""
+
+---
+**📋 정보 품질 안내:**
+- 검색 상태: {quality_message}
+- 답변 기준: 일반적인 IT 전문가 지식 및 경험
+- 추가 권장: 구체적인 시스템 환경과 오류 로그 확인 필요
+
+**🔍 더 정확한 답변을 위한 제안:**
+- 구체적인 오류 메시지나 로그 정보 제공
+- 사용 중인 시스템/소프트웨어 버전 정보 추가
+- 장애 발생 시점과 관련 작업 이력 확인
+"""
+            else:
+                final_response += f"""
+
+---
+**📋 정보 품질 안내:**
+- 검색 상태: {quality_message}
+- 답변 기준: 검증된 기술 문서 및 전문가 경험
+- 적용 권장: 실제 환경 특성을 고려하여 단계적 적용
+"""
+            
+            return final_response
+            
+        except Exception as e:
+            st.error(f"🌐 IT 전문가 관점 응답 생성 실패: {str(e)}")
+            return f"""
+**🔍 IT 전문가 분석 결과**
+
+⚠️ **정보가 부족하여 일반적인 내용으로 답변드립니다.**
+
+죄송합니다. 기술 정보 분석 중 오류가 발생했습니다: {str(e)}
+
+**일반적인 IT 문제 해결 접근법:**
+1. **문제 상황 정확히 파악**: 오류 메시지, 로그, 발생 시점 확인
+2. **기본 점검**: 네트워크 연결, 서비스 상태, 리소스 사용량 확인  
+3. **단계적 진단**: 간단한 해결책부터 복잡한 방법까지 순차 적용
+4. **전문가 상담**: 복잡한 문제는 해당 분야 전문가와 협의
+
+※ 구체적인 환경 정보와 함께 다시 문의하시면 더 정확한 답변을 드릴 수 있습니다.
+"""
+
+    def _perform_enhanced_internet_search(self, query, target_service_name, query_type, type_labels):
+        """향상된 IT 전문가 관점의 인터넷 검색 수행"""
+        try:
+            # IT 전문가 관점의 기술적 검색어 생성
+            technical_search_query = self._extract_technical_search_terms(query, target_service_name)
+            
+            with st.spinner(f"🔍 IT 전문가 관점에서 기술 정보 검색 중... (검색어: {technical_search_query})"):
+                # IT 전문 기술 정보로 인터넷 검색 실행
+                search_results = self.internet_search.search_google(technical_search_query, service_name=None, num_results=8)
+                
+                if search_results:
+                    # 검색 결과 품질 검증
+                    is_quality, quality_message, filtered_results = self._validate_search_results_quality(
+                        search_results, query, target_service_name
+                    )
+                    
+                    # 품질과 관계없이 검색 결과 표시 및 답변 제공
+                    if is_quality:
+                        st.success(f"🌐 {quality_message}")
+                        display_message = "**📌 참고:** 아래는 IT 전문가/트러블슈팅 전문가 관점에서 수집된 검증된 기술 정보입니다."
+                        info_type = "검증된 기술 정보"
+                    else:
+                        st.info(f"🌐 {quality_message} - 일반적인 내용으로 답변드립니다.")
+                        display_message = "**📌 참고:** 아래는 제한적인 기술 정보이지만 일반적인 IT 지식으로 보완하여 답변드립니다."
+                        info_type = "제한적 기술 정보"
+                    
+                    # 검색 결과 표시 (접을 수 있는 형태)
+                    with st.expander(f"🔍 IT 전문 기술 정보 검색 결과", expanded=False):
+                        st.info(f"🎯 IT 전문가 검색어: {technical_search_query}")
+                        st.markdown(display_message)
+                        st.markdown("---")
+                        
+                        for i, result in enumerate(search_results, 1):
+                            st.markdown(f"#### 🔗 {info_type} {i}")
+                            st.markdown(f"**제목**: {result['title']}")
+                            st.markdown(f"**출처**: {result['source']}")
+                            st.markdown(f"**내용**: {result['snippet']}")
+                            st.markdown(f"**링크**: [바로가기]({result['link']})")
+                            if i < len(search_results):
+                                st.divider()
+                    
+                    # IT 전문가 관점의 AI 답변 생성 및 표시 (정보 부족 시에도 답변 제공)
+                    with st.spinner("💡 IT 전문가 관점에서 기술 정보 분석 중..."):
+                        internet_response = self._generate_enhanced_technical_response(
+                            technical_search_query, query, search_results, query_type, type_labels
+                        )
+                        
+                        # 기존 'AI 답변보기'와 동일한 구성으로 표시
+                        with st.expander("🤖 AI 답변보기 (IT 전문가 관점)", expanded=True):
+                            st.write(internet_response)
+                            search_purpose = self._get_search_purpose(query_type)
+                            type_info = type_labels.get(query_type, '일반 문의')
+                            
+                            if is_quality:
+                                st.info(f"🌐 이 답변은 IT 전문가/트러블슈팅 전문가 관점에서 검증된 기술 정보를 종합한 **{type_info}** 형태의 전문 분석입니다.")
+                            else:
+                                st.info(f"🌐 이 답변은 제한적인 기술 정보를 일반적인 IT 전문가 지식으로 보완한 **{type_info}** 형태의 분석입니다.")
+                            
+                            st.warning("⚠️ 이 정보는 인터넷상의 기술 문서를 기반으로 하며, 실제 환경 특성을 고려하여 적용하시기 바랍니다.")
+                        
+                        # 인터넷 검색 답변도 세션에 저장
+                        search_purpose = self._get_search_purpose(query_type)
+                        additional_response = f"""
+**[🌐 IT 전문가 관점 기반 {search_purpose}]**
+
+{internet_response}
+
+※ 이 답변은 IT 전문가/트러블슈팅 전문가 관점에서 기술 정보를 종합한 결과입니다.
+※ 실제 적용 시에는 해당 환경의 특성을 고려하시기 바랍니다.
+"""
+                        st.session_state.messages.append({"role": "assistant", "content": additional_response})
+                        
+                else:
+                    st.warning("🌐 관련 IT 전문 기술 정보를 찾을 수 없습니다.")
+                    st.info("다른 키워드로 다시 질문해보거나 내부 문서 답변을 참고해주세요.")
+                    
+                    # 검색 결과 없음에도 일반적인 답변 제공
+                    with st.spinner("💡 일반적인 IT 지식으로 답변 생성 중..."):
+                        # 검색 결과 없이 일반적인 답변 생성
+                        general_response = self._generate_enhanced_technical_response(
+                            technical_search_query, query, [], query_type, type_labels
+                        )
+                        
+                        with st.expander("🤖 AI 답변보기 (일반 IT 지식)", expanded=True):
+                            st.write(general_response)
+                            search_purpose = self._get_search_purpose(query_type)
+                            type_info = type_labels.get(query_type, '일반 문의')
+                            st.info(f"🌐 이 답변은 일반적인 IT 전문가 지식과 경험을 바탕으로 한 **{type_info}** 형태의 분석입니다.")
+                            st.warning("⚠️ 구체적인 환경 정보와 함께 문의하시면 더 정확한 답변을 드릴 수 있습니다.")
+                    
+                    # 일반적인 답변도 세션에 저장
+                    search_purpose = self._get_search_purpose(query_type)
+                    no_results_response = f"""
+**[🌐 IT 전문가 일반 지식 기반 {search_purpose}]**
+
+{general_response}
+
+※ 이 답변은 검색 정보 부족으로 일반적인 IT 전문가 지식을 바탕으로 제공되었습니다.
+※ 구체적인 환경 정보와 함께 문의하시면 더 정확한 답변을 드릴 수 있습니다.
+"""
+                    st.session_state.messages.append({"role": "assistant", "content": no_results_response})
+                    
+        except Exception as e:
+            st.error(f"🌐 IT 전문 기술 정보 검색 중 오류가 발생했습니다: {str(e)}")
+            st.info("내부 문서의 답변을 참고하시거나, 잠시 후 다시 시도해보세요.")
+            
+            # 오류 발생 시에도 일반적인 답변 시도
+            try:
+                with st.spinner("💡 일반적인 IT 지식으로 답변 생성 중..."):
+                    error_response = self._generate_enhanced_technical_response(
+                        query, query, [], query_type, type_labels
+                    )
+                    
+                    with st.expander("🤖 AI 답변보기 (일반 IT 지식)", expanded=True):
+                        st.write(error_response)
+                        st.warning("⚠️ 검색 오류로 인해 일반적인 IT 지식으로만 답변드립니다.")
+                
+                # 오류 시 일반 답변도 세션에 저장
+                search_purpose = self._get_search_purpose(query_type)
+                error_fallback_response = f"""
+**[🌐 IT 전문가 일반 지식 기반 {search_purpose}]**
+
+{error_response}
+
+※ 기술 정보 검색 중 오류가 발생하여 일반적인 IT 전문가 지식으로 답변드렸습니다.
+※ 구체적인 환경 정보와 함께 재문의하시면 더 정확한 답변을 드릴 수 있습니다.
+"""
+                st.session_state.messages.append({"role": "assistant", "content": error_fallback_response})
+                
+            except Exception as inner_e:
+                # 일반 답변 생성도 실패한 경우
+                final_error_response = f"""
+**[🌐 IT 전문가 검색 오류]**
+
+⚠️ **정보가 부족하여 일반적인 내용으로 답변드립니다.**
+
+기술 정보 검색 중 오류가 발생했습니다: {str(e)}
+
+**일반적인 IT 문제 해결 접근법:**
+1. **문제 상황 정확히 파악**: 오류 메시지, 로그, 발생 시점 확인
+2. **기본 점검**: 네트워크 연결, 서비스 상태, 리소스 사용량 확인  
+3. **단계적 진단**: 간단한 해결책부터 복잡한 방법까지 순차 적용
+4. **전문가 상담**: 복잡한 문제는 해당 분야 전문가와 협의
+
+※ 구체적인 환경 정보와 함께 다시 문의하시면 더 정확한 답변을 드릴 수 있습니다.
+"""
+                st.session_state.messages.append({"role": "assistant", "content": final_error_response})
+
+    def _get_internet_search_button_text(self, query_type):
+        """쿼리 타입에 따른 인터넷 검색 버튼 텍스트 반환"""
+        button_texts = {
+            'repair': '🌐 인터넷으로도 복구방법을 검색해볼까요?',
+            'cause': '🌐 인터넷으로도 장애원인을 검색해볼까요?',
+            'similar': '🌐 인터넷으로도 유사사례를 검색해볼까요?',
+            'default': '🌐 인터넷으로도 관련정보를 검색해볼까요?'
+        }
+        return button_texts.get(query_type, button_texts['default'])
+
+    def _get_search_purpose(self, query_type):
+        """쿼리 타입에 따른 검색 목적 반환"""
+        purposes = {
+            'repair': '해결방법',
+            'cause': '원인분석',
+            'similar': '유사사례',
+            'default': '관련정보'
+        }
+        return purposes.get(query_type, purposes['default'])
+
     def process_query(self, query, query_type=None):
         """서비스명 포함 검색을 지원하는 개선된 쿼리 처리"""
         with st.chat_message("assistant"):
@@ -285,32 +724,14 @@ class QueryProcessor:
                             match_info = "정확/포함 매칭" if exact_matches and partial_matches else "정확 매칭" if exact_matches else "포함 매칭"
                             type_info = type_labels.get(query_type, '일반 문의')
                             st.info(f"✨ 이 답변은 '{target_service_name or '모든 서비스'}'에 {match_info}된 문서를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
-                            
-                            # 모든 쿼리 타입에서 인터넷 검색 버튼 추가
-                            if self.internet_search.is_available():
-                                st.markdown("---")
-                                
-                                # 버튼 클릭 상태를 세션에서 확인
-                                search_button_key = f"internet_search_{hash(query)}"
-                                
-                                col1, col2, col3 = st.columns([1, 2, 1])
-                                with col2:
-                                    # 쿼리 타입에 따른 버튼 텍스트 변경
-                                    button_text = self._get_internet_search_button_text(query_type)
-                                    if st.button(button_text, 
-                                               key=search_button_key,
-                                               help="구글 검색을 통해 추가적인 정보를 찾아보세요"):
-                                        # 버튼 클릭 시 세션 상태 저장
-                                        st.session_state[f"show_search_modal_{search_button_key}"] = True
-                                        st.session_state[f"search_query_{search_button_key}"] = query
-                                        st.session_state[f"search_service_{search_button_key}"] = target_service_name
-                                        st.session_state[f"search_type_{search_button_key}"] = query_type
-                                        st.rerun()
                         
-                        # 팝업 모달 표시 체크
-                        search_button_key = f"internet_search_{hash(query)}"
-                        if st.session_state.get(f"show_search_modal_{search_button_key}", False):
-                            self._display_search_modal(search_button_key, type_labels)
+                        # 향상된 인터넷 검색 필요성 판단 후 실행
+                        if self.internet_search.is_available() and not self._should_skip_internet_search(query, query_type):
+                            st.markdown("---")
+                            st.info("🔍 추가 정보를 위해 IT 전문가 관점의 인터넷 검색을 실행합니다...")
+                            self._perform_enhanced_internet_search(query, target_service_name, query_type, type_labels)
+                        elif self._should_skip_internet_search(query, query_type):
+                            st.info("📊 이 질문은 내부 데이터를 기반으로 한 답변이 가장 정확합니다.")
                         
                         st.session_state.messages.append({"role": "assistant", "content": response})
                 else:
@@ -330,567 +751,32 @@ class QueryProcessor:
                             st.write(response)
                             type_info = type_labels.get(query_type, '일반 문의')
                             st.warning(f"⚠️ 이 답변은 '{target_service_name or '해당 조건'}'에 대한 관대한 기준의 검색 결과를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
-                            
-                            # repair 타입인 경우 대체 검색에서도 인터넷 검색 버튼 추가
-                            if query_type == 'repair' and self.internet_search.is_available():
-                                st.markdown("---")
-                                
-                                # 버튼 클릭 상태를 세션에서 확인
-                                fallback_search_button_key = f"internet_search_fallback_{hash(query)}"
-                                fallback_button_clicked = st.session_state.get(fallback_search_button_key, False)
-                                
-                                if not fallback_button_clicked:
-                                    # 버튼이 아직 클릭되지 않은 경우 버튼 표시
-                                    col1, col2, col3 = st.columns([1, 2, 1])
-                                    with col2:
-                                        if st.button("🌐 인터넷으로도 복구방법을 검색해볼까요?", 
-                                                   key=fallback_search_button_key,
-                                                   help="구글 검색을 통해 추가적인 복구방법을 찾아보세요"):
-                                            # 버튼 클릭 시 세션 상태 업데이트하고 검색 실행
-                                            st.session_state[fallback_search_button_key] = True
-                                            st.rerun()
-                                else:
-                                    # 버튼이 클릭된 경우 검색 실행 (기존 답변 아래에 추가)
-                                    self._perform_additional_internet_search_below(query, target_service_name, query_type, type_labels)
+                        
+                        # 향상된 인터넷 검색 필요성 판단 후 실행 (대체 검색)
+                        if self.internet_search.is_available() and not self._should_skip_internet_search(query, query_type):
+                            st.markdown("---")
+                            st.info("🔍 추가 정보를 위해 IT 전문가 관점의 인터넷 검색을 실행합니다...")
+                            self._perform_enhanced_internet_search(query, target_service_name, query_type, type_labels)
+                        elif self._should_skip_internet_search(query, query_type):
+                            st.info("📊 이 질문은 내부 데이터를 기반으로 한 답변이 가장 정확합니다.")
                         
                         st.session_state.messages.append({"role": "assistant", "content": response})
                     else:
-                        # repair, cause 타입인 경우 인터넷 검색 시도
+                        # repair, cause 타입인 경우 자동 인터넷 검색 시도
                         if query_type in ['repair', 'cause'] and self.internet_search.is_available():
-                            st.info("🌐 내부 문서에서 관련 정보를 찾을 수 없어 인터넷 검색을 시도합니다...")
-                            
-                            with st.spinner("🔍 구글 검색으로 관련 정보 찾는 중..."):
-                                # 인터넷 검색 실행
-                                search_results = self.internet_search.search_google(query, target_service_name, num_results=5)
-                                
-                                if search_results:
-                                    st.success(f"🌐 인터넷에서 {len(search_results)}개의 관련 정보를 찾았습니다!")
-                                    
-                                    # 검색 결과 표시
-                                    with st.expander("🔍 인터넷 검색 결과 보기"):
-                                        for i, result in enumerate(search_results, 1):
-                                            st.markdown(f"### 🔗 검색 결과 {i}")
-                                            st.markdown(f"**제목**: {result['title']}")
-                                            st.markdown(f"**출처**: {result['source']}")
-                                            st.markdown(f"**내용**: {result['snippet']}")
-                                            st.markdown(f"**링크**: [바로가기]({result['link']})")
-                                            st.markdown("---")
-                                    
-                                    # 인터넷 검색 기반 응답 생성
-                                    with st.spinner("💡 인터넷 검색 결과를 바탕으로 답변 생성 중..."):
-                                        internet_response = self.internet_search.generate_internet_search_response(
-                                            self.azure_openai_client, query, target_service_name, 
-                                            search_results, self.model_name, query_type
-                                        )
-                                        
-                                        with st.expander("🤖 AI 답변 보기 (인터넷 검색 기반)", expanded=True):
-                                            st.write(internet_response)
-                                            type_info = type_labels.get(query_type, '일반 문의')
-                                            st.info(f"🌐 이 답변은 구글 검색 결과를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
-                                        
-                                        st.session_state.messages.append({"role": "assistant", "content": internet_response})
-                                else:
-                                    # 인터넷 검색도 실패한 경우
-                                    self._show_no_results_message(target_service_name, query_type, type_labels)
+                            st.info("🌐 내부 문서에서 관련 정보를 찾을 수 없어 IT 전문가 관점의 인터넷 검색을 시도합니다...")
+                            self._perform_enhanced_internet_search(query, target_service_name, query_type, type_labels)
                         else:
-                            # repair, cause가 아니거나 인터넷 검색 불가능한 경우
-                            if query_type in ['repair', 'cause'] and not self.internet_search.is_available():
-                                st.warning("🌐 SerpApi가 설정되지 않아 인터넷 검색을 사용할 수 없습니다.")
-                            
-                            # 모든 타입에서 인터넷 검색 버튼 제공
-                            if self.internet_search.is_available():
+                            # 향상된 인터넷 검색 필요성 판단 후 실행 (검색 실패 시)
+                            if self.internet_search.is_available() and not self._should_skip_internet_search(query, query_type):
                                 st.markdown("---")
-                                col1, col2, col3 = st.columns([1, 2, 1])
-                                with col2:
-                                    no_result_search_key = f"no_result_search_{hash(query)}"
-                                    button_text = self._get_internet_search_button_text(query_type)
-                                    if st.button(button_text, 
-                                               key=no_result_search_key,
-                                               help="구글 검색을 통해 관련 정보를 찾아보세요"):
-                                        # 버튼 클릭 시 세션 상태 저장
-                                        st.session_state[f"show_search_modal_{no_result_search_key}"] = True
-                                        st.session_state[f"search_query_{no_result_search_key}"] = query
-                                        st.session_state[f"search_service_{no_result_search_key}"] = target_service_name
-                                        st.session_state[f"search_type_{no_result_search_key}"] = query_type
-                                        st.rerun()
-                            
-                            # 팝업 모달 표시 체크 (검색 실패 케이스)
-                            no_result_search_key = f"no_result_search_{hash(query)}"
-                            if st.session_state.get(f"show_search_modal_{no_result_search_key}", False):
-                                self._display_search_modal(no_result_search_key, type_labels)
-                            
-                            self._show_no_results_message(target_service_name, query_type, type_labels)
-    
-    def _get_internet_search_button_text(self, query_type):
-        """쿼리 타입에 따른 인터넷 검색 버튼 텍스트 반환"""
-        button_texts = {
-            'repair': '🌐 인터넷으로도 복구방법을 검색해볼까요?',
-            'cause': '🌐 인터넷으로도 장애원인을 검색해볼까요?',
-            'similar': '🌐 인터넷으로도 유사사례를 검색해볼까요?',
-            'default': '🌐 인터넷으로도 관련정보를 검색해볼까요?'
-        }
-        return button_texts.get(query_type, button_texts['default'])
-    
-    def _perform_additional_internet_search_below(self, query, target_service_name, query_type, type_labels):
-        """기존 답변 아래에 추가 인터넷 검색 결과를 표시"""
-        try:
-            # 새로운 assistant 메시지로 인터넷 검색 결과 추가
-            with st.chat_message("assistant"):
-                st.info("🔍 추가 인터넷 검색을 시작합니다...")
-                
-                with st.spinner("🔍 구글에서 추가 정보 검색 중..."):
-                    # 인터넷 검색 실행
-                    search_results = self.internet_search.search_google(query, target_service_name, num_results=5)
-                    
-                    if search_results:
-                        st.success(f"🌐 인터넷에서 {len(search_results)}개의 추가 정보를 찾았습니다!")
-                        
-                        # 검색 결과 표시
-                        with st.expander("🔍 인터넷 검색 결과 보기", expanded=True):
-                            st.markdown("### 🌐 구글 검색 결과")
-                            for i, result in enumerate(search_results, 1):
-                                with st.container():
-                                    st.markdown(f"#### 🔗 검색 결과 {i}")
-                                    col1, col2 = st.columns([3, 1])
-                                    with col1:
-                                        st.markdown(f"**제목**: {result['title']}")
-                                        st.markdown(f"**출처**: {result['source']}")
-                                        st.markdown(f"**내용**: {result['snippet']}")
-                                    with col2:
-                                        st.markdown(f"[🔗 바로가기]({result['link']})")
-                                    
-                                    if i < len(search_results):
-                                        st.divider()
-                        
-                        # 인터넷 검색 기반 AI 응답 생성
-                        with st.expander("🤖 AI 추가 분석 (인터넷 검색 기반)", expanded=True):
-                            with st.spinner("💡 검색 결과를 분석하여 추가 답변 생성 중..."):
-                                internet_response = self.internet_search.generate_internet_search_response(
-                                    self.azure_openai_client, query, target_service_name, 
-                                    search_results, self.model_name, query_type
-                                )
-                                
-                                # AI 답변 표시
-                                search_purpose = self._get_search_purpose(query_type)
-                                st.markdown(f"#### 🌐 인터넷 검색 기반 추가 {search_purpose}")
-                                st.write(internet_response)
-                                
-                                # 정보 표시
-                                type_info = type_labels.get(query_type, '일반 문의')
-                                st.info(f"🌐 이 추가 답변은 구글 검색 결과를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
-                                st.success(f"✨ 위의 내부 문서 답변과 이 인터넷 검색 결과를 함께 참고하여 더 완전한 {search_purpose}을(를) 찾아보세요!")
-                        
-                        # 추가 답변을 세션에 저장
-                        search_purpose = self._get_search_purpose(query_type)
-                        additional_response = f"""
-**[🌐 추가 인터넷 검색 기반 {search_purpose}]**
-
-{internet_response}
-
-※ 이 답변은 사용자 요청에 의한 추가 구글 검색 결과를 바탕으로 생성되었습니다.
-"""
-                        st.session_state.messages.append({"role": "assistant", "content": additional_response})
-                        
-                    else:
-                        st.warning("🌐 인터넷에서 추가 정보를 찾을 수 없습니다.")
-                        st.info("위의 내부 문서 답변을 참고하시거나, 다른 키워드로 다시 질문해보세요.")
-                        
-                        # 검색 실패도 기록
-                        search_purpose = self._get_search_purpose(query_type)
-                        no_result_response = f"""
-**[🌐 추가 인터넷 검색 시도]**
-
-죄송합니다. 해당 주제에 대한 추가 인터넷 정보를 찾을 수 없었습니다.
-위의 내부 문서 답변을 참고해주세요.
-
-※ 다른 키워드로 다시 질문하시면 더 나은 결과를 얻을 수 있습니다.
-"""
-                        st.session_state.messages.append({"role": "assistant", "content": no_result_response})
-                        
-        except Exception as e:
-            with st.chat_message("assistant"):
-                st.error(f"🌐 추가 인터넷 검색 중 오류가 발생했습니다: {str(e)}")
-                st.info("위의 내부 문서 답변을 참고하시거나, 잠시 후 다시 시도해보세요.")
-                
-                # 오류도 기록
-                error_response = f"""
-**[🌐 추가 인터넷 검색 오류]**
-
-추가 인터넷 검색 중 오류가 발생했습니다: {str(e)}
-위의 내부 문서 답변을 참고해주세요.
-"""
-                st.session_state.messages.append({"role": "assistant", "content": error_response})
-    
-    def _perform_additional_internet_search_inline(self, query, target_service_name, query_type, type_labels):
-        """인라인 추가 인터넷 검색 수행 (버튼 클릭 후 즉시 실행)"""
-        try:
-            # 검색 시작 알림
-            with st.container():
-                st.info("🔍 추가 인터넷 검색을 시작합니다...")
-                
-                with st.spinner("🔍 구글에서 추가 복구방법 검색 중..."):
-                    # 인터넷 검색 실행
-                    search_results = self.internet_search.search_google(query, target_service_name, num_results=5)
-                    
-                    if search_results:
-                        st.success(f"🌐 인터넷에서 {len(search_results)}개의 추가 복구방법을 찾았습니다!")
-                        
-                        # 검색 결과 즉시 표시
-                        st.markdown("### 🔍 추가 인터넷 검색 결과")
-                        
-                        # 각 검색 결과를 카드 형태로 표시
-                        for i, result in enumerate(search_results, 1):
-                            with st.container():
-                                st.markdown(f"#### 🔗 검색 결과 {i}")
-                                col1, col2 = st.columns([3, 1])
-                                with col1:
-                                    st.markdown(f"**제목**: {result['title']}")
-                                    st.markdown(f"**출처**: {result['source']}")
-                                    st.markdown(f"**내용**: {result['snippet']}")
-                                with col2:
-                                    st.markdown(f"[🔗 바로가기]({result['link']})")
-                                
-                                if i < len(search_results):
-                                    st.divider()
-                        
-                        # 인터넷 검색 기반 AI 응답 생성
-                        st.markdown("### 🤖 AI 추가 분석")
-                        with st.spinner("💡 검색 결과를 분석하여 추가 답변 생성 중..."):
-                            internet_response = self.internet_search.generate_internet_search_response(
-                                self.azure_openai_client, query, target_service_name, 
-                                search_results, self.model_name, query_type
-                            )
-                            
-                            # AI 답변 표시
-                            st.markdown("#### 🌐 인터넷 검색 기반 추가 정보")
-                            st.write(internet_response)
-                            
-                            # 정보 표시
-                            type_info = type_labels.get(query_type, '일반 문의')
-                            search_purpose = self._get_search_purpose(query_type)
-                            st.info(f"🌐 이 추가 답변은 구글 검색 결과를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
-                            st.success(f"✨ 내부 문서 답변과 인터넷 검색 결과를 함께 참고하여 더 완전한 {search_purpose}을(를) 찾아보세요!")
-                            
-                            # 추가 답변을 세션에 저장
-                            additional_response = f"""
-**[추가 인터넷 검색 기반 {search_purpose}]**
-
-{internet_response}
-
-※ 이 답변은 사용자 요청에 의한 추가 구글 검색 결과를 바탕으로 생성되었습니다.
-"""
-                            st.session_state.messages.append({"role": "assistant", "content": additional_response})
-                            
-                    else:
-                        st.warning("🌐 인터넷에서 추가 정보를 찾을 수 없습니다.")
-                        st.info("내부 문서의 답변을 참고하시거나, 다른 키워드로 다시 질문해보세요.")
-                        
-        except Exception as e:
-            st.error(f"🌐 추가 인터넷 검색 중 오류가 발생했습니다: {str(e)}")
-            st.info("내부 문서의 답변을 참고하시거나, 잠시 후 다시 시도해보세요.")
-    
-    def _display_search_modal(self, search_button_key, type_labels):
-        """검색 모달 표시"""
-        # 저장된 검색 데이터 가져오기
-        query = st.session_state.get(f"search_query_{search_button_key}", "")
-        target_service_name = st.session_state.get(f"search_service_{search_button_key}", "")
-        query_type = st.session_state.get(f"search_type_{search_button_key}", "default")
-        
-        # 모달 다이얼로그 표시
-        @st.dialog(f"🌐 인터넷 검색 결과 - {self._get_search_purpose(query_type)}")
-        def search_modal():
-            try:
-                st.info("🔍 구글에서 관련 정보를 검색하고 있습니다...")
-                
-                # 프로그레스 바 표시
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                # 검색 실행
-                status_text.text("🔍 검색 중...")
-                progress_bar.progress(30)
-                
-                search_results = self.internet_search.search_google(query, target_service_name, num_results=5)
-                progress_bar.progress(60)
-                
-                if search_results:
-                    status_text.text("✅ 검색 완료!")
-                    progress_bar.progress(100)
-                    
-                    st.success(f"🌐 총 {len(search_results)}개의 관련 정보를 찾았습니다!")
-                    
-                    # 검색 결과 탭으로 구성
-                    tab1, tab2 = st.tabs(["📋 검색 결과", "🤖 AI 분석"])
-                    
-                    with tab1:
-                        st.markdown("### 🔍 구글 검색 결과")
-                        for i, result in enumerate(search_results, 1):
-                            with st.expander(f"🔗 검색 결과 {i}: {result['title'][:50]}...", expanded=i==1):
-                                st.markdown(f"**제목**: {result['title']}")
-                                st.markdown(f"**출처**: {result['source']}")
-                                st.markdown(f"**내용**: {result['snippet']}")
-                                st.markdown(f"**링크**: [바로가기]({result['link']})")
-                    
-                    with tab2:
-                        st.markdown("### 🤖 AI 분석 결과")
-                        with st.spinner("💡 검색 결과를 분석하여 답변을 생성하고 있습니다..."):
-                            internet_response = self.internet_search.generate_internet_search_response(
-                                self.azure_openai_client, query, target_service_name, 
-                                search_results, self.model_name, query_type
-                            )
-                            
-                            # AI 분석 결과 표시
-                            search_purpose = self._get_search_purpose(query_type)
-                            st.markdown(f"#### 🌐 인터넷 검색 기반 {search_purpose}")
-                            st.write(internet_response)
-                            
-                            # 정보 표시
-                            type_info = type_labels.get(query_type, '일반 문의')
-                            st.info(f"🌐 이 답변은 구글 검색 결과를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
-                    
-                    # 답변을 채팅에 추가할지 묻기
-                    st.markdown("---")
-                    col1, col2 = st.columns([1, 1])
-                    
-                    with col1:
-                        if st.button("💬 채팅에 추가", use_container_width=True, type="primary"):
-                            # 답변을 세션에 저장
-                            search_purpose = self._get_search_purpose(query_type)
-                            additional_response = f"""
-**[🌐 인터넷 검색 기반 {search_purpose}]**
-
-{internet_response}
-
-※ 이 답변은 구글 검색 결과를 바탕으로 생성되었습니다.
-"""
-                            st.session_state.messages.append({"role": "assistant", "content": additional_response})
-                            st.success("✅ 답변이 채팅에 추가되었습니다!")
-                            # 모달 닫기
-                            st.session_state[f"show_search_modal_{search_button_key}"] = False
-                            st.rerun()
-                    
-                    with col2:
-                        if st.button("❌ 닫기", use_container_width=True):
-                            st.session_state[f"show_search_modal_{search_button_key}"] = False
-                            st.rerun()
-                
-                else:
-                    status_text.text("❌ 검색 실패")
-                    progress_bar.progress(100)
-                    
-                    st.warning("🌐 관련 정보를 찾을 수 없습니다.")
-                    st.info("다른 키워드로 다시 검색해보거나 내부 문서 답변을 참고해주세요.")
-                    
-                    if st.button("❌ 닫기", use_container_width=True):
-                        st.session_state[f"show_search_modal_{search_button_key}"] = False
-                        st.rerun()
-                        
-            except Exception as e:
-                st.error(f"🌐 인터넷 검색 중 오류가 발생했습니다: {str(e)}")
-                if st.button("❌ 닫기", use_container_width=True):
-                    st.session_state[f"show_search_modal_{search_button_key}"] = False
-                    st.rerun()
-        
-        # 모달 실행
-        search_modal()
-    
-    def _show_internet_search_modal(self, query, target_service_name, query_type, type_labels):
-        """인터넷 검색 결과를 모달 팝업으로 표시"""
-        try:
-            # 모달 다이얼로그 생성
-            @st.dialog(f"🌐 인터넷 검색 결과 - {self._get_search_purpose(query_type)}")
-            def show_search_results():
-                st.info("🔍 구글에서 관련 정보를 검색하고 있습니다...")
-                
-                # 프로그레스 바 표시
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                # 검색 실행
-                status_text.text("🔍 검색 중...")
-                progress_bar.progress(30)
-                
-                search_results = self.internet_search.search_google(query, target_service_name, num_results=5)
-                progress_bar.progress(60)
-                
-                if search_results:
-                    status_text.text("✅ 검색 완료!")
-                    progress_bar.progress(100)
-                    
-                    st.success(f"🌐 총 {len(search_results)}개의 관련 정보를 찾았습니다!")
-                    
-                    # 검색 결과 탭으로 구성
-                    tab1, tab2 = st.tabs(["📋 검색 결과", "🤖 AI 분석"])
-                    
-                    with tab1:
-                        st.markdown("### 🔍 구글 검색 결과")
-                        for i, result in enumerate(search_results, 1):
-                            with st.container():
-                                # 카드 스타일로 각 결과 표시
-                                st.markdown(f"""
-                                <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin: 10px 0; background-color: #f9f9f9;">
-                                    <h4 style="color: #1f77b4; margin: 0 0 10px 0;">🔗 검색 결과 {i}</h4>
-                                    <p style="margin: 5px 0;"><strong>제목:</strong> {result['title']}</p>
-                                    <p style="margin: 5px 0;"><strong>출처:</strong> {result['source']}</p>
-                                    <p style="margin: 5px 0;"><strong>내용:</strong> {result['snippet']}</p>
-                                    <p style="margin: 10px 0 0 0;">
-                                        <a href="{result['link']}" target="_blank" style="
-                                            background-color: #1f77b4; 
-                                            color: white; 
-                                            padding: 8px 16px; 
-                                            text-decoration: none; 
-                                            border-radius: 4px;
-                                            display: inline-block;
-                                        ">🔗 바로가기</a>
-                                    </p>
-                                </div>
-                                """, unsafe_allow_html=True)
-                    
-                    with tab2:
-                        st.markdown("### 🤖 AI 분석 결과")
-                        with st.spinner("💡 검색 결과를 분석하여 답변을 생성하고 있습니다..."):
-                            internet_response = self.internet_search.generate_internet_search_response(
-                                self.azure_openai_client, query, target_service_name, 
-                                search_results, self.model_name, query_type
-                            )
-                            
-                            # AI 분석 결과 표시
-                            search_purpose = self._get_search_purpose(query_type)
-                            st.markdown(f"#### 🌐 인터넷 검색 기반 {search_purpose}")
-                            
-                            # 답변을 박스로 감싸기
-                            st.markdown(f"""
-                            <div style="
-                                border: 2px solid #4CAF50; 
-                                border-radius: 10px; 
-                                padding: 20px; 
-                                margin: 10px 0; 
-                                background-color: #f0f8f0;
-                            ">
-                                {internet_response.replace('\n', '<br>')}
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            # 정보 표시
-                            type_info = type_labels.get(query_type, '일반 문의')
-                            st.info(f"🌐 이 답변은 구글 검색 결과를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
-                    
-                    # 답변을 채팅에 추가할지 묻기
-                    st.markdown("---")
-                    col1, col2, col3 = st.columns([1, 1, 1])
-                    
-                    with col1:
-                        if st.button("💬 채팅에 추가", use_container_width=True, type="primary"):
-                            # 답변을 세션에 저장
-                            search_purpose = self._get_search_purpose(query_type)
-                            additional_response = f"""
-**[🌐 인터넷 검색 기반 {search_purpose}]**
-
-{internet_response}
-
-※ 이 답변은 구글 검색 결과를 바탕으로 생성되었습니다.
-"""
-                            st.session_state.messages.append({"role": "assistant", "content": additional_response})
-                            st.success("✅ 답변이 채팅에 추가되었습니다!")
-                            st.rerun()
-                    
-                    with col2:
-                        if st.button("📋 복사", use_container_width=True):
-                            # 클립보드 복사를 위한 JavaScript 코드
-                            st.markdown(f"""
-                            <script>
-                            navigator.clipboard.writeText(`{internet_response.replace('`', '\\`')}`);
-                            </script>
-                            """, unsafe_allow_html=True)
-                            st.success("📋 답변이 클립보드에 복사되었습니다!")
-                    
-                    with col3:
-                        if st.button("❌ 닫기", use_container_width=True):
-                            st.rerun()
-                
-                else:
-                    status_text.text("❌ 검색 실패")
-                    progress_bar.progress(100)
-                    
-                    st.warning("🌐 관련 정보를 찾을 수 없습니다.")
-                    st.info("다른 키워드로 다시 검색해보거나 내부 문서 답변을 참고해주세요.")
-                    
-                    col1, col2 = st.columns([1, 1])
-                    with col2:
-                        if st.button("❌ 닫기", use_container_width=True):
-                            st.rerun()
-            
-            # 모달 실행
-            show_search_results()
-            
-        except Exception as e:
-            st.error(f"🌐 인터넷 검색 중 오류가 발생했습니다: {str(e)}")
-    
-    def _get_search_purpose(self, query_type):
-        """쿼리 타입에 따른 검색 목적 반환"""
-        purposes = {
-            'repair': '해결방법',
-            'cause': '원인분석',
-            'similar': '유사사례',
-            'default': '관련정보'
-        }
-        return purposes.get(query_type, purposes['default'])
-    
-    def _perform_additional_internet_search(self, query, target_service_name, query_type, type_labels):
-        """추가 인터넷 검색 수행 (repair 타입용)"""
-        try:
-            st.info("🔍 추가 인터넷 검색을 시작합니다...")
-            
-            with st.spinner("🔍 인터넷에서 추가 복구방법 검색 중..."):
-                # 인터넷 검색 실행
-                search_results = self.internet_search.search_google(query, target_service_name, num_results=5)
-                
-                if search_results:
-                    st.success(f"🌐 인터넷에서 {len(search_results)}개의 추가 복구방법을 찾았습니다!")
-                    
-                    # 검색 결과 표시
-                    with st.expander("🔍 추가 인터넷 검색 결과", expanded=True):
-                        st.markdown("### 🌐 구글 검색 결과")
-                        for i, result in enumerate(search_results, 1):
-                            with st.container():
-                                st.markdown(f"#### 🔗 검색 결과 {i}")
-                                st.markdown(f"**제목**: {result['title']}")
-                                st.markdown(f"**출처**: {result['source']}")
-                                st.markdown(f"**내용**: {result['snippet']}")
-                                st.markdown(f"**링크**: [바로가기]({result['link']})")
-                                if i < len(search_results):
-                                    st.divider()
-                    
-                    # 인터넷 검색 기반 응답 생성
-                    with st.spinner("💡 인터넷 검색 결과를 바탕으로 추가 답변 생성 중..."):
-                        internet_response = self.internet_search.generate_internet_search_response(
-                            self.azure_openai_client, query, target_service_name, 
-                            search_results, self.model_name, query_type
-                        )
-                        
-                        with st.expander("🤖 추가 AI 답변 (인터넷 검색 기반)", expanded=True):
-                            st.markdown("### 🌐 인터넷 검색 기반 추가 복구방법")
-                            st.write(internet_response)
-                            type_info = type_labels.get(query_type, '일반 문의')
-                            st.info(f"🌐 이 추가 답변은 구글 검색 결과를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
-                            st.success("✨ 내부 문서와 인터넷 검색 결과를 함께 참고하여 더 완전한 해결방법을 찾아보세요!")
-                        
-                        # 추가 답변도 세션에 저장
-                        additional_response = f"""
-**[추가 인터넷 검색 답변]**
-
-{internet_response}
-
-※ 이 답변은 사용자 요청에 의한 추가 인터넷 검색 결과입니다.
-"""
-                        st.session_state.messages.append({"role": "assistant", "content": additional_response})
-                        
-                else:
-                    st.warning("🌐 인터넷에서 추가 정보를 찾을 수 없습니다. 내부 문서의 답변을 참고해주세요.")
-                    
-        except Exception as e:
-            st.error(f"🌐 추가 인터넷 검색 중 오류가 발생했습니다: {str(e)}")
-            st.info("내부 문서의 답변을 참고하시거나, 다른 검색어로 다시 시도해보세요.")
+                                st.info("🔍 추가 정보를 위해 IT 전문가 관점의 인터넷 검색을 실행합니다...")
+                                self._perform_enhanced_internet_search(query, target_service_name, query_type, type_labels)
+                            elif self._should_skip_internet_search(query, query_type):
+                                st.info("📊 이 질문은 내부 데이터를 기반으로 한 답변이 필요하지만, 관련 문서를 찾을 수 없습니다.")
+                                self._show_no_results_message(target_service_name, query_type, type_labels)
+                            else:
+                                self._show_no_results_message(target_service_name, query_type, type_labels)
     
     def _show_no_results_message(self, target_service_name, query_type, type_labels):
         """검색 결과가 없을 때 메시지 표시"""
@@ -904,6 +790,8 @@ class QueryProcessor:
         
         **참고**: 현재 시스템은 서비스명 정확 매칭과 포함 매칭을 모두 지원하며, **{type_labels.get(query_type, '일반 문의')}** 유형으로 분류되었습니다.
         """
+        
         with st.expander("🤖 AI 답변 보기", expanded=True):
             st.write(error_msg)
+        
         st.session_state.messages.append({"role": "assistant", "content": error_msg})

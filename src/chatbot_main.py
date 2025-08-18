@@ -45,10 +45,11 @@ def main():
     # 사용자 입력 처리
     user_query = st.chat_input("💬 질문을 입력하세요")
     
-    # 새로운 질문이 들어올 때 이전 검색 버튼 상태 초기화
+    # 새로운 질문이 들어올 때 이전 상태 초기화
     if user_query and user_query != st.session_state.get('last_query', ''):
-        # 이전 검색 버튼 상태들 모두 초기화
-        keys_to_remove = [key for key in st.session_state.keys() if key.startswith('internet_search_')]
+        # 모든 검색 관련 상태 초기화
+        keys_to_remove = [key for key in st.session_state.keys() 
+                         if key.startswith(('internet_search_', 'search_performed_', 'show_search_modal_'))]
         for key in keys_to_remove:
             del st.session_state[key]
         st.session_state['last_query'] = user_query
