@@ -780,9 +780,7 @@ class QueryProcessor:
                         elif self._should_skip_internet_search(query, query_type):
                             st.info("📊 이 질문은 내부 데이터를 기반으로 한 답변이 가장 정확합니다.")
                         elif not self.is_internet_search_enabled():
-                            if not st.session_state.get('internet_search_enabled', False):
-                                st.info("🔒 인터넷 검색이 비활성화되어 있습니다. 추가 정보가 필요하시면 상단 토글을 활성화해주세요.")
-                            else:
+                            if st.session_state.get('internet_search_enabled', False):
                                 st.info("⚠️ SerpApi가 설정되지 않아 인터넷 검색을 사용할 수 없습니다.")
                         
                         st.session_state.messages.append({"role": "assistant", "content": response})
@@ -801,9 +799,7 @@ class QueryProcessor:
                                 st.info("📊 이 질문은 내부 데이터를 기반으로 한 답변이 필요하지만, 관련 문서를 찾을 수 없습니다.")
                                 self._show_no_results_message(target_service_name, query_type, type_labels)
                             elif not self.is_internet_search_enabled():
-                                if not st.session_state.get('internet_search_enabled', False):
-                                    st.info("🔒 인터넷 검색이 비활성화되어 있습니다. 관련 문서를 찾지 못했으므로 토글을 활성화하여 추가 검색을 시도해보세요.")
-                                else:
+                                if st.session_state.get('internet_search_enabled', False):
                                     st.info("⚠️ SerpApi가 설정되지 않아 인터넷 검색을 사용할 수 없습니다.")
                                 self._show_no_results_message(target_service_name, query_type, type_labels)
                             else:

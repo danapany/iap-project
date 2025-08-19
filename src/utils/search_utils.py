@@ -217,15 +217,11 @@ class SearchManager:
         # 최종 결과 수 제한 (동적 적용)
         final_docs = filtered_docs[:thresholds['max_results']]
        
-        # 개선된 필터링 통계 표시 (포함 매칭 정보 포함)
+        # 간소화된 필터링 통계 표시 (요청된 항목만)
         st.info(f"""
         📊 **서비스명 포함 매칭 기반 문서 필터링 결과**
-        - 🎯 대상 서비스: {target_service_name or '전체 서비스'}
-        - 🎯 적용된 임계값: 검색({thresholds['search_threshold']}) | Reranker({thresholds['reranker_threshold']}) | 하이브리드({thresholds['hybrid_threshold']})
         - 🔍 전체 검색 결과: {filter_stats['total']}개
         - ✅ 기본 점수 통과: {filter_stats['search_filtered']}개
-        - 🎯 서비스명 정확 매칭: {filter_stats['service_exact_match']}개
-        - 🔍 서비스명 포함 매칭: {filter_stats['service_partial_match']}개
         - ✅ 총 서비스명 매칭: {filter_stats['service_filtered']}개
         - 🏆 Reranker 고품질: {filter_stats['reranker_qualified']}개
         - 🎯 하이브리드 통과: {filter_stats['hybrid_qualified']}개
