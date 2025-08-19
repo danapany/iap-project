@@ -241,8 +241,9 @@ def display_db_record(record):
     # 등록 시간
     st.write(f"**🕐 등록 시간**: {record['upload_time']}")
 
+# parse_eml_file 함수의 HTML 처리 부분 수정 (기존 라인 270-290 부근)
 def parse_eml_file(eml_content):
-    """EML 파일 내용을 파싱하여 구조화된 데이터로 반환 (Base64 UTF-8 처리 개선)"""
+    """EML 파일 내용을 파싱하여 구조화된 데이터로 반환 (HTML 줄바꿈 보존 개선)"""
     try:
         # EML 파일 파싱
         msg = email.message_from_string(eml_content, policy=policy.default)
@@ -340,18 +341,40 @@ def parse_eml_file(eml_content):
                         print(f"HTML 디코딩 오류: {decode_error}")
                         parsed_data['body_html'] = str(msg.get_payload())
         
-        # HTML에서 텍스트 추출 (body_text가 비어있을 때)
+        # 🎯 핵심 수정: HTML에서 텍스트 추출 시 줄바꿈 보존 (body_text가 비어있을 때)
         if not parsed_data['body_text'] and parsed_data['body_html']:
             try:
                 import re
-                # HTML 태그 제거하여 텍스트만 추출
-                html_text = re.sub(r'<[^>]+>', '', parsed_data['body_html'])
-                # HTML 엔티티 처리 (개선)
+                html_text = parsed_data['body_html']
+                
+                # 🔧 개선된 HTML 처리 - 줄바꿈 보존
+                # 1. HTML 구조적 줄바꿈을 실제 줄바꿈으로 변환
+                html_text = re.sub(r'</p>\s*<p[^>]*>', '\n', html_text)  # </p><p> → \n
+                html_text = re.sub(r'<br\s*/?>', '\n', html_text)        # <br> → \n
+                html_text = re.sub(r'</div>\s*<div[^>]*>', '\n', html_text)  # </div><div> → \n
+                html_text = re.sub(r'</span>\s*<span[^>]*>', '\n', html_text)  # </span><span> → \n (시간 구분자용)
+                
+                # 2. 그 다음에 HTML 태그 제거
+                html_text = re.sub(r'<[^>]+>', '', html_text)
+                
+                # 3. HTML 엔티티 처리
                 html_text = html_text.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
-                # 연속 공백/줄바꿈 정리
-                html_text = re.sub(r'\s+', ' ', html_text).strip()
+                
+                # 4. 연속 공백을 단일 공백으로 변경하되 줄바꿈은 보존
+                html_text = re.sub(r'[ \t]+', ' ', html_text)  # 탭과 공백만 정리
+                html_text = re.sub(r'\n\s*\n', '\n', html_text)  # 빈 줄 정리
+                html_text = html_text.strip()
+                
                 parsed_data['body_text'] = html_text
-                print(f"HTML에서 텍스트 추출 완료: {len(html_text)}자")
+                print(f"HTML에서 텍스트 추출 완료 (줄바꿈 보존): {len(html_text)}자")
+                
+                # 디버깅: 14:32, 14:48 관련 줄 수 확인
+                debug_lines = [line for line in html_text.split('\n') if '14:32' in line or '14:48' in line]
+                if debug_lines:
+                    print(f"🔍 14:32/14:48 관련 줄 수: {len(debug_lines)}")
+                    for i, line in enumerate(debug_lines):
+                        print(f"  줄 {i+1}: {line[:100]}...")
+                        
             except Exception as html_error:
                 print(f"HTML 텍스트 추출 오류: {html_error}")
         
@@ -442,7 +465,7 @@ def display_eml_content(parsed_data):
 current_year = datetime.datetime.now(korea_tz).year
 
 def extract_precise_data(body_text: str) -> dict:
-    """EML에서 정확한 정보만 추출"""
+    """EML에서 정확한 정보만 추출 (줄별 처리로 장애 조치 결과 추출 강화)"""
     try:
         client = AzureOpenAI(
             azure_endpoint=openai_endpoint,
@@ -450,9 +473,17 @@ def extract_precise_data(body_text: str) -> dict:
             api_version="2024-02-15-preview"
         )
         
+        # 🎯 이장시간 추출 개선 - AI 요청 전에 정규식으로 미리 추출
+        duration_extracted = extract_duration_patterns(body_text)
+        
         prompt = f"""
 다음 텍스트에서 정확히 확인할 수 있는 정보만 추출하세요. 불확실한 정보는 "정보없음"으로 표시하세요.
 중요: 연도가 명시되지 않은 모든 날짜는 {current_year}년으로 해석하세요.
+
+특별히 주의할 점:
+1. "장애 조치 결과" 부분은 시간순으로 나열된 모든 항목을 빠짐없이 추출해야 합니다.
+2. 동일한 시간(예: 9:59, 12:32)에 여러 항목이 있으면 모두 포함해야 합니다.
+3. HH:MM 형식의 시간 뒤에 나오는 모든 조치 내용을 완전히 추출해야 합니다.
 
 특히 다음 정보들을 정확히 추출하세요:
 1. "대상서비스"라는 키워드 다음에 나오는 시스템명을 정확히 추출
@@ -461,10 +492,13 @@ def extract_precise_data(body_text: str) -> dict:
    - 소속부서 (예 : "KTDS ICT사업본부 ICIS Tr 추진담당 유선오더통합팀")
    - 담당자명과 직급 (예: "여재윤 책임")
 4. "장애현상"이라는 키워드 다음에 나오는 장애 현상 설명과 요약 정보
-5. "장애시간"이라는 키워드 다음에 나오는 괄호 안의 시간 정보
+5. "장애시간"이라는 키워드 다음에 나오는 괄호 안의 시간 정보 (다양한 패턴 지원)
 6. "장애 조치 결과"라는 키워드 다음에 나오는 장애 조치 결과 HH:MM : 내용 패턴의 반복 정보 (반드시 누락없이 전체 추출할것)
 7. "장애원인"이라는 키워드 다음에 나오는 장애 원인 분석 정보
-   
+
+🎯 이장시간 추출 개선사항:
+- 미리 추출된 이장시간: {duration_extracted}
+- 이 값이 유효하면 우선 사용하고, 없으면 텍스트에서 재추출
 
 예시:
 - "ㅇ 대상서비스 : KOS-오더(KOS-Internet)" → 시스템명: "KOS-오더(KOS-Internet)"
@@ -476,29 +510,26 @@ def extract_precise_data(body_text: str) -> dict:
 - "장애현상 : KOS-오더 서비스 장애" → 장애현상: "KOS-오더 서비스 장애"
 - "장애시간 : 04/28 14:16 ~ 15:58 (102분)" → 이장시간: "(102분)" 
 - "장애현상 : KOS-오더 서비스 장애로 인한 주문 접수 불가 현상 발생" → 장애_제목: "KOS-오더 서비스 장애로 인한 주문 접수 불가"
-- "장애 조치 결과 : 14:16 : BMON 시스템 오류 발생, 14:20 : IT통합상황창을 통한 현상 전파" → "장애_조치_경과_리스트": [
-    {{"시간": "14:16", "내용": "BMON 시스템 오류 발생", "비고": ""}},
-    {{"시간": "14:20", "내용": "IT통합상황창을 통한 현상 전파", "비고": ""}}
+- 장애 조치 결과에서 다음과 같은 패턴들을 모두 찾아서 추출:
+  "09:59 최초 발견", "10:20 영역도 세종시 여민전 서비스 앱 접속 및 충전 불가", "11:42 충전 중지없이 현상태 유지", "12:00 복구예상시간 13:00로 협의" 등
+  → "장애_조치_경과_리스트": [
+    {{"시간": "09:59", "내용": "최초 발견", "비고": ""}},
+    {{"시간": "10:20", "내용": "영역도 세종시 여민전 서비스 앱 접속 및 충전 불가", "비고": ""}},
+    {{"시간": "11:42", "내용": "충전 중지없이 현상태 유지하기로함(융합서비스플랫폼팀)", "비고": ""}},
+    {{"시간": "12:00", "내용": "복구예상시간 13:00로 세종시에 협의됨(융합서비스플랫폼팀,결제/센싱서비스팀)", "비고": ""}}
 ]
-- "장애원인
-    ㅇ KOS 인터넷 오더발행 시 프리오더링 조회 -> OSS-OM -> NeOSS-FM SP(인터넷 프리오더링 조회) 흐름에서 KOS 프리오더링 간헐적 실패로 오더 발행 불가 현상 (전체 대비 약 40%)
-    ㅇ OSS-OM 내 원인을 정확히 특정할 수 없어 4.26 배포했던 NeOSS-FM SP 원복 조치
-        - 인터넷 프리오더링 실패 건의 Input 주소별 프리오더링 OSS-OM 시설조회 AP 및 NeOSS-FM SP 정밀 분석 필요"
-→ 근본_원인:
-"KOS 인터넷 오더발행 시 프리오더링 조회 -> OSS-OM -> NeOSS-FM SP(인터넷 프리오더링 조회) 흐름에서 KOS 프리오더링 간헐적 실패로 오더 발행 불가 현상 (전체 대비 약 40%)"
-"OSS-OM 내 원인을 정확히 특정할 수 없어 4.26 배포했던 NeOSS-FM SP 원복 조치
-    - 인터넷 프리오더링 실패 건의 Input 주소별 프리오더링 OSS-OM 시설조회 AP 및 NeOSS-FM SP 정밀 분석 필요"
+
 {body_text}
 
 JSON 응답:
 {{
-    "장애_제목": "장애현상 요약 정보",
+    "장애_제목": "장애현상 요약 정보(문장 뒤쪽 현상, 발생 등을 제외한 요약 정보)",
     "시스템명": "대상서비스 뒤에 나오는 정확한 시스템명",
     "장애_등급": "명시된 등급만",
     "발생_시간": "정확한 날짜/시간만 ({current_year}년 MM월 DD일 HH:MM 형식)",
     "인지_시간": "정확한 인지 시간만",
     "복구_시간": "정확한 복구 시간만 ({current_year}년 MM월 DD일 HH:MM 형식)",
-    "이장_시간": "정확한 이장 시간만",
+    "이장_시간": "정확한 이장 시간만 - 미리 추출된 값 우선 사용: {duration_extracted}",
     "장애_현상": "명확한 현상 설명만",
     "파급_영향": "명확한 영향 설명만",
     "근본_원인": "명확한 원인 분석만",
@@ -518,10 +549,10 @@ JSON 응답:
         response = client.chat.completions.create(
             model=chat_model,
             messages=[
-                {"role": "system", "content": "정확한 정보만 추출하는 전문가. 특히 '대상서비스', '상황반장', '복구반장', '장애현상', '장애 조치 결과' 등 키워드 뒤의 정보를 정확히 찾아서 추출함."},
+                {"role": "system", "content": "정확한 정보만 추출하는 전문가. 특히 '장애 조치 결과' 부분에서 시간순으로 나열된 모든 항목을 빠뜨리지 않고 추출하며, 동일 시간대의 여러 항목도 모두 포함함. '대상서비스', '상황반장', '복구반장', '장애현상' 등 키워드 뒤의 정보를 정확히 찾아서 추출함."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=3000,
+            max_tokens=4000,
             temperature=0.0
         )
         
@@ -533,12 +564,79 @@ JSON 응답:
         
         extracted_data = json.loads(result)
         
-        # 추가적으로 정규식으로 직접 추출 (백업) - 로그는 session_state에 저장
+        # 🎯 이장시간 후처리 - AI가 추출하지 못했거나 잘못 추출한 경우 정규식 결과로 보완
+        if duration_extracted and (not extracted_data.get("이장_시간") or extracted_data.get("이장_시간") == "정보없음"):
+            extracted_data["이장_시간"] = duration_extracted
+            if 'extract_logs' not in st.session_state:
+                st.session_state.extract_logs = []
+            st.session_state.extract_logs.append(f"🎯 정규식으로 이장시간 보완: {duration_extracted}")
+        
+        # 정규식을 이용한 강화된 장애 조치 결과 추출 (백업) - 🎯 줄별 처리로 개선 
         if 'extract_logs' not in st.session_state:
             st.session_state.extract_logs = []
         
         st.session_state.extract_logs = []  # 로그 초기화
         
+        # 장애 조치 결과 정규식 추출 (강화된 버전 - 줄별 처리)
+        action_pattern = r'장애\s*조치\s*결과\s*[:：]\s*(.+?)(?:\n\n|\n[가-힣]+\s*[:：]|장애원인|$)'
+        action_match = re.search(action_pattern, body_text, re.DOTALL)
+        
+        if action_match:
+            action_text = action_match.group(1).strip()
+            st.session_state.extract_logs.append(f"🎯 조치 결과 텍스트 추출: {len(action_text)}자")
+            
+            # 🔧 개선된 줄별 처리 방식
+            action_list_regex = []
+            
+            # 줄바꿈으로 분할하여 각 줄을 개별 처리
+            lines = action_text.split('\n')
+            cleaned_lines = [line.strip() for line in lines if line.strip()]
+            
+            st.session_state.extract_logs.append(f"🔍 전체 줄 수: {len(cleaned_lines)}")
+            
+            # 각 줄에서 시간:내용 패턴 찾기
+            for line_idx, line in enumerate(cleaned_lines):
+                # 시간 패턴 매칭 (줄 시작부터)
+                time_match = re.match(r'(\d{2}:\d{2})\s*(.+)', line)
+                if time_match:
+                    time_str = time_match.group(1)
+                    content = time_match.group(2).strip()
+                    
+                    # 내용 정리 (불필요한 문자 제거)
+                    content = content.replace(':', '').replace('：', '').strip()
+                    
+                    if content and len(content) > 2:
+                        action_list_regex.append({
+                            "시간": time_str,
+                            "내용": content,
+                            "비고": ""
+                        })
+                        st.session_state.extract_logs.append(f"✅ 줄 {line_idx+1}: {time_str} - {content[:50]}...")
+                    else:
+                        st.session_state.extract_logs.append(f"⚠️ 줄 {line_idx+1}: {time_str} - 내용 부족 ({content})")
+            
+            # 14:32, 14:48 관련 디버깅 정보
+            debug_lines = [line for line in cleaned_lines if '14:32' in line or '14:48' in line]
+            if debug_lines:
+                st.session_state.extract_logs.append(f"🔍 14:32/14:48 관련 줄 수: {len(debug_lines)}")
+                for i, line in enumerate(debug_lines):
+                    st.session_state.extract_logs.append(f"  디버그 줄 {i+1}: {line}")
+            
+            # AI 추출 결과와 비교
+            ai_action_count = 0
+            if extracted_data.get("장애_조치_경과_리스트") and extracted_data["장애_조치_경과_리스트"] != "정보없음":
+                ai_action_count = len(extracted_data["장애_조치_경과_리스트"])
+            
+            regex_action_count = len(action_list_regex)
+            
+            st.session_state.extract_logs.append(f"🔍 AI 추출: {ai_action_count}개, 정규식 추출 (줄별): {regex_action_count}개")
+            
+            # 정규식 결과가 더 많거나 같으면 정규식 결과 사용
+            if regex_action_count >= ai_action_count:
+                extracted_data["장애_조치_경과_리스트"] = action_list_regex
+                st.session_state.extract_logs.append(f"✅ 정규식 결과 사용 (줄별 처리): {regex_action_count}개 항목")
+        
+        # 추가적으로 정규식으로 직접 추출 (기존 백업 코드들)
         # 대상서비스 추출
         service_pattern = r'대상서비스\s*[:：]\s*(.+?)(?:\n|$)'
         service_match = re.search(service_pattern, body_text)
@@ -587,26 +685,6 @@ JSON 응답:
                 extracted_data["장애현상"] = incident_symptom
                 st.session_state.extract_logs.append(f"🎯 정규식으로 장애현상 추출: {incident_symptom}")
 
-        # 장애 조치 결과 정규식 추출 (백업용)
-        action_pattern = r'장애\s*조치\s*결과\s*[:：]\s*(.+?)(?:\n\n|\n[가-힣]+\s*[:：]|$)'
-        action_match = re.search(action_pattern, body_text, re.DOTALL)
-        if action_match:
-            action_text = action_match.group(1).strip()
-            # HH:MM : 내용 패턴 추출
-            time_content_pattern = r'(\d{2}:\d{2})\s*[:：]\s*([^,\n]+?)(?=\s*\d{2}:\d{2}|$)'
-            time_matches = re.findall(time_content_pattern, action_text)
-            
-            if time_matches and (not extracted_data.get("장애_조치_경과_리스트") or extracted_data.get("장애_조치_경과_리스트") == "정보없음"):
-                action_list = []
-                for time_str, content in time_matches:
-                    action_list.append({
-                        "시간": time_str.strip(),
-                        "내용": content.strip(),
-                        "비고": ""
-                    })
-                extracted_data["장애_조치_경과_리스트"] = action_list
-                st.session_state.extract_logs.append(f"🎯 정규식으로 조치경과 추출: {len(action_list)}개 항목")
-
         return extracted_data
         
     except Exception as e:
@@ -614,6 +692,63 @@ JSON 응답:
             st.session_state.extract_logs = []
         st.session_state.extract_logs.append(f"❌ AI 추출 오류: {e}")
         return {"error": "추출 실패"}
+    
+def extract_duration_patterns(body_text: str) -> str:
+    """다양한 이장시간 패턴을 추출하는 함수"""
+    try:
+        # 🎯 개선된 이장시간 추출 패턴들
+        patterns = [
+            # 1. 괄호 안에 숫자와 분이 있는 패턴 (가장 일반적)
+            r'\((\d+분)\)',                           # (6분)
+            r'\(이장시간\s*:?\s*(\d+분)\)',           # (이장시간 6분), (이장시간: 6분)
+            r'\(.*?(\d+분).*?\)',                     # (기타 텍스트 6분 기타)
+            
+            # 2. 시간 범위에서 분 계산 (HH:MM ~ HH:MM 형태)
+            r'(\d{2}:\d{2})\s*~\s*(\d{2}:\d{2})',    # 09:51 ~ 09:57
+            
+            # 3. 장애시간 키워드 뒤의 괄호 패턴
+            r'장애시간.*?\(.*?(\d+분).*?\)',          # 장애시간 : ... (102분)
+            r'이장시간.*?\(.*?(\d+분).*?\)',          # 이장시간 : ... (6분)
+            
+            # 4. 기타 시간 표현
+            r'(\d+)분\s*간',                         # 6분간
+            r'총\s*(\d+)분',                         # 총 6분
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, body_text, re.IGNORECASE)
+            if matches:
+                if len(matches[0]) == 2 and ':' in matches[0][0]:
+                    # 시간 범위 패턴인 경우 (HH:MM ~ HH:MM)
+                    start_time, end_time = matches[0]
+                    try:
+                        start_h, start_m = map(int, start_time.split(':'))
+                        end_h, end_m = map(int, end_time.split(':'))
+                        
+                        start_total_minutes = start_h * 60 + start_m
+                        end_total_minutes = end_h * 60 + end_m
+                        
+                        # 시간이 다음날로 넘어간 경우 처리
+                        if end_total_minutes < start_total_minutes:
+                            end_total_minutes += 24 * 60
+                        
+                        duration_minutes = end_total_minutes - start_total_minutes
+                        return f"({duration_minutes}분)"
+                    except:
+                        continue
+                else:
+                    # 다른 패턴들의 경우
+                    duration = matches[0] if isinstance(matches[0], str) else matches[0][0]
+                    if '분' in duration:
+                        return f"({duration})"
+                    else:
+                        return f"({duration}분)"
+        
+        return ""  # 패턴을 찾지 못한 경우
+        
+    except Exception as e:
+        print(f"이장시간 추출 오류: {e}")
+        return ""
 
 def find_action_progress_table(doc):
     """장애 조치 경과 표 찾기"""
@@ -885,6 +1020,43 @@ def upload_to_azure_word(file_path: str, filename: str):
         
     except Exception as e:
         return False, None, str(e)
+    
+##보고서(초안) 활용 가이드
+def show_completion_guide_simple():
+    """간단한 완료 가이드 표시"""
+    
+    # 주의사항
+    st.warning("⚠️ **중요 안내**\n\n보고서는 첨부 복구보고(eml) 정보를 기반으로 AI가 자동 생성한 초안입니다. 초안에 오류가 있을 수 있으니 모든 항목을 사용자께서 직접 확인하시기 바랍니다.")
+        
+    # 가이드 다운로드
+    st.subheader("📋 보고서 활용 가이드")
+    st.info("Best Practice를 제공하니 첨부 파일을 참고하세요.")
+    
+    # 로컬 파일 경로
+    guide_path = "data/docx/20250320_장애보고서_KT AICC 공공지자체_고객포털접속지연장애_v1.0.docx"
+    guide_exists = os.path.exists(guide_path)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if guide_exists:
+            with open(guide_path, "rb") as file:
+                st.download_button(
+                    label="📥 장애원인분석보고서(B·P) 다운로드",
+                    data=file.read(),
+                    file_name="20250320_장애보고서_KT AICC 공공지자체_고객포털접속지연장애_v1.0.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+        else:
+            st.error("⚠️ 가이드 파일을 찾을 수 없습니다.")
+    
+    with col2:
+        if st.button("🔍 미리보기"):
+            # 미리보기 이미지 (로컬 파일이 있다고 가정)
+            preview_image_path = "data/docx/guide-preview.png"
+            if os.path.exists(preview_image_path):
+                st.image(preview_image_path)
+    st.divider()
+
 
 # === Streamlit 앱 ===
 st.title("💡 장애보고서 초안 생성기")
@@ -1072,11 +1244,14 @@ elif st.session_state.stage == 'completed':
     
     # 다운로드 링크
     if hasattr(st.session_state, 'report_url'):
-        st.markdown(f"### [📥 보고서 다운로드]({st.session_state.report_url})")
+        st.markdown(f"### [📥 다운로드 - AI 생성 보고서]({st.session_state.report_url})")
         st.info("💡 다운로드 링크는 24시간 동안 유효합니다.")
     
     st.divider()
     
+    # 🎯 가이드 표시
+    show_completion_guide_simple()
+
     # 추가 작업 옵션
     col1, col2 = st.columns(2)
     
