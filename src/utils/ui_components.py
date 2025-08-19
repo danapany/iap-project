@@ -247,7 +247,7 @@ class UIComponents:
         <h4>💬 질문예시</h4>
         <h6>* 복구방법 : 마이페이지 보험가입불가 현상 복구방법 알려줘<br>
         * 장애원인 : ERP EP업무 처리시 간헐적 접속불가현상에 대한 장애원인이 뭐야?<br>
-        * 장애현상 : 문자발송 불가 현상에 대한 과거 조치방법들 알려줘<br>
+        * 장애현상 : 문자발송 불가 현상에 대한 조치 알려줘<br>
         * 장애이력 : 야간에 발생한 블록체인기반지역화폐 장애내역 알려줘<br>
         * 장애건수 : 2025년 ERP 장애가 몇건이야? ※ 통계에 대한질의는 일부 부정확할 수 있습니다
         </h6>
@@ -255,6 +255,45 @@ class UIComponents:
         """
         
         st.markdown(html_code, unsafe_allow_html=True)
+
+    def render_internet_search_toggle(self):
+        """인터넷 검색 토글 렌더링"""
+        st.markdown("---")
+        
+        # 토글 컨테이너
+        col1, col2, col3 = st.columns([1, 2, 1])
+        
+        with col2:
+            # 세션 상태 초기화
+            if 'internet_search_enabled' not in st.session_state:
+                st.session_state.internet_search_enabled = False
+            
+            
+            # 토글 버튼
+            toggle_col1, toggle_col2, toggle_col3 = st.columns([1, 1, 1])
+            with toggle_col2:
+                internet_search_enabled = st.toggle(
+                    "인터넷 검색 활성화",
+                    value=st.session_state.internet_search_enabled,
+                    key="internet_search_toggle",
+                    help="활성화하면 내부 문서에서 답을 찾지 못할 때 인터넷에서 추가 정보를 검색합니다."
+                )
+                
+                # 세션 상태 업데이트
+                st.session_state.internet_search_enabled = internet_search_enabled
+            
+            # 설정 상태 표시
+            if internet_search_enabled:
+                st.success("🌐 인터넷 검색이 **활성화**되었습니다. 내부 문서 정보 및 인터넷 검색을 수행하여 답변합니다.")
+            else:
+                st.info("📋 인터넷 검색이 **비활성화**되었습니다. 내부 문서만을 사용하여 답변합니다.")
+            
+            # SerpApi 설정 상태 확인
+            from config.settings import AppConfig
+            config = AppConfig()
+            if not config.has_serpapi_config():
+                st.warning("⚠️ SerpApi가 설정되지 않아 인터넷 검색 기능을 사용할 수 없습니다. 토글을 활성화해도 내부 문서만 사용됩니다.")
+        
     
     def show_config_error(self, env_status):
         """설정 오류 표시"""

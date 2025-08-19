@@ -21,6 +21,9 @@ def main():
     ui_components = UIComponents()
     ui_components.render_main_ui()
     
+    # 인터넷 검색 토글 추가
+    ui_components.render_internet_search_toggle()
+    
     # 설정 로드
     config = AppConfig()
     if not config.validate_config():
@@ -60,7 +63,7 @@ def main():
         with st.chat_message("user"):
             st.write(user_query)
         
-        # 쿼리 처리
+        # 쿼리 처리 (인터넷 검색 토글 상태 전달)
         query_processor = QueryProcessor(
             azure_openai_client, 
             search_client, 
