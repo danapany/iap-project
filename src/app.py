@@ -4,9 +4,9 @@ import streamlit as st
 # 네비게이션 설정
 pg = st.navigation([
     # 서비스 페이지
-    st.Page("chatbot_main.py",  title="챗봇 모듈분리", icon="🕵️‍♂️"),
-    st.Page("menu/1_Chatbot1.py",  title="[목표1] 트러블 체이서 챗봇", icon="🕵️‍♂️"),
-    st.Page("menu/1_Chatbot1-1.py",  title="[목표1] 트러블 체이서 챗봇 (+web검색)", icon="🕵️‍♂️"),
+    st.Page("chatbot_main.py",  title="[목표1] 트러블 체이서 챗봇", icon="🕵️‍♂️"),
+    #st.Page("menu/1_Chatbot1.py",  title="[목표1] 트러블 체이서 챗봇 (모듈분리전)", icon="🕵️‍♂️"),
+    #st.Page("menu/1_Chatbot1-1.py",  title="[목표1] 트러블 체이서 챗봇 (+web검색)", icon="🕵️‍♂️"),
     st.Page("menu/2_Report_Gen_Assistant.py", title="[목표2] 분석 보고서 초안 생성 도우미", icon="📰"),
     st.Page("menu/3_Seasonality_Predictor.py", title="[목표3] 시즈널리티 통계정보", icon="📈"),
 
