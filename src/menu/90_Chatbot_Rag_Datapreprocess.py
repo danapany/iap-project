@@ -19,9 +19,6 @@ st.set_page_config(
 st.title("🔧 인시던트 요약 시스템")
 st.markdown("---")
 
-# Azure OpenAI 설정
-st.sidebar.header("설정")
-
 # .env 파일에서 Azure OpenAI 설정 로드
 azure_openai_endpoint = os.getenv("OPENAI_ENDPOINT")
 azure_openai_key = os.getenv("OPENAI_KEY")
@@ -38,32 +35,31 @@ if azure_openai_endpoint and azure_openai_key:
             api_key=azure_openai_key,
             api_version=azure_openai_api_version
         )
-        st.sidebar.success("✅ Azure OpenAI 설정이 .env 파일에서 로드되었습니다.")
-        st.sidebar.info(f"🤖 모델: {azure_openai_model}")
-        st.sidebar.info(f"🌐 엔드포인트: {azure_openai_endpoint}")
     except Exception as e:
-        st.sidebar.error(f"❌ Azure OpenAI 클라이언트 초기화 실패: {str(e)}")
+        st.error(f"❌ Azure OpenAI 클라이언트 초기화 실패: {str(e)}")
 else:
-    st.sidebar.warning("⚠️ .env 파일에서 Azure OpenAI 설정을 찾을 수 없습니다.")
-    
-    # 수동 입력 옵션
-    with st.sidebar.expander("🔧 수동 설정"):
-        manual_endpoint = st.text_input("Azure OpenAI Endpoint:", value=azure_openai_endpoint or "")
-        manual_key = st.text_input("Azure OpenAI Key:", type="password", value=azure_openai_key or "")
-        manual_model = st.text_input("Chat Model:", value=azure_openai_model)
-        manual_api_version = st.text_input("API Version:", value=azure_openai_api_version)
+    # 수동 입력 옵션을 사이드바에만 표시
+    with st.sidebar:
+        st.header("⚙️ Azure OpenAI 설정")
+        st.warning("⚠️ .env 파일에서 Azure OpenAI 설정을 찾을 수 없습니다.")
         
-        if manual_endpoint and manual_key:
-            try:
-                client = AzureOpenAI(
-                    azure_endpoint=manual_endpoint,
-                    api_key=manual_key,
-                    api_version=manual_api_version
-                )
-                azure_openai_model = manual_model
-                st.success("✅ 수동 설정으로 Azure OpenAI 클라이언트가 초기화되었습니다.")
-            except Exception as e:
-                st.error(f"❌ Azure OpenAI 클라이언트 초기화 실패: {str(e)}")
+        with st.expander("🔧 수동 설정"):
+            manual_endpoint = st.text_input("Azure OpenAI Endpoint:", value=azure_openai_endpoint or "")
+            manual_key = st.text_input("Azure OpenAI Key:", type="password", value=azure_openai_key or "")
+            manual_model = st.text_input("Chat Model:", value=azure_openai_model)
+            manual_api_version = st.text_input("API Version:", value=azure_openai_api_version)
+            
+            if manual_endpoint and manual_key:
+                try:
+                    client = AzureOpenAI(
+                        azure_endpoint=manual_endpoint,
+                        api_key=manual_key,
+                        api_version=manual_api_version
+                    )
+                    azure_openai_model = manual_model
+                    st.success("✅ 수동 설정으로 Azure OpenAI 클라이언트가 초기화되었습니다.")
+                except Exception as e:
+                    st.error(f"❌ Azure OpenAI 클라이언트 초기화 실패: {str(e)}")
 
 # 요약 함수
 def summarize_text(text, summary_type, max_tokens=150):
@@ -279,51 +275,68 @@ def process_excel_file(uploaded_file, max_tokens=150):
 def main():
     """메인 애플리케이션"""
     
-    # 사이드바에 사용법 안내
-    with st.sidebar:
-        st.header("📋 사용법")
+    # 사용법 안내를 메인 화면에 표시
+    st.header("📋 사용법")
+    
+    # 사용법을 탭으로 구성
+    tab1, tab2 = st.tabs(["🚀 빠른 시작", "📄 파일 형식"])
+    
+    with tab1:
         st.markdown("""
-        1. .env 파일에 Azure OpenAI 설정을 추가하거나 직접 입력하세요
-        2. Excel 파일을 업로드하세요
-        3. '요약 생성' 버튼을 클릭하세요
-        4. 결과를 확인하고 CSV로 다운로드하세요
+        #### 간단한 4단계로 인시던트 요약을 생성하세요!
         
-        **필요한 Excel 컬럼:**
-        - incident_id
-        - root_cause
-        - incident_repair  
-        - incident_plan
-        
-        **.env 파일 설정 예시:**
-        ```
-        OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-        OPENAI_KEY=your_api_key_here
-        CHAT_MODEL=iap-gpt-4o-mini
-        OPENAI_API_VERSION=2024-02-01
-        ```
+        1. **Azure OpenAI 설정** - .env 파일에 Azure OpenAI 설정을 추가하거나 사이드바에서 직접 입력하세요
+        2. **Excel 파일 업로드** - 인시던트 데이터가 포함된 Excel 파일을 업로드하세요
+        3. **요약 생성** - '요약 생성' 버튼을 클릭하여 AI 기반 요약을 생성하세요
+        4. **결과 다운로드** - 생성된 요약을 확인하고 CSV 파일로 다운로드하세요
         """)
         
-        # .env 파일 생성 도우미
-        with st.expander("🔧 .env 파일 생성 도우미"):
-            st.markdown("""
-            프로젝트 루트 디렉토리에 `.env` 파일을 생성하고 
-            다음 내용을 추가하세요:
-            """)
-            
-            env_content = """OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-OPENAI_KEY=your_api_key_here
-CHAT_MODEL=iap-gpt-4o-mini
-OPENAI_API_VERSION=2024-02-01"""
-            st.code(env_content, language="bash")
-            
-            st.markdown("""
-            **주의사항:**
-            - API 키는 절대 코드에 직접 포함하지 마세요
-            - .env 파일을 .gitignore에 추가하세요
-            - Azure OpenAI 리소스 정보를 정확히 입력하세요
-            """)
+        # 진행 상태 체크
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            if client:
+                st.success("✅ Azure OpenAI 연결됨")
+            else:
+                st.error("❌ Azure OpenAI 설정 필요")
+        
+        with col2:
+            st.info("📁 Excel 파일 업로드 대기")
+        
+        with col3:
+            st.info("⏳ 요약 생성 대기")
+        
+        with col4:
+            st.info("📥 다운로드 대기")
     
-    # 메인 영역
+    with tab2:
+        st.markdown("""
+        #### Excel 파일에 다음 컬럼이 포함되어야 합니다:
+        """)
+        
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            st.markdown("""
+            **필수 컬럼:**
+            - `incident_id` 
+            - `root_cause`
+            - `incident_repair`
+            - `incident_plan`
+            """)
+        
+        with col2:
+            st.markdown("""
+            **컬럼 설명:**
+            - 인시던트 고유 번호
+            - 장애 원인 상세 내용
+            - 복구 방법 및 조치사항
+            - 후속 과제 및 개선사항
+            """)
+        
+        st.info("💡 **팁:** 각 셀에는 상세한 텍스트 정보가 포함되어야 AI가 정확한 요약을 생성할 수 있습니다.")
+    
+    st.markdown("---")
+    
+    # 메인 작업 영역
     col1, col2 = st.columns([2, 1])
     
     with col1:

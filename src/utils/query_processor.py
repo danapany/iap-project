@@ -19,14 +19,6 @@ class QueryProcessor:
         self.ui_components = UIComponents()
         self.internet_search = InternetSearchManager(self.config)
     
-    def is_internet_search_enabled(self):
-        """인터넷 검색 토글 상태 확인"""
-        # 토글이 활성화되어 있고, SerpApi가 설정되어 있어야 함
-        toggle_enabled = st.session_state.get('internet_search_enabled', False)
-        serpapi_available = self.internet_search.is_available()
-        
-        return toggle_enabled and serpapi_available
-    
     def classify_query_type_with_llm(self, query):
         """LLM을 사용하여 쿼리 타입을 자동으로 분류"""
         try:
@@ -395,7 +387,7 @@ class QueryProcessor:
 - **🔍 상황 분석**: 문제 상황에 대한 기술적 분석
 - **💡 권장 해결방안**: 단계별 실행 가능한 조치
 - **⚠️ 주의사항**: 적용 시 고려해야 할 사항
-- **📄 추가 진단**: 근본 원인 파악을 위한 방법
+- **🔄 추가 진단**: 근본 원인 파악을 위한 방법
 - **📚 참고사항**: 관련 기술 문서나 모범 사례
 
 전문가 답변:"""
@@ -421,8 +413,7 @@ class QueryProcessor:
 **📋 정보 품질 안내:**
 - 검색 상태: {quality_message}
 - 답변 기준: 일반적인 IT 전문가 지식 및 경험
-- 추가 권장: 구체적 시스템 환경과 오류 로그 확인 필요성 강조
-- 주의사항: 일반적인 내용임을 명시하고 구체적 환경 고려 필요성 강조
+- 추가 권장: 구체적인 시스템 환경과 오류 로그 확인 필요
 
 **🔍 더 정확한 답변을 위한 제안:**
 - 구체적인 오류 메시지나 로그 정보 제공
@@ -460,15 +451,7 @@ class QueryProcessor:
 """
 
     def _perform_enhanced_internet_search(self, query, target_service_name, query_type, type_labels):
-        """향상된 IT 전문가 관점의 인터넷 검색 수행 (토글 상태 확인)"""
-        # 인터넷 검색 토글 상태 확인
-        if not self.is_internet_search_enabled():
-            if not st.session_state.get('internet_search_enabled', False):
-                st.info("🔒 인터넷 검색이 비활성화되어 있습니다. 활성화하려면 상단의 토글을 켜주세요.")
-            else:
-                st.warning("⚠️ SerpApi가 설정되지 않아 인터넷 검색을 사용할 수 없습니다.")
-            return
-        
+        """향상된 IT 전문가 관점의 인터넷 검색 수행"""
         try:
             # IT 전문가 관점의 기술적 검색어 생성
             technical_search_query = self._extract_technical_search_terms(query, target_service_name)
@@ -742,21 +725,18 @@ class QueryProcessor:
                             type_info = type_labels.get(query_type, '일반 문의')
                             st.info(f"✨ 이 답변은 '{target_service_name or '모든 서비스'}'에 {match_info}된 문서를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
                         
-                        # 향상된 인터넷 검색 필요성 판단 후 실행 (토글 상태 확인)
-                        if self.is_internet_search_enabled() and not self._should_skip_internet_search(query, query_type):
+                        # 향상된 인터넷 검색 필요성 판단 후 실행
+                        if self.internet_search.is_available() and not self._should_skip_internet_search(query, query_type):
                             st.markdown("---")
                             st.info("🔍 추가 정보를 위해 IT 전문가 관점의 인터넷 검색을 실행합니다...")
                             self._perform_enhanced_internet_search(query, target_service_name, query_type, type_labels)
-
-                        elif not self.is_internet_search_enabled():
-                            # 토글이 꺼져있거나 SerpApi가 없는 경우 알림
-                            if st.session_state.get('internet_search_enabled', False):
-                                st.info("⚠️ SerpApi가 설정되지 않아 인터넷 검색을 사용할 수 없습니다.")
+                        elif self._should_skip_internet_search(query, query_type):
+                            st.info("📊 이 질문은 내부 데이터를 기반으로 한 답변이 가장 정확합니다.")
                         
                         st.session_state.messages.append({"role": "assistant", "content": response})
                 else:
                     # 대체 검색 시도
-                    st.warning("🔄 포함 매칭으로도 결과가 없어 더 관대한 기준으로 재검색 중...")
+                    st.warning("📄 포함 매칭으로도 결과가 없어 더 관대한 기준으로 재검색 중...")
                     
                     # 매우 관대한 기준으로 재검색 (서비스명 포함 필터링 유지)
                     fallback_documents = self.search_manager.search_documents_fallback(query, target_service_name)
@@ -773,34 +753,27 @@ class QueryProcessor:
                             st.warning(f"⚠️ 이 답변은 '{target_service_name or '해당 조건'}'에 대한 관대한 기준의 검색 결과를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
                         
                         # 향상된 인터넷 검색 필요성 판단 후 실행 (대체 검색)
-                        if self.is_internet_search_enabled() and not self._should_skip_internet_search(query, query_type):
+                        if self.internet_search.is_available() and not self._should_skip_internet_search(query, query_type):
                             st.markdown("---")
                             st.info("🔍 추가 정보를 위해 IT 전문가 관점의 인터넷 검색을 실행합니다...")
                             self._perform_enhanced_internet_search(query, target_service_name, query_type, type_labels)
                         elif self._should_skip_internet_search(query, query_type):
                             st.info("📊 이 질문은 내부 데이터를 기반으로 한 답변이 가장 정확합니다.")
-                        elif not self.is_internet_search_enabled():
-                            if st.session_state.get('internet_search_enabled', False):
-                                st.info("⚠️ SerpApi가 설정되지 않아 인터넷 검색을 사용할 수 없습니다.")
                         
                         st.session_state.messages.append({"role": "assistant", "content": response})
                     else:
-                        # repair, cause 타입인 경우 자동 인터넷 검색 시도 (토글 상태 확인)
-                        if query_type in ['repair', 'cause'] and self.is_internet_search_enabled():
+                        # repair, cause 타입인 경우 자동 인터넷 검색 시도
+                        if query_type in ['repair', 'cause'] and self.internet_search.is_available():
                             st.info("🌐 내부 문서에서 관련 정보를 찾을 수 없어 IT 전문가 관점의 인터넷 검색을 시도합니다...")
                             self._perform_enhanced_internet_search(query, target_service_name, query_type, type_labels)
                         else:
                             # 향상된 인터넷 검색 필요성 판단 후 실행 (검색 실패 시)
-                            if self.is_internet_search_enabled() and not self._should_skip_internet_search(query, query_type):
+                            if self.internet_search.is_available() and not self._should_skip_internet_search(query, query_type):
                                 st.markdown("---")
                                 st.info("🔍 추가 정보를 위해 IT 전문가 관점의 인터넷 검색을 실행합니다...")
                                 self._perform_enhanced_internet_search(query, target_service_name, query_type, type_labels)
                             elif self._should_skip_internet_search(query, query_type):
                                 st.info("📊 이 질문은 내부 데이터를 기반으로 한 답변이 필요하지만, 관련 문서를 찾을 수 없습니다.")
-                                self._show_no_results_message(target_service_name, query_type, type_labels)
-                            elif not self.is_internet_search_enabled():
-                                if st.session_state.get('internet_search_enabled', False):
-                                    st.info("⚠️ SerpApi가 설정되지 않아 인터넷 검색을 사용할 수 없습니다.")
                                 self._show_no_results_message(target_service_name, query_type, type_labels)
                             else:
                                 self._show_no_results_message(target_service_name, query_type, type_labels)

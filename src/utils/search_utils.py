@@ -3,41 +3,135 @@ import re
 from config.settings import AppConfig
 
 class SearchManager:
-    """검색 관련 기능 관리 클래스"""
+    """검색 관련 기능 관리 클래스 - 인터넷 검색 지원 + RAG 기반 서비스명 추출"""
     
     def __init__(self, search_client, config=None):
         self.search_client = search_client
         # config가 None이면 새로 생성하여 안전장치 제공
         self.config = config if config else AppConfig()
+        # 서비스명 캐시 (성능 향상을 위해)
+        self._service_names_cache = None
+        self._cache_loaded = False
+    
+    @st.cache_data(ttl=3600)  # 1시간 캐시
+    def _load_service_names_from_rag(_self):
+        """RAG 데이터에서 실제 서비스명 목록을 가져와서 캐시 (조용한 로딩)"""
+        try:
+            # Azure Search에서 모든 고유한 서비스명 가져오기
+            results = _self.search_client.search(
+                search_text="*",  # 모든 문서 검색
+                top=1000,  # 충분한 수의 문서
+                select=["service_name"],
+                include_total_count=True
+            )
+            
+            service_names = set()
+            for result in results:
+                service_name = result.get("service_name", "").strip()
+                if service_name:
+                    service_names.add(service_name)
+            
+            # 서비스명을 길이별로 정렬 (긴 것부터 - 더 구체적인 매칭 우선)
+            sorted_service_names = sorted(list(service_names), key=len, reverse=True)
+            
+            # 로딩 완료 메시지는 표시하지 않음 (조용한 처리)
+            return sorted_service_names
+            
+        except Exception as e:
+            # 오류 시에만 경고 표시
+            st.warning(f"RAG 데이터에서 서비스명 로드 실패: {str(e)}")
+            return []
+    
+    def get_service_names_from_rag(self):
+        """RAG 데이터에서 서비스명 목록 가져오기 (캐시 활용)"""
+        if not self._cache_loaded:
+            self._service_names_cache = self._load_service_names_from_rag()
+            self._cache_loaded = True
+        return self._service_names_cache or []
     
     def extract_service_name_from_query(self, query):
-        """쿼리에서 서비스명을 추출 - 스페이스바, 대시(-), 슬러시(/), 플러스(+), 괄호(), 언더스코어(_) 모두 지원"""
-        import re
+        """RAG 데이터 기반 서비스명 추출 - 인터넷 검색 버전 (조용한 처리)"""
+        # RAG 데이터에서 실제 서비스명 목록 가져오기
+        rag_service_names = self.get_service_names_from_rag()
         
-        # 개선된 서비스명 패턴들 (모든 특수문자 포함)
+        if not rag_service_names:
+            # RAG 데이터 로드 실패 시에만 경고 표시
+            return self._extract_service_name_legacy(query)
+        
+        # 쿼리를 소문자로 변환하여 비교
+        query_lower = query.lower()
+        
+        # 1단계: 완전 일치 검색 (대소문자 무시) - 조용한 처리
+        for service_name in rag_service_names:
+            if service_name.lower() in query_lower:
+                # 성공 메시지 제거, 서비스명만 반환
+                return service_name
+        
+        # 2단계: 부분 일치 검색 (공백 제거 후) - 조용한 처리
+        query_no_space = re.sub(r'\s+', '', query_lower)
+        for service_name in rag_service_names:
+            service_name_no_space = re.sub(r'\s+', '', service_name.lower())
+            if service_name_no_space in query_no_space or query_no_space in service_name_no_space:
+                # 매칭 정보 메시지 제거, 서비스명만 반환
+                return service_name
+        
+        # 3단계: 단어별 매칭 (영문 단어 기준) - 조용한 처리
+        query_words = re.findall(r'[A-Za-z]+', query)
+        if query_words:
+            for service_name in rag_service_names:
+                service_words = re.findall(r'[A-Za-z]+', service_name)
+                # 쿼리의 영문 단어가 서비스명에 포함되어 있는지 확인
+                for query_word in query_words:
+                    if len(query_word) >= 3:  # 3자 이상의 의미있는 단어만
+                        for service_word in service_words:
+                            if query_word.lower() == service_word.lower():
+                                # 단어 매칭 정보 메시지 제거, 서비스명만 반환
+                                return service_name
+        
+        # 4단계: 유사도 기반 매칭 (편집 거리 사용) - 조용한 처리
+        best_match = self._find_best_similarity_match(query, rag_service_names)
+        if best_match:
+            # 유사도 매칭 정보 메시지 제거, 서비스명만 반환
+            return best_match
+        
+        # 매칭 실패 메시지 제거, None 반환
+        return None
+    
+    def _find_best_similarity_match(self, query, service_names, threshold=0.7):
+        """편집 거리 기반 유사도 매칭"""
+        def calculate_similarity(s1, s2):
+            """간단한 유사도 계산 (Jaccard 유사도)"""
+            s1_words = set(re.findall(r'[A-Za-z가-힣]+', s1.lower()))
+            s2_words = set(re.findall(r'[A-Za-z가-힣]+', s2.lower()))
+            
+            if not s1_words or not s2_words:
+                return 0
+            
+            intersection = len(s1_words.intersection(s2_words))
+            union = len(s1_words.union(s2_words))
+            
+            return intersection / union if union > 0 else 0
+        
+        best_score = 0
+        best_match = None
+        
+        for service_name in service_names:
+            similarity = calculate_similarity(query, service_name)
+            if similarity > best_score and similarity >= threshold:
+                best_score = similarity
+                best_match = service_name
+        
+        return best_match
+    
+    def _extract_service_name_legacy(self, query):
+        """기존 패턴 기반 서비스명 추출 (fallback) - 조용한 처리"""
+        # 기존 로직을 그대로 유지 (RAG 데이터 로드 실패시 사용)
         service_patterns = [
-            # 패턴 1: 서비스명 + 키워드 (모든 특수문자 조합)
             r'([A-Za-z][A-Za-z0-9_\-/\+\(\)\s]*[A-Za-z0-9_\-/\+\)])\s+(?:년도별|월별|건수|장애|현상|복구|서비스|통계|발생|발생일자|언제)',
-            
-            # 패턴 2: "서비스" 키워드 뒤의 서비스명
             r'서비스.*?([A-Za-z][A-Za-z0-9_\-/\+\(\)\s]*[A-Za-z0-9_\-/\+\)])',
-            
-            # 패턴 3: 문장 시작 부분의 서비스명
             r'^([A-Za-z][A-Za-z0-9_\-/\+\(\)\s]*[A-Za-z0-9_\-/\+\)])\s+(?!으로|에서|에게|에|을|를|이|가)',
-            
-            # 패턴 4: 따옴표로 둘러싸인 서비스명
             r'["\']([A-Za-z][A-Za-z0-9_\-/\+\(\)\s]*[A-Za-z0-9_\-/\+\)])["\']',
-            
-            # 패턴 5: 괄호로 둘러싸인 서비스명
             r'\(([A-Za-z][A-Za-z0-9_\-/\+\s]*[A-Za-z0-9_\-/\+])\)',
-            
-            # 패턴 6: 슬러시로 구분된 서비스명 (path 형태)
-            r'([A-Za-z][A-Za-z0-9_\-]*(?:/[A-Za-z0-9_\-]+)+)\s+(?:년도별|월별|건수|장애|현상|복구|서비스|통계|발생|발생일자|언제)',
-            
-            # 패턴 7: 플러스로 연결된 서비스명
-            r'([A-Za-z][A-Za-z0-9_\-]*(?:\+[A-Za-z0-9_\-]+)+)\s+(?:년도별|월별|건수|장애|현상|복구|서비스|통계|발생|발생일자|언제)',
-            
-            # 패턴 8: 단독으로 나타나는 서비스명 (최소 3자 이상)
             r'\b([A-Za-z][A-Za-z0-9_\-/\+\(\)]{2,}(?:\s+[A-Za-z0-9_\-/\+\(\)]+)*)\b'
         ]
         
@@ -45,13 +139,33 @@ class SearchManager:
             matches = re.findall(pattern, query, re.IGNORECASE)
             for match in matches:
                 service_name = match.strip()
-                
-                # 서비스명 유효성 검증
                 if self.is_valid_service_name(service_name):
                     return service_name
         
         return None
-
+    
+    def display_available_services(self, limit=10):
+        """사용 가능한 서비스명 목록 표시 (디버깅/참고용) - 인터넷 검색 버전"""
+        service_names = self.get_service_names_from_rag()
+        if service_names:
+            st.info(f"📋 **사용 가능한 서비스명 예시** (총 {len(service_names)}개 중 {limit}개)")
+            for i, service_name in enumerate(service_names[:limit]):
+                st.write(f"• {service_name}")
+            if len(service_names) > limit:
+                st.write(f"... 외 {len(service_names) - limit}개")
+    
+    def search_service_names(self, keyword):
+        """키워드로 서비스명 검색 (사용자 도움용)"""
+        service_names = self.get_service_names_from_rag()
+        matching_services = []
+        
+        keyword_lower = keyword.lower()
+        for service_name in service_names:
+            if keyword_lower in service_name.lower():
+                matching_services.append(service_name)
+        
+        return matching_services[:10]  # 최대 10개까지
+    
     def is_valid_service_name(self, service_name):
         """서비스명이 유효한지 검증"""
         # 기본 조건: 최소 길이 체크
@@ -117,22 +231,16 @@ class SearchManager:
     def calculate_hybrid_score(self, search_score, reranker_score):
         """검색 점수와 Reranker 점수를 조합하여 하이브리드 점수 계산"""
         if reranker_score > 0:
-            # Reranker 점수가 있는 경우: Reranker 점수를 주로 사용하되 검색 점수도 고려
-            # Reranker 점수는 보통 0-4 범위이므로 0-1로 정규화
             normalized_reranker = min(reranker_score / 4.0, 1.0)
-            # 검색 점수는 이미 0-1 범위
             normalized_search = min(search_score, 1.0)
-            
-            # 가중평균: Reranker 80%, 검색 점수 20%
             hybrid_score = (normalized_reranker * 0.8) + (normalized_search * 0.2)
         else:
-            # Reranker 점수가 없는 경우: 검색 점수만 사용
             hybrid_score = min(search_score, 1.0)
         
         return hybrid_score
 
     def advanced_filter_documents_v3(self, documents, query_type="default", query_text="", target_service_name=None):
-        """서비스명 포함 매칭을 지원하는 개선된 필터링"""
+        """서비스명 포함 매칭을 지원하는 개선된 필터링 - 조용한 처리"""
         
         # 동적 임계값 획득
         thresholds = self.config.get_dynamic_thresholds(query_type, query_text)
@@ -160,7 +268,7 @@ class SearchManager:
                 continue
             filter_stats['search_filtered'] += 1
             
-            # 2단계: 서비스명 포함 매칭 (개선된 방식)
+            # 2단계: RAG 기반 서비스명 포함 매칭 (조용한 처리)
             if target_service_name:
                 doc_service_name = doc.get('service_name', '').strip()
                 
@@ -177,7 +285,7 @@ class SearchManager:
                         'incident_id': doc.get('incident_id', ''),
                         'service_name': doc_service_name,
                         'expected_service': target_service_name,
-                        'reason': '서비스명 불일치 (정확/포함 모두 해당없음)'
+                        'reason': 'RAG 기반 서비스명 불일치'
                     })
                     continue
             else:
@@ -189,7 +297,7 @@ class SearchManager:
             if reranker_score >= thresholds['reranker_threshold']:
                 filter_stats['reranker_qualified'] += 1
                 match_type = doc.get('service_match_type', 'unknown')
-                doc['filter_reason'] = f"서비스명 {match_type} 매칭 + Reranker 고품질 (점수: {reranker_score:.2f})"
+                doc['filter_reason'] = f"RAG 기반 서비스명 {match_type} 매칭 + Reranker 고품질 (점수: {reranker_score:.2f})"
                 doc['final_score'] = reranker_score
                 doc['quality_tier'] = 'Premium'
                 filtered_docs.append(doc)
@@ -201,7 +309,7 @@ class SearchManager:
             if hybrid_score >= thresholds['hybrid_threshold']:
                 filter_stats['hybrid_qualified'] += 1
                 match_type = doc.get('service_match_type', 'unknown')
-                doc['filter_reason'] = f"서비스명 {match_type} 매칭 + 하이브리드 점수 통과 (점수: {hybrid_score:.2f})"
+                doc['filter_reason'] = f"RAG 기반 서비스명 {match_type} 매칭 + 하이브리드 점수 통과 (점수: {hybrid_score:.2f})"
                 doc['final_score'] = hybrid_score
                 doc['quality_tier'] = 'Standard'
                 filtered_docs.append(doc)
@@ -217,7 +325,7 @@ class SearchManager:
         # 최종 결과 수 제한 (동적 적용)
         final_docs = filtered_docs[:thresholds['max_results']]
        
-        # 간소화된 필터링 통계 표시 (요청된 항목만)
+        # 간소화된 필터링 통계 표시 (중간 과정 메시지 제거, 최종 결과만 표시)
         st.info(f"""
         📊 **서비스명 포함 매칭 기반 문서 필터링 결과**
         - 🔍 전체 검색 결과: {filter_stats['total']}개
@@ -231,15 +339,15 @@ class SearchManager:
         return final_docs
 
     def semantic_search_with_service_filter(self, query, target_service_name=None, query_type="default", top_k=20):
-        """서비스명 포함 검색을 지원하는 개선된 시맨틱 검색"""
+        """서비스명 포함 검색을 지원하는 개선된 시맨틱 검색 - 조용한 처리"""
         try:
-            # 서비스명 포함 검색을 위한 검색 쿼리 구성
+            # RAG 기반 서비스명 포함 검색을 위한 검색 쿼리 구성
             if target_service_name:
                 # 정확한 매칭과 포함 검색을 모두 지원
                 enhanced_query = f'(service_name:"{target_service_name}" OR service_name:*{target_service_name}*)'
                 if query != target_service_name:  # 원래 쿼리에 추가 조건이 있는 경우
                     enhanced_query += f" AND ({query})"
-                st.info(f"🎯 서비스명 포함 검색: {enhanced_query}")
+                # 검색 쿼리 구성 메시지 제거
             else:
                 enhanced_query = query
                 
@@ -297,9 +405,9 @@ class SearchManager:
             return self.search_documents_with_service_filter(query, target_service_name, query_type, top_k)
 
     def search_documents_with_service_filter(self, query, target_service_name=None, query_type="default", top_k=20):
-        """일반 검색에 서비스명 포함 필터링 적용"""
+        """일반 검색에 서비스명 포함 필터링 적용 - 조용한 처리"""
         try:
-            # 서비스명 포함 검색을 위한 검색 쿼리 구성
+            # RAG 기반 서비스명 포함 검색을 위한 검색 쿼리 구성
             if target_service_name:
                 enhanced_query = f'(service_name:"{target_service_name}" OR service_name:*{target_service_name}*)'
                 if query != target_service_name:
@@ -364,9 +472,9 @@ class SearchManager:
             return []
 
     def search_documents_fallback(self, query, target_service_name=None, top_k=15):
-        """매우 관대한 기준의 대체 검색 (포함 매칭 지원)"""
+        """매우 관대한 기준의 대체 검색 (포함 매칭 지원) - 조용한 처리"""
         try:
-            # 서비스명 포함 검색을 위한 검색 쿼리 구성
+            # RAG 기반 서비스명 포함 검색을 위한 검색 쿼리 구성
             if target_service_name:
                 enhanced_query = f'(service_name:"{target_service_name}" OR service_name:*{target_service_name}*)'
                 if query != target_service_name:
@@ -392,7 +500,7 @@ class SearchManager:
                 if score >= 0.1:  # 매우 낮은 기준
                     doc_service_name = result.get("service_name", "").strip()
                     
-                    # 서비스명 포함 필터링 (대체 검색에서도 적용)
+                    # RAG 기반 서비스명 포함 필터링 (대체 검색에서도 적용)
                     if target_service_name:
                         if not (doc_service_name.lower() == target_service_name.lower() or 
                                target_service_name.lower() in doc_service_name.lower() or 

@@ -1,6 +1,6 @@
 import streamlit as st
 
-class UIComponents:
+class UIComponentsLocal:
     """UI 컴포넌트 관리 클래스"""
     
     def render_main_ui(self):
@@ -247,9 +247,9 @@ class UIComponents:
         <h4>💬 질문예시</h4>
         <h6>* 복구방법 : 마이페이지 보험가입불가 현상 복구방법 알려줘<br>
         * 장애원인 : ERP EP업무 처리시 간헐적 접속불가현상에 대한 장애원인이 뭐야?<br>
-        * 장애현상 : 문자발송 불가 현상에 대한 과거 조치방법들 알려줘<br>
+        * 장애현상 : 문자발송 불가 현상에 대한 과거 조치방법 알려줘<br>
         * 장애이력 : 야간에 발생한 블록체인기반지역화폐 장애내역 알려줘<br>
-        * 장애건수 : 2025년 ERP 장애가 몇건이야? ※ 통계에 대한질의는 일부 부정확할 수 있습니다
+        * 장애건수 : 2025년 ERP 장애가 몇건이야? 
         </h6>
         </div>
         """
@@ -266,7 +266,6 @@ class UIComponents:
         - SEARCH_ENDPOINT: Azure AI Search 엔드포인트 URL  
         - SEARCH_API_KEY: Azure AI Search API 키
         - INDEX_REBUILD_NAME: 검색할 인덱스명
-        - SERPAPI_API_KEY: SerpApi 키 (인터넷 검색용, 선택사항)
 
         **.env 파일 예시:**
         ```
@@ -277,22 +276,14 @@ class UIComponents:
         SEARCH_ENDPOINT=https://your-search-service.search.windows.net
         SEARCH_API_KEY=your-search-api-key
         INDEX_REBUILD_NAME=your-index-name
-        SERPAPI_API_KEY=your-serpapi-key
         ```
         
-        **SerpApi 설정 방법:**
-        1. https://serpapi.com 에서 무료 계정 생성
-        2. API 키 발급 (월 100회 무료)
-        3. .env 파일에 SERPAPI_API_KEY 추가
+        **참고**: 로컬 검색 전용 버전에서는 SERPAPI_API_KEY가 필요하지 않습니다.
         """)
         
         st.write("**환경변수 상태:**")
         for var, status in env_status.items():
             st.write(f"{status} {var}")
-        
-        # SerpApi 미설정 시 경고 메시지
-        if "❌" in env_status.get("SERPAPI_API_KEY", ""):
-            st.warning("⚠️ SerpApi가 설정되지 않으면 repair/cause 타입 질문에서 내부 문서 부족 시 인터넷 검색을 사용할 수 없습니다.")
     
     def show_connection_error(self):
         """연결 오류 표시"""
@@ -347,7 +338,7 @@ class UIComponents:
             match_emoji = {"exact": "🎯", "partial": "🔍", "all": "📋"}.get(service_match_type, "❓")
             match_label = {"exact": "정확 매칭", "partial": "포함 매칭", "all": "전체", "unknown": "알 수 없음"}.get(service_match_type, "알 수 없음")
             
-            st.markdown(f"### {tier_emoji} **문서 {i+1}** - {quality_tier}급 {tier_color} {match_emoji} {match_label}")
+            st.markdown(f"### {tier_emoji} **문서 {i+1}** - {quality_tier}급 {tier_color} {match_emoji} {match_label} ")
             st.markdown(f"**선별 기준**: {filter_reason}")
             
             # 점수 정보 표시
