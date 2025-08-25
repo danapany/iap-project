@@ -60,6 +60,16 @@ def add_search_quality_selector():
         st.markdown("• `hybrid_threshold`: 종합 점수 최소값")
         st.markdown("• **중요**: 부정확한 결과 제거를 위해 임계값이 상향 조정되었습니다.")
     
+    # 서비스명 파일 정보 표시
+    with st.sidebar.expander("📁 서비스명 파일 정보"):
+        st.markdown("**파일 위치:** `config/service_names.txt`")
+        st.markdown("**매칭 방식:** 정확 매칭 + 포함 매칭 (공백 무시)")
+        st.markdown("**특징:**")
+        st.markdown("• 대소문자 구분 없음")
+        st.markdown("• 공백, 하이픈, 언더스코어 무시")
+        st.markdown("• 부분 매칭 지원")
+        st.markdown("• 유사도 기반 fallback 매칭")
+    
     return config
 
 def get_high_quality_config():
@@ -115,17 +125,17 @@ def apply_quality_config_to_app_config(app_config, quality_config):
     return app_config
 
 def main():
-    """메인 애플리케이션 실행 - 로컬 검색 전용"""
+    """메인 애플리케이션 실행 - 로컬 검색 전용 (파일 기반 서비스명 매칭)"""
     
     # 페이지 설정
     st.set_page_config(
-        page_title="트러블 체이서 챗봇 (로컬)",
+        page_title="트러블 체이서 챗봇 (파일 기반)",
         page_icon="🤖",
         layout="wide"
     )
     
     # 메인 페이지 제목
-    st.title("🤖 트러블 체이서 챗봇 (로컬 검색 전용)")
+    st.title("🤖 트러블 체이서 챗봇 (파일 기반 서비스명 매칭)")
     
     # 사이드바에 검색 품질 선택기 추가
     selected_quality_config = add_search_quality_selector()
@@ -167,7 +177,7 @@ def main():
     - 검색 점수 임계값: {selected_quality_config['search_threshold']} ({int(selected_quality_config['search_threshold']*100)}점 이상)
     - Reranker 점수 임계값: {selected_quality_config['reranker_threshold']} ({selected_quality_config['reranker_threshold']}점 이상)
     - 최대 결과 수: {selected_quality_config['max_results']}개
-    - ⚠️ **중요**: 정확성 향상을 위해 임계값이 상향 조정되었습니다.
+    - 📁 **서비스명 매칭**: config/service_names.txt 파일 기반 (공백 무시 매칭)
     """)
     
     # 사용자 입력 처리
@@ -191,11 +201,11 @@ def main():
         # 품질 설정에 따른 메시지 표시
         quality_level = selected_quality_config['quality_level']
         if quality_level == 'high':
-            st.info("🔒 고급 품질 설정으로 검색 중... (정확성 우선)")
+            st.info("🔒 고급 품질 설정으로 검색 중... (정확성 우선, 파일 기반)")
         elif quality_level == 'low':
-            st.info("🔓 초급 품질 설정으로 검색 중... (포괄성 우선)")
+            st.info("🔓 초급 품질 설정으로 검색 중... (포괄성 우선, 파일 기반)")
         else:
-            st.info("⚖️ 중급 품질 설정으로 검색 중... (균형 모드)")
+            st.info("⚖️ 중급 품질 설정으로 검색 중... (균형 모드, 파일 기반)")
         
         # 쿼리 처리 (업데이트된 config 전달)
         query_processor = QueryProcessorLocal(
