@@ -6,7 +6,7 @@ from utils.search_utils_local import SearchManagerLocal
 from utils.ui_components_local import UIComponentsLocal
 
 class QueryProcessorLocal:
-    """쿼리 처리 관리 클래스 - 로컬 검색 전용"""
+    """쿼리 처리 관리 클래스"""
     
     def __init__(self, azure_openai_client, search_client, model_name, config=None):
         self.azure_openai_client = azure_openai_client
@@ -179,55 +179,23 @@ class QueryProcessorLocal:
             return "죄송합니다. 응답을 생성하는 중 오류가 발생했습니다."
 
     def process_query(self, query, query_type=None):
-        """서비스명 포함 검색을 지원하는 개선된 쿼리 처리 - 로컬 검색 전용"""
+        """서비스명 포함 검색을 지원하는 개선된 쿼리 처리"""
         with st.chat_message("assistant"):
             # LLM 기반 쿼리 타입 자동 분류
             if query_type is None:
-                with st.spinner("🤖 질문 유형 분석 중..."):
+                with st.spinner("질문 유형 분석 중..."):
                     query_type = self.classify_query_type_with_llm(query)
-                    
-                    # 분류 결과 표시
-                    type_labels = {
-                        'repair': '🔧 복구방법 안내',
-                        'cause': '🔍 장애원인 분석',
-                        'similar': '📄 유사사례 참조', 
-                        'default': '📊 일반 문의'
-                    }
-                    st.info(f"📋 질문 유형: **{type_labels.get(query_type, '📊 일반 문의')}** (로컬 검색 전용)")
-            else:
-                type_labels = {
-                    'repair': '🔧 복구방법 안내',
-                    'cause': '🔍 장애원인 분석',
-                    'similar': '📄 유사사례 참조', 
-                    'default': '📊 일반 문의'
-                }
             
             # 서비스명 추출
             target_service_name = self.search_manager.extract_service_name_from_query(query)
             
-            if target_service_name:
-                st.success(f"🎯 감지된 대상 서비스: **{target_service_name}** (정확/포함 매칭 모두 지원)")
-            
-            with st.spinner("🎯 서비스명 포함 매칭 + 동적 임계값 기반 고품질 검색 중... (로컬 전용)"):
+            with st.spinner("문서 검색 중..."):
                 # 개선된 검색 함수 호출
                 documents = self.search_manager.semantic_search_with_service_filter(
                     query, target_service_name, query_type
                 )
                 
                 if documents:
-                    # 서비스명 매칭 검증 및 분류
-                    exact_matches = [doc for doc in documents if doc.get('service_match_type') == 'exact']
-                    partial_matches = [doc for doc in documents if doc.get('service_match_type') == 'partial']
-                    
-                    if exact_matches and partial_matches:
-                        st.success(f"✅ '{target_service_name}' 서비스: 정확 매칭 {len(exact_matches)}개, 포함 매칭 {len(partial_matches)}개")
-                    elif exact_matches:
-                        st.success(f"✅ '{target_service_name}' 서비스: 정확 매칭 {len(exact_matches)}개")
-                    elif partial_matches:
-                        st.info(f"📋 '{target_service_name}' 서비스: 포함 매칭 {len(partial_matches)}개")
-                    elif target_service_name:
-                        st.info(f"📋 '{target_service_name}' 관련 {len(documents)}개 문서가 선별되었습니다.")
-                    
                     premium_count = sum(1 for doc in documents if doc.get('quality_tier') == 'Premium')
                     standard_count = sum(1 for doc in documents if doc.get('quality_tier') == 'Standard')
                     basic_count = sum(1 for doc in documents if doc.get('quality_tier') == 'Basic')
@@ -260,68 +228,61 @@ class QueryProcessorLocal:
                         
                         yearly_total = sum(yearly_stats.values())
                         st.info(f"""
-                        📊 **집계 미리보기**
+                        집계 미리보기
                         - 전체 건수: {len(documents)}건
                         - 년도별 분포: {dict(sorted(yearly_stats.items()))}
                         - 년도별 합계: {yearly_total}건
-                        - 검증 상태: {'✅ 일치' if yearly_total == len(documents) else '⚠ 불일치'}
+                        - 검증 상태: {'일치' if yearly_total == len(documents) else '불일치'}
                         """)
                     
-                    st.success(f"🏆 {len(documents)}개의 매칭 문서 선별 완료! (Premium: {premium_count}개, Standard: {standard_count}개, Basic: {basic_count}개)")
+                    st.success(f"{len(documents)}개의 매칭 문서 선별 완료! (Premium: {premium_count}개, Standard: {standard_count}개, Basic: {basic_count}개)")
                     
                     # 검색된 문서 표시
-                    with st.expander("📋 매칭된 문서 보기"):
+                    with st.expander("매칭된 문서 보기"):
                         self.ui_components.display_documents_with_quality_info(documents)
                     
                     # RAG 응답 생성
-                    with st.spinner("💡 로컬 검색 기반 답변 생성 중..."):
+                    with st.spinner("답변 생성 중..."):
                         response = self.generate_rag_response_with_accurate_count(
                             query, documents, query_type
                         )
                         
-                        with st.expander("🤖 AI 답변 보기 (로컬 검색 전용)", expanded=True):
+                        with st.expander("AI 답변 보기", expanded=True):
                             st.write(response)
-                            match_info = "정확/포함 매칭" if exact_matches and partial_matches else "정확 매칭" if exact_matches else "포함 매칭"
-                            type_info = type_labels.get(query_type, '일반 문의')
-                            st.info(f"✨ 이 답변은 '{target_service_name or '모든 서비스'}'에 {match_info}된 문서를 바탕으로 **{type_info}** 형태로 생성되었습니다. (로컬 검색 전용)")
                         
                         st.session_state.messages.append({"role": "assistant", "content": response})
                 else:
                     # 대체 검색 시도
-                    st.warning("📄 포함 매칭으로도 결과가 없어 더 관대한 기준으로 재검색 중...")
+                    st.warning("포함 매칭으로도 결과가 없어 더 관대한 기준으로 재검색 중...")
                     
                     # 매우 관대한 기준으로 재검색 (서비스명 포함 필터링 유지)
                     fallback_documents = self.search_manager.search_documents_fallback(query, target_service_name)
                     
                     if fallback_documents:
-                        st.info(f"📋 대체 검색으로 {len(fallback_documents)}개 문서 발견")
+                        st.info(f"대체 검색으로 {len(fallback_documents)}개 문서 발견")
                         
                         response = self.generate_rag_response_with_accurate_count(
                             query, fallback_documents, query_type
                         )
-                        with st.expander("🤖 AI 답변 보기 (대체 검색)", expanded=True):
+                        with st.expander("AI 답변 보기 (대체 검색)", expanded=True):
                             st.write(response)
-                            type_info = type_labels.get(query_type, '일반 문의')
-                            st.warning(f"⚠️ 이 답변은 '{target_service_name or '해당 조건'}'에 대한 관대한 기준의 검색 결과를 바탕으로 **{type_info}** 형태로 생성되었습니다.")
                         
                         st.session_state.messages.append({"role": "assistant", "content": response})
                     else:
-                        self._show_no_results_message(target_service_name, query_type, type_labels)
+                        self._show_no_results_message(target_service_name, query_type)
     
-    def _show_no_results_message(self, target_service_name, query_type, type_labels):
+    def _show_no_results_message(self, target_service_name, query_type):
         """검색 결과가 없을 때 메시지 표시"""
         error_msg = f"""
-        📋 '{target_service_name or '해당 조건'}'에 해당하는 문서를 찾을 수 없습니다.
+        '{target_service_name or '해당 조건'}'에 해당하는 문서를 찾을 수 없습니다.
         
         **개선 방안:**
         - 서비스명의 일부만 입력해보세요 (예: 'API' 대신 'API_Link')
         - 다른 검색어를 시도해보세요
         - 전체 검색을 원하시면 서비스명을 제외하고 검색해주세요
-        
-        **참고**: 현재 시스템은 로컬 검색 전용이며, 서비스명 정확 매칭과 포함 매칭을 모두 지원합니다. **{type_labels.get(query_type, '일반 문의')}** 유형으로 분류되었습니다.
         """
         
-        with st.expander("🤖 AI 답변 보기", expanded=True):
+        with st.expander("AI 답변 보기", expanded=True):
             st.write(error_msg)
         
         st.session_state.messages.append({"role": "assistant", "content": error_msg})

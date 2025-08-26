@@ -9,11 +9,11 @@ from utils.query_processor_local import QueryProcessorLocal
 # 검색 품질 설정 변수 (여기서 직접 수정 가능)
 # =================================================================
 DEFAULT_QUALITY_LEVEL = "고급 (정확성 우선)"  # "고급 (정확성 우선)", "중급 (권장)", "초급 (포괄성 우선)"
-DEFAULT_SEARCH_THRESHOLD = 0.3     # 검색 점수 고급 0.35, 중급 0.3 초급 0.25 
-DEFAULT_RERANKER_THRESHOLD = 2.5    # Reranker 점수 고급 2.8, 중급 2.5 초급 2.2
-DEFAULT_MAX_RESULTS = 20             # 고급 6, 중급 8, 초급 10  
-DEFAULT_SEMANTIC_THRESHOLD = 0.4    # 의미적 유사성 임계값 고급 0.5, 중급 0.4, 초급 0.3
-DEFAULT_HYBRID_THRESHOLD = 0.5      # 종합 점수 임계값 고급 0.5, 중급 0.5, 초급 0.4
+DEFAULT_SEARCH_THRESHOLD = 0.25     # 검색 점수 임계값 (0.25 ~ 0.35)
+DEFAULT_RERANKER_THRESHOLD = 2.2    # Reranker 점수 임계값 (2.2 ~ 2.8)
+DEFAULT_MAX_RESULTS = 20             # 최대 결과 수 (6 ~ 10)
+DEFAULT_SEMANTIC_THRESHOLD = 0.3    # 의미적 유사성 임계값 (0.3 ~ 0.5)
+DEFAULT_HYBRID_THRESHOLD = 0.4      # 종합 점수 임계값 (0.4 ~ 0.6)
 
 # 사이드바 설정 함수 제거됨 - 상단 변수로 직접 설정
 
@@ -70,17 +70,17 @@ def apply_quality_config_to_app_config(app_config, quality_config):
     return app_config
 
 def main():
-    """메인 애플리케이션 실행 - 로컬 검색 전용 (파일 기반 서비스명 매칭)"""
+    """메인 애플리케이션 실행"""
     
     # 페이지 설정
     st.set_page_config(
-        page_title="트러블 체이서 챗봇 (파일 기반)",
+        page_title="트러블 체이서 챗봇",
         page_icon="🤖",
         layout="wide"
     )
     
     # 메인 페이지 제목
-    st.title("🤖 트러블 체이서 챗봇 (파일 기반 서비스명 매칭)")
+    st.title("🤖 트러블 체이서 챗봇")
     
     # 상단 변수 설정을 기본 품질 설정으로 사용
     if "고급" in DEFAULT_QUALITY_LEVEL:
@@ -138,15 +138,6 @@ def main():
         
         with st.chat_message("user"):
             st.write(user_query)
-        
-        # 품질 설정에 따른 메시지 표시
-        quality_level = selected_quality_config['quality_level']
-        if quality_level == 'high':
-            st.info("🔒 고급 품질 설정으로 검색 중... (정확성 우선, 파일 기반)")
-        elif quality_level == 'low':
-            st.info("🔓 초급 품질 설정으로 검색 중... (포괄성 우선, 파일 기반)")
-        else:
-            st.info("⚖️ 중급 품질 설정으로 검색 중... (균형 모드, 파일 기반)")
         
         # 쿼리 처리 (업데이트된 config 전달)
         query_processor = QueryProcessorLocal(
