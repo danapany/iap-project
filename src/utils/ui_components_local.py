@@ -1,10 +1,10 @@
 import streamlit as st
 
 class UIComponentsLocal:
-    """UI 컴포넌트 관리 클래스"""
+    """UI 컴포넌트 관리 클래스 - 쿼리 타입별 처리 정보 강화"""
     
     def render_main_ui(self):
-        """메인 UI 렌더링"""
+        """메인 UI 렌더링 - 적응형 처리 정보 포함"""
         html_code = """
         <style>
             * {
@@ -247,7 +247,7 @@ class UIComponentsLocal:
         <h4>💬 질문예시</h4>
         <h6>* 복구방법 : 마이페이지 보험가입불가 현상 복구방법 알려줘<br>
         * 장애원인 : ERP EP업무 처리시 간헐적 접속불가현상에 대한 장애원인이 뭐야?<br>
-        * 장애현상 : 케이티 커뮤니즈 문자발송 불가 현상에 대한 과거 조치방법 알려줘<br>
+        * 유사사례 : 문자발송 실패 현상에 대한 조치방법 알려줘<br>
         * 장애이력 : 야간에 발생한 블록체인기반지역화폐 장애내역 알려줘<br>
         * 장애건수 : 2025년 ERP 장애가 몇건이야? <p>
 
@@ -255,6 +255,7 @@ class UIComponentsLocal:
         ※ 대량조회가 안되도록 임계치 설정이 있으므로 통계성 질문은 일부 다를수있다는 점 양해 부탁드립니다.
         </font>
         </h6>
+        </div>
         </div>
         """
         
@@ -312,13 +313,13 @@ class UIComponentsLocal:
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     if message["role"] == "assistant":
-                        with st.expander("🤖 AI 답변 보기", expanded=True):
+                        with st.expander("AI 답변 보기", expanded=True):
                             st.write(message["content"])
                     else:
                         st.write(message["content"])
     
     def display_documents_with_quality_info(self, documents):
-        """품질 정보와 서비스 매칭 타입과 함께 문서 표시"""
+        """품질 정보와 처리 방식 정보를 포함한 향상된 문서 표시"""
         for i, doc in enumerate(documents):
             quality_tier = doc.get('quality_tier', 'Standard')
             filter_reason = doc.get('filter_reason', '기본 선별')
@@ -326,8 +327,11 @@ class UIComponentsLocal:
             search_score = doc.get('score', 0)
             reranker_score = doc.get('reranker_score', 0)
             final_score = doc.get('final_score', 0)
+            relevance_score = doc.get('relevance_score', None)
+            keyword_relevance = doc.get('keyword_relevance_score', None)
+            semantic_similarity = doc.get('semantic_similarity', None)
             
-            # 품질 등급에 따른 이모지와 색상
+            # 품질 등급에 따른 표시
             if quality_tier == 'Premium':
                 tier_emoji = "🏆"
                 tier_color = "🟢"
@@ -339,23 +343,56 @@ class UIComponentsLocal:
                 tier_color = "🔵"
             
             # 서비스 매칭 타입에 따른 표시
-            match_emoji = {"exact": "🎯", "partial": "🔍", "all": "📋"}.get(service_match_type, "❓")
-            match_label = {"exact": "정확 매칭", "partial": "포함 매칭", "all": "전체", "unknown": "알 수 없음"}.get(service_match_type, "알 수 없음")
+            match_emoji = {"exact": "🎯", "partial": "🔍", "all": "📋", "fallback": "🔄"}.get(service_match_type, "❓")
+            match_label = {
+                "exact": "정확 매칭", 
+                "partial": "포함 매칭", 
+                "all": "전체", 
+                "fallback": "대체 검색",
+                "unknown": "알 수 없음"
+            }.get(service_match_type, "알 수 없음")
             
-            st.markdown(f"### {tier_emoji} **문서 {i+1}** - {quality_tier}급 {tier_color} {match_emoji} {match_label} ")
+            st.markdown(f"### {tier_emoji} **문서 {i+1}** - {quality_tier}급 {tier_color} {match_emoji} {match_label}")
             st.markdown(f"**선별 기준**: {filter_reason}")
             
-            # 점수 정보 표시
-            score_col1, score_col2, score_col3 = st.columns(3)
-            with score_col1:
+            # 점수 정보 표시 (확장된 메트릭 포함)
+            score_cols = st.columns(4 if relevance_score or keyword_relevance or semantic_similarity else 3)
+            
+            with score_cols[0]:
                 st.metric("검색 점수", f"{search_score:.2f}")
-            with score_col2:
+            with score_cols[1]:
                 if reranker_score > 0:
                     st.metric("Reranker 점수", f"{reranker_score:.2f}")
                 else:
                     st.metric("Reranker 점수", "N/A")
-            with score_col3:
+            with score_cols[2]:
                 st.metric("최종 점수", f"{final_score:.2f}")
+            
+            # 추가 점수 정보 (적응형 처리에서 계산된 경우)
+            if len(score_cols) > 3:
+                with score_cols[3]:
+                    if relevance_score is not None:
+                        st.metric("관련성 점수", f"{relevance_score}점")
+                    elif keyword_relevance is not None:
+                        st.metric("키워드 점수", f"{keyword_relevance}점")
+                    elif semantic_similarity is not None:
+                        st.metric("의미 유사성", f"{semantic_similarity:.2f}")
+                    else:
+                        st.metric("추가 메트릭", "N/A")
+            
+            # 향상된 점수 정보 표시
+            if any([relevance_score, keyword_relevance, semantic_similarity]):
+                with st.expander("상세 점수 분석"):
+                    if relevance_score is not None:
+                        st.write(f"**LLM 관련성 점수**: {relevance_score}점 (70점 이상 통과)")
+                        validation_reason = doc.get('validation_reason', '검증됨')
+                        st.write(f"**검증 사유**: {validation_reason}")
+                    
+                    if keyword_relevance is not None:
+                        st.write(f"**키워드 관련성 점수**: {keyword_relevance}점 (30점 이상 관련)")
+                    
+                    if semantic_similarity is not None:
+                        st.write(f"**의미적 유사성**: {semantic_similarity:.2f} (0.3 이상 유사)")
             
             # 주요 정보 표시
             col1, col2 = st.columns(2)
@@ -374,6 +411,7 @@ class UIComponentsLocal:
                 st.write(f"**처리유형**: {doc['done_type']}")
                 st.write(f"**담당부서**: {doc['owner_depart']}")
             
+            # 상세 정보 표시 (축약된 형태)
             if doc['root_cause']:
                 st.write(f"**장애원인**: {doc['root_cause'][:200]}...")
             if doc['incident_repair']:
@@ -382,3 +420,101 @@ class UIComponentsLocal:
                 st.write(f"**복구공지**: {doc['repair_notice'][:200]}...")
             
             st.markdown("---")
+    
+    def display_processing_mode_info(self, query_type, processing_mode):
+        """처리 모드 정보 표시"""
+        mode_info = {
+            'accuracy_first': {
+                'name': '정확성 우선',
+                'color': '#ff6b6b',
+                'icon': '🎯',
+                'description': 'LLM 관련성 검증을 통한 최고 정확도 제공'
+            },
+            'coverage_first': {
+                'name': '포괄성 우선',
+                'color': '#4ecdc4',
+                'icon': '📋',
+                'description': '의미적 유사성 기반 광범위한 검색 결과 제공'
+            },
+            'balanced': {
+                'name': '균형 처리',
+                'color': '#45b7d1',
+                'icon': '⚖️',
+                'description': '정확성과 포괄성의 최적 균형'
+            }
+        }
+        
+        info = mode_info.get(processing_mode, mode_info['balanced'])
+        
+        st.markdown(f"""
+        <div style="
+            background-color: {info['color']}15;
+            border-left: 4px solid {info['color']};
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        ">
+            <strong>{info['icon']} {info['name']} ({query_type.upper()})</strong><br>
+            <small>{info['description']}</small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    def display_performance_metrics(self, metrics):
+        """성능 메트릭 표시"""
+        if not metrics:
+            return
+        
+        with st.expander("처리 성능 메트릭"):
+            cols = st.columns(len(metrics))
+            for i, (metric_name, value) in enumerate(metrics.items()):
+                with cols[i]:
+                    st.metric(metric_name.replace('_', ' ').title(), value)
+    
+    def show_query_optimization_tips(self, query_type):
+        """쿼리 타입별 최적화 팁 표시"""
+        tips = {
+            'repair': [
+                "서비스명과 장애현상을 모두 포함하세요",
+                "구체적인 오류 증상을 명시하세요",
+                "'복구방법', '해결방법' 키워드를 포함하세요"
+            ],
+            'cause': [
+                "장애 현상을 구체적으로 설명하세요",
+                "'원인', '이유', '왜' 등의 키워드를 포함하세요",
+                "발생 시점이나 조건을 명시하세요"
+            ],
+            'similar': [
+                "핵심 장애 현상만 간결하게 기술하세요",
+                "'유사', '비슷한', '동일한' 키워드를 포함하세요",
+                "서비스명이 불확실할 때 유용합니다"
+            ],
+            'default': [
+                "통계나 현황 조회 시 기간을 명시하세요",
+                "구체적인 서비스명이나 조건을 포함하세요",
+                "'건수', '통계', '현황' 등의 키워드를 활용하세요"
+            ]
+        }
+        
+        query_tips = tips.get(query_type, tips['default'])
+        
+        with st.expander(f"{query_type.upper()} 쿼리 최적화 팁"):
+            for tip in query_tips:
+                st.write(f"• {tip}")
+    
+    def display_validation_results(self, validation_result):
+        """쿼리 처리 검증 결과 표시"""
+        if not validation_result:
+            return
+        
+        if not validation_result['is_valid']:
+            st.warning("처리 결과에 주의사항이 있습니다.")
+        
+        if validation_result['warnings']:
+            with st.expander("경고사항"):
+                for warning in validation_result['warnings']:
+                    st.warning(warning)
+        
+        if validation_result['recommendations']:
+            with st.expander("개선 권장사항"):
+                for recommendation in validation_result['recommendations']:
+                    st.info(recommendation)
