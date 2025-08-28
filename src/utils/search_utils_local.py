@@ -7,7 +7,8 @@ class SearchManagerLocal:
     
     # 일반적인 용어로 사용되는 서비스명들 - 하드코딩 예외처리
     COMMON_TERM_SERVICES = {
-        'OTP': ['otp', '일회용비밀번호', '원타임패스워드', '2차인증', '이중인증'],
+        'OTP': ['otp', '일회용비밀번호', '원타임패스워드', '2차인증', '이중인증'],           
+        '본인인증': ['실명인증', '신원확인'],
         'API': ['api', 'Application Programming Interface', 'REST API', 'API호출'],
         'SMS': ['sms', '문자', '단문', 'Short Message Service', '문자메시지'],
         'VPN': ['vpn', 'Virtual Private Network', '가상사설망'],
