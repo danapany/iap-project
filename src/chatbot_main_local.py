@@ -160,16 +160,6 @@ def main():
     if 'messages' not in st.session_state:
         st.session_state.messages = []
     
-    # 성능 향상 안내
-    if len(st.session_state.messages) == 0:
-        st.success("시스템 준비 완료! 질문 유형을 자동 분석하여 최적화된 답변을 제공합니다.")
-        
-        # 실시간 처리 모드 표시
-        cols = st.columns(4)
-        for i, (query_type, desc) in enumerate(processing_modes.items()):
-            with cols[i]:
-                st.markdown(f"**{query_type.upper()}**")
-                st.markdown(f"<small>{desc}</small>", unsafe_allow_html=True)
     
     # 채팅 메시지 표시
     ui_components.display_chat_messages()
@@ -201,22 +191,6 @@ def main():
         )
         query_processor.process_query(user_query)
 
-    # 하단 정보 표시
-    with st.expander("시스템 정보", expanded=False):
-        st.markdown(f"""
-        **현재 설정**: {selected_quality_config['description']}
-        
-        **처리 방식**:
-        - repair/cause: {processing_modes['repair']}
-        - similar/default: {processing_modes['similar']}
-        
-        **검색 품질 임계값**:
-        - 검색 점수: {selected_quality_config['search_threshold']}
-        - Reranker: {selected_quality_config['reranker_threshold']}
-        - 최대 결과: {selected_quality_config['max_results']}개
-        
-        **AI 모델**: {config.azure_openai_model}
-        """)
 
 if __name__ == "__main__":
     main()

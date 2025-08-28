@@ -1,13 +1,18 @@
 AI 통화비서
+AI통화비서
 AI고객센터
+AI 고객센터
 API_Link_GW
 BI/DW
+BIDW
 BI신용평가정보서비스
 BSS-IoT
 CAPRI
 CRAB
 CVSaaS플랫폼-Cloud
 Dev-Space
+Dev Space
+d-Space
 EPC-cloud-서버
 ERP
 GiGAGenie호텔
@@ -19,6 +24,7 @@ ICIS
 IS만족센터
 ITO운영VDI
 IT-포털
+IT포털
 KOS-Billing
 KOS-CRM(B2B)
 KOS-CRM(B2C)
@@ -37,11 +43,16 @@ KT 안심박스
 KT 웹메일
 KTAICC
 KT-MEG+
+KT MEG
+KT-MEG
+MEG+
 KT내비
 KT메신저
 KT멤버십 앱
 KT멤버십VAN대행
 KT샵
+KT숍
+KT Shop
 KT원격오피스
 KT전자서명인증시스템
 LVSaaS플랫폼-Cloud
@@ -51,12 +62,15 @@ OSCA
 OSS-OM
 OTP
 PC-DRM
+PC DRM
 RCS중계
 RCS허브
 SCAP
 SHUB
 SHUB(IAMUI)
 SHUB(SCAP)
+IAMUI
+SCAP
 SoIP-HDS인증
 VSaaS
 Y박스
@@ -76,6 +90,7 @@ Y박스
 마이크로소프트365
 마이페이지
 모바일KATE
+mKATE
 미디어광고플랫폼
 미디어인증
 벨링콘텐츠
@@ -110,10 +125,12 @@ Y박스
 침입차단
 케어몬
 케이티 커뮤니즈
+케이티커뮤니즈
 케이티 커뮤니즈 게이트웨이
 케이티닷컴
 통신빅데이터플랫폼
 통합IDMS
+IDMS
 통합NMS
 통합과금
 통합쿠폰플랫폼
