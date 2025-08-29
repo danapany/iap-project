@@ -6,7 +6,7 @@ from utils.search_utils_local import SearchManagerLocal
 from utils.ui_components_local import UIComponentsLocal
 
 class QueryProcessorLocal:
-    """쿼리 처리 관리 클래스 - 쿼리 타입별 최적화된 적응형 처리 시스템"""
+    """쿼리 처리 관리 클래스 - 시간대/요일 기반 필터링 지원 추가"""
     
     def __init__(self, azure_openai_client, search_client, model_name, config=None):
         self.azure_openai_client = azure_openai_client
@@ -16,8 +16,113 @@ class QueryProcessorLocal:
         self.search_manager = SearchManagerLocal(search_client, self.config)
         self.ui_components = UIComponentsLocal()
     
+    def extract_time_conditions(self, query):
+        """쿼리에서 시간대/요일 조건 추출"""
+        time_conditions = {
+            'daynight': None,  # '주간' 또는 '야간'
+            'week': None,      # 요일
+            'is_time_query': False
+        }
+        
+    def extract_department_conditions(self, query):
+        """쿼리에서 부서 관련 조건 추출"""
+        department_conditions = {
+            'owner_depart': None,  # 특정 부서명
+            'is_department_query': False
+        }
+        
+        # 부서 관련 키워드 감지
+        department_keywords = [
+            '담당부서', '조치부서', '처리부서', '책임부서', '관리부서',
+            '부서', '팀', '조직', '담당', '처리', '조치', '관리'
+        ]
+        
+        # 부서 질문인지 확인
+        if any(keyword in query for keyword in department_keywords):
+            department_conditions['is_department_query'] = True
+        
+        # 특정 부서명 추출 (일반적인 부서명 패턴)
+        department_patterns = [
+            r'\b(개발|운영|기술|시스템|네트워크|보안|DB|데이터베이스|인프라|클라우드)(?:부서|팀|파트)?\b',
+            r'\b(고객|서비스|상담|지원|헬프데스크)(?:부서|팀|파트)?\b',
+            r'\b(IT|정보시스템|정보기술|전산)(?:부서|팀|파트)?\b',
+            r'\b([가-힣]+)(?:부서|팀|파트)\b'
+        ]
+        
+        for pattern in department_patterns:
+            matches = re.findall(pattern, query, re.IGNORECASE)
+            if matches:
+                # 첫 번째 매칭된 부서명 사용
+                department_conditions['owner_depart'] = matches[0]
+                break
+        
+        return department_conditions
+    
+    def extract_time_conditions(self, query):
+        """쿼리에서 시간대/요일 조건 추출"""
+        time_conditions = {
+            'daynight': None,  # '주간' 또는 '야간'
+            'week': None,      # 요일
+            'is_time_query': False
+        }
+        
+        # 주간/야간 패턴 검색
+        daynight_patterns = [
+            r'\b(야간|밤|새벽|심야|야시간)\b',
+            r'\b(주간|낮|오전|오후|주시간|일과시간)\b'
+        ]
+        
+        for pattern in daynight_patterns:
+            matches = re.findall(pattern, query, re.IGNORECASE)
+            if matches:
+                time_conditions['is_time_query'] = True
+                for match in matches:
+                    if match in ['야간', '밤', '새벽', '심야', '야시간']:
+                        time_conditions['daynight'] = '야간'
+                    elif match in ['주간', '낮', '오전', '오후', '주시간', '일과시간']:
+                        time_conditions['daynight'] = '주간'
+        
+        # 요일 패턴 검색
+        week_patterns = [
+            r'\b(월요일|월)\b',
+            r'\b(화요일|화)\b', 
+            r'\b(수요일|수)\b',
+            r'\b(목요일|목)\b',
+            r'\b(금요일|금)\b',
+            r'\b(토요일|토)\b',
+            r'\b(일요일|일)\b',
+            r'\b(평일|주중)\b',
+            r'\b(주말|토일)\b'
+        ]
+        
+        for pattern in week_patterns:
+            matches = re.findall(pattern, query, re.IGNORECASE)
+            if matches:
+                time_conditions['is_time_query'] = True
+                for match in matches:
+                    if match in ['월요일', '월']:
+                        time_conditions['week'] = '월'
+                    elif match in ['화요일', '화']:
+                        time_conditions['week'] = '화'
+                    elif match in ['수요일', '수']:
+                        time_conditions['week'] = '수'
+                    elif match in ['목요일', '목']:
+                        time_conditions['week'] = '목'
+                    elif match in ['금요일', '금']:
+                        time_conditions['week'] = '금'
+                    elif match in ['토요일', '토']:
+                        time_conditions['week'] = '토'
+                    elif match in ['일요일', '일']:
+                        time_conditions['week'] = '일'
+                    elif match in ['평일', '주중']:
+                        time_conditions['week'] = '평일'
+                    elif match in ['주말', '토일']:
+                        time_conditions['week'] = '주말'
+        
+        return time_conditions
+    
     def classify_query_type_with_llm(self, query):
-        """LLM을 사용하여 쿼리 타입을 자동으로 분류"""
+        """LLM을 사용하여 쿼리 타입을 자동으로 분류 - 시간 관련 쿼리 지원"""
         try:
             classification_prompt = f"""
 다음 사용자 질문을 분석하여 적절한 카테고리를 선택해주세요.
@@ -32,8 +137,8 @@ class QueryProcessorLocal:
 3. **similar**: 서비스명 없이 장애현상만으로 유사사례 문의
    - 예: "접속불가 현상 유사사례", "응답지연 동일현상 복구방법"
    
-4. **default**: 그 외의 모든 경우 (통계, 건수, 일반 문의 등)
-   - 예: "년도별 건수", "장애 통계", "서비스 현황"
+4. **default**: 그 외의 모든 경우 (통계, 건수, 일반 문의, 시간대별 조회 등)
+   - 예: "년도별 건수", "장애 통계", "서비스 현황", "야간에 발생한 장애", "주말 장애 현황"
 
 **사용자 질문:** {query}
 
@@ -155,9 +260,30 @@ class QueryProcessorLocal:
         
         return documents
 
-    def generate_rag_response_with_adaptive_processing(self, query, documents, query_type="default"):
-        """쿼리 타입별 적응형 RAG 응답 생성"""
+    def generate_rag_response_with_adaptive_processing(self, query, documents, query_type="default", time_conditions=None, department_conditions=None):
+        """쿼리 타입별 적응형 RAG 응답 생성 - 시간 조건 및 부서 조건 지원"""
         try:
+            # 시간 조건이 있는 경우 문서 필터링
+            if time_conditions and time_conditions.get('is_time_query'):
+                documents = self.search_manager.filter_documents_by_time_conditions(documents, time_conditions)
+                
+                if not documents:
+                    time_desc = []
+                    if time_conditions.get('daynight'):
+                        time_desc.append(f"{time_conditions['daynight']}")
+                    if time_conditions.get('week'):
+                        time_desc.append(f"{time_conditions['week']}")
+                    
+                    return f"{''.join(time_desc)} 조건에 해당하는 장애 내역을 찾을 수 없습니다. 다른 검색 조건을 시도해보세요."
+            
+            # 부서 조건이 있는 경우 문서 필터링
+            if department_conditions and department_conditions.get('is_department_query'):
+                documents = self.search_manager.filter_documents_by_department_conditions(documents, department_conditions)
+                
+                if not documents:
+                    dept_desc = department_conditions.get('owner_depart', '해당 부서')
+                    return f"{dept_desc} 조건에 해당하는 장애 내역을 찾을 수 없습니다. 다른 검색 조건을 시도해보세요."
+            
             # 쿼리 타입별 처리 방식 결정
             use_llm_validation = query_type in ['repair', 'cause']
             
@@ -185,11 +311,14 @@ class QueryProcessorLocal:
                 processing_info = "포괄적 검색 결과 활용"
                 st.success(f"✅ 포괄적 처리 완료: {len(processing_documents)}개 문서 활용")
 
-            # 집계 정보 계산
+            # 집계 정보 계산 (시간 조건 및 부서 조건 반영)
             total_count = len(processing_documents)
             yearly_stats = {}
+            time_stats = {'daynight': {}, 'week': {}}
+            department_stats = {}
             
             for doc in processing_documents:
+                # 년도 통계
                 error_date = doc.get('error_date', '')
                 year_from_date = None
                 if error_date and len(error_date) >= 4:
@@ -208,21 +337,68 @@ class QueryProcessorLocal:
                 final_year = year_from_date or year_from_field
                 if final_year:
                     yearly_stats[final_year] = yearly_stats.get(final_year, 0) + 1
+                
+                # 시간대 통계
+                daynight = doc.get('daynight', '')
+                if daynight:
+                    time_stats['daynight'][daynight] = time_stats['daynight'].get(daynight, 0) + 1
+                
+                # 요일 통계  
+                week = doc.get('week', '')
+                if week:
+                    time_stats['week'][week] = time_stats['week'].get(week, 0) + 1
+                
+                # 부서 통계
+                owner_depart = doc.get('owner_depart', '')
+                if owner_depart:
+                    department_stats[owner_depart] = department_stats.get(owner_depart, 0) + 1
             
             yearly_total = sum(yearly_stats.values())
             
             # 컨텍스트 구성
             context_parts = []
             
+            # 시간 조건 정보 추가
+            time_condition_info = ""
+            if time_conditions and time_conditions.get('is_time_query'):
+                time_desc = []
+                if time_conditions.get('daynight'):
+                    time_desc.append(f"시간대: {time_conditions['daynight']}")
+                if time_conditions.get('week'):
+                    time_desc.append(f"요일: {time_conditions['week']}")
+                time_condition_info = f" - 시간 조건: {', '.join(time_desc)}"
+            
+            # 부서 조건 정보 추가
+            department_condition_info = ""
+            if department_conditions and department_conditions.get('is_department_query'):
+                if department_conditions.get('owner_depart'):
+                    department_condition_info = f" - 부서 조건: {department_conditions['owner_depart']}"
+                else:
+                    department_condition_info = f" - 부서별 조회"
+            
             stats_info = f"""
-=== 정확한 집계 정보 ({processing_info}) ===
+=== 정확한 집계 정보 ({processing_info}{time_condition_info}{department_condition_info}) ===
 전체 문서 수: {total_count}건
 년도별 분포: {dict(sorted(yearly_stats.items()))}
 년도별 합계: {yearly_total}건
 집계 검증: {'일치' if yearly_total == total_count else '불일치 - 재계산 필요'}
 처리 방식: {'정확성 우선 (LLM 검증)' if use_llm_validation else '포괄성 우선 (광범위 검색)'}
-===========================
 """
+            
+            # 시간 통계 추가 (시간 쿼리인 경우)
+            if time_conditions and time_conditions.get('is_time_query'):
+                if time_stats['daynight']:
+                    stats_info += f"시간대별 분포: {time_stats['daynight']}\n"
+                if time_stats['week']:
+                    stats_info += f"요일별 분포: {time_stats['week']}\n"
+            
+            # 부서 통계 추가 (부서 쿼리인 경우)
+            if department_conditions and department_conditions.get('is_department_query'):
+                if department_stats:
+                    stats_info += f"부서별 분포: {department_stats}\n"
+            
+            stats_info += "==========================="
+            
             context_parts.append(stats_info)
             
             for i, doc in enumerate(processing_documents):
@@ -235,7 +411,19 @@ class QueryProcessorLocal:
                 
                 validation_info = f" - 관련성: {relevance_score}점 ({validation_reason})" if use_llm_validation else " - 포괄적 검색"
                 
-                context_part = f"""문서 {i+1} [{quality_tier}급 - {filter_reason} - {service_match_type} 매칭{validation_info}]:
+                # 시간 정보 추가
+                time_info = ""
+                if doc.get('daynight'):
+                    time_info += f" - 시간대: {doc.get('daynight')}"
+                if doc.get('week'):
+                    time_info += f" - 요일: {doc.get('week')}"
+                
+                # 부서 정보 추가
+                department_info = ""
+                if doc.get('owner_depart'):
+                    department_info += f" - 담당부서: {doc.get('owner_depart')}"
+                
+                context_part = f"""문서 {i+1} [{quality_tier}급 - {filter_reason} - {service_match_type} 매칭{validation_info}{time_info}{department_info}]:
 장애 ID: {doc['incident_id']}
 서비스명: {doc['service_name']}
 장애시간: {doc['error_time']}
@@ -299,8 +487,14 @@ class QueryProcessorLocal:
             return "죄송합니다. 응답을 생성하는 중 오류가 발생했습니다."
 
     def process_query(self, query, query_type=None):
-        """쿼리 타입별 최적화된 처리 로직을 적용한 메인 쿼리 처리"""
+        """쿼리 타입별 최적화된 처리 로직을 적용한 메인 쿼리 처리 - 시간 조건 및 부서 조건 지원"""
         with st.chat_message("assistant"):
+            # 시간 조건 추출
+            time_conditions = self.extract_time_conditions(query)
+            
+            # 부서 조건 추출
+            department_conditions = self.extract_department_conditions(query)
+            
             # 1단계: LLM 기반 쿼리 타입 자동 분류
             if query_type is None:
                 with st.spinner("🔍 질문 유형 분석 중..."):
@@ -308,9 +502,25 @@ class QueryProcessorLocal:
                     
                 # 처리 방식 안내
                 if query_type in ['repair', 'cause']:
-                    st.info(f"📝 질문 유형: **{query_type.upper()}** (🎯 정확성 우선 처리 - LLM 검증 적용)")
+                    st.info(f"🔍 질문 유형: **{query_type.upper()}** (🎯 정확성 우선 처리 - LLM 검증 적용)")
                 else:
-                    st.info(f"📝 질문 유형: **{query_type.upper()}** (📋 포괄성 우선 처리 - 광범위한 검색)")
+                    st.info(f"🔍 질문 유형: **{query_type.upper()}** (📋 포괄성 우선 처리 - 광범위한 검색)")
+            
+            # 시간 조건 안내
+            if time_conditions.get('is_time_query'):
+                time_desc = []
+                if time_conditions.get('daynight'):
+                    time_desc.append(f"시간대: {time_conditions['daynight']}")
+                if time_conditions.get('week'):
+                    time_desc.append(f"요일: {time_conditions['week']}")
+                st.info(f"⏰ 시간 조건 감지: {', '.join(time_desc)}")
+            
+            # 부서 조건 안내
+            if department_conditions.get('is_department_query'):
+                if department_conditions.get('owner_depart'):
+                    st.info(f"🏢 부서 조건 감지: {department_conditions['owner_depart']}")
+                else:
+                    st.info(f"🏢 부서별 조회 요청 감지")
             
             # 2단계: 서비스명 추출
             target_service_name = self.search_manager.extract_service_name_from_query(query)
@@ -335,6 +545,8 @@ class QueryProcessorLocal:
                     # 집계 미리보기 (집계 관련 질문인 경우)
                     if is_count_query:
                         yearly_stats = {}
+                        time_stats = {'daynight': {}, 'week': {}}
+                        
                         for doc in documents:
                             error_date = doc.get('error_date', '')
                             year_from_date = None
@@ -354,16 +566,34 @@ class QueryProcessorLocal:
                             final_year = year_from_date or year_from_field
                             if final_year:
                                 yearly_stats[final_year] = yearly_stats.get(final_year, 0) + 1
+                            
+                            # 시간 통계
+                            daynight = doc.get('daynight', '')
+                            if daynight:
+                                time_stats['daynight'][daynight] = time_stats['daynight'].get(daynight, 0) + 1
+                            
+                            week = doc.get('week', '')
+                            if week:
+                                time_stats['week'][week] = time_stats['week'].get(week, 0) + 1
                         
                         yearly_total = sum(yearly_stats.values())
                         processing_method = "정확성 우선" if query_type in ['repair', 'cause'] else "포괄성 우선"
-                        st.info(f"""
+                        
+                        preview_info = f"""
                         📊 집계 미리보기 ({processing_method} 처리 예정)
                         - 전체 건수: {len(documents)}건
                         - 년도별 분포: {dict(sorted(yearly_stats.items()))}
                         - 년도별 합계: {yearly_total}건
                         - 검증 상태: {'일치' if yearly_total == len(documents) else '불일치'}
-                        """)
+                        """
+                        
+                        if time_conditions.get('is_time_query') and (time_stats['daynight'] or time_stats['week']):
+                            if time_stats['daynight']:
+                                preview_info += f"\n                        - 시간대별 분포: {time_stats['daynight']}"
+                            if time_stats['week']:
+                                preview_info += f"\n                        - 요일별 분포: {time_stats['week']}"
+                        
+                        st.info(preview_info)
                     
                     st.success(f"✅ {len(documents)}개의 매칭 문서 선별 완료! (🏆 Premium: {premium_count}개, 🎯 Standard: {standard_count}개, 📋 Basic: {basic_count}개)")
                     
@@ -374,7 +604,7 @@ class QueryProcessorLocal:
                     # 4단계: 적응형 RAG 응답 생성
                     with st.spinner("🤖 AI 답변 생성 중..."):
                         response = self.generate_rag_response_with_adaptive_processing(
-                            query, documents, query_type
+                            query, documents, query_type, time_conditions, department_conditions
                         )
                         
                         processing_type = "🎯 정확성 우선 처리" if query_type in ['repair', 'cause'] else "📋 포괄성 우선 처리"
@@ -393,25 +623,39 @@ class QueryProcessorLocal:
                         st.info(f"🔄 대체 검색으로 {len(fallback_documents)}개 문서 발견")
                         
                         response = self.generate_rag_response_with_adaptive_processing(
-                            query, fallback_documents, query_type
+                            query, fallback_documents, query_type, time_conditions
                         )
                         with st.expander("🤖 AI 답변 (대체 검색)", expanded=True):
                             st.write(response)
                         
                         st.session_state.messages.append({"role": "assistant", "content": response})
                     else:
-                        self._show_no_results_message(target_service_name, query_type)
+                        self._show_no_results_message(target_service_name, query_type, time_conditions)
     
-    def _show_no_results_message(self, target_service_name, query_type):
-        """검색 결과가 없을 때 개선 방안 제시"""
+    def _show_no_results_message(self, target_service_name, query_type, time_conditions=None):
+        """검색 결과가 없을 때 개선 방안 제시 - 시간 조건 안내 포함"""
+        time_condition_desc = ""
+        if time_conditions and time_conditions.get('is_time_query'):
+            time_desc = []
+            if time_conditions.get('daynight'):
+                time_desc.append(f"시간대: {time_conditions['daynight']}")
+            if time_conditions.get('week'):
+                time_desc.append(f"요일: {time_conditions['week']}")
+            time_condition_desc = f" ({', '.join(time_desc)} 조건)"
+        
         error_msg = f"""
-        '{target_service_name or '해당 조건'}'에 해당하는 문서를 찾을 수 없습니다.
+        '{target_service_name or '해당 조건'}{time_condition_desc}'에 해당하는 문서를 찾을 수 없습니다.
         
         **🔧 개선 방안:**
         - 서비스명의 일부만 입력해보세요 (예: 'API' 대신 'API_Link')
         - 다른 검색어를 시도해보세요
         - 전체 검색을 원하시면 서비스명을 제외하고 검색해주세요
         - 더 일반적인 키워드를 사용해보세요
+        
+        **시간 조건 관련 개선 방안:**
+        - 시간대 조건을 제거해보세요 (주간/야간)
+        - 요일 조건을 제거해보세요
+        - 더 넓은 시간 범위로 검색해보세요
         
         **💡 {query_type.upper()} 쿼리 최적화 팁:**
         """

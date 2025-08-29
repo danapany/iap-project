@@ -1,7 +1,7 @@
 import streamlit as st
 
 class UIComponentsLocal:
-    """UI 컴포넌트 관리 클래스 - 쿼리 타입별 처리 정보 강화"""
+    """UI 컴포넌트 관리 클래스 - 시간대/요일 정보 표시 지원 추가"""
     
     def render_main_ui(self):
         """메인 UI 렌더링 - 적응형 처리 정보 포함"""
@@ -249,7 +249,7 @@ class UIComponentsLocal:
         * 장애원인 : ERP EP업무 처리시 간헐적 접속불가현상에 대한 장애원인이 뭐야?<br>
         * 유사사례 : 문자발송 실패 현상에 대한 조치방법 알려줘<br>
         * 장애이력 : 야간에 발생한 블록체인기반지역화폐 장애내역 알려줘<br>
-        * 장애건수 : 2025년 ERP 장애가 몇건이야? <p>
+        * 장애건수 : 2025년 ERP 장애가 몇건이야?<p>
 
         <font color="red"> ※ 서비스명을 정확히 입력하시고 같이 검색하시면 보다 더 정확한 답변을 얻을 수 있습니다<br>
         ※ 대량조회가 안되도록 임계치 설정이 있으므로 통계성 질문은 일부 다를수있다는 점 양해 부탁드립니다.
@@ -319,7 +319,7 @@ class UIComponentsLocal:
                         st.write(message["content"])
     
     def display_documents_with_quality_info(self, documents):
-        """품질 정보와 처리 방식 정보를 포함한 향상된 문서 표시"""
+        """품질 정보와 처리 방식 정보를 포함한 향상된 문서 표시 - 시간 정보 추가"""
         for i, doc in enumerate(documents):
             quality_tier = doc.get('quality_tier', 'Standard')
             filter_reason = doc.get('filter_reason', '기본 선별')
@@ -330,6 +330,10 @@ class UIComponentsLocal:
             relevance_score = doc.get('relevance_score', None)
             keyword_relevance = doc.get('keyword_relevance_score', None)
             semantic_similarity = doc.get('semantic_similarity', None)
+            
+            # 시간 정보
+            daynight = doc.get('daynight', '')
+            week = doc.get('week', '')
             
             # 품질 등급에 따른 표시
             if quality_tier == 'Premium':
@@ -352,7 +356,15 @@ class UIComponentsLocal:
                 "unknown": "알 수 없음"
             }.get(service_match_type, "알 수 없음")
             
-            st.markdown(f"### {tier_emoji} **문서 {i+1}** - {quality_tier}급 {tier_color} {match_emoji} {match_label}")
+            # 시간 정보 표시
+            time_info = ""
+            if daynight:
+                time_emoji = "🌞" if daynight == "주간" else "🌙"
+                time_info += f" {time_emoji} {daynight}"
+            if week:
+                time_info += f" 📅 {week}요일" if week not in ['평일', '주말'] else f" 📅 {week}"
+            
+            st.markdown(f"### {tier_emoji} **문서 {i+1}** - {quality_tier}급 {tier_color} {match_emoji} {match_label}{time_info}")
             st.markdown(f"**선별 기준**: {filter_reason}")
             
             # 점수 정보 표시 (확장된 메트릭 포함)
@@ -394,17 +406,21 @@ class UIComponentsLocal:
                     if semantic_similarity is not None:
                         st.write(f"**의미적 유사성**: {semantic_similarity:.2f} (0.3 이상 유사)")
             
-            # 주요 정보 표시
+            # 주요 정보 표시 - 시간 정보 포함
             col1, col2 = st.columns(2)
             with col1:
                 st.write(f"**장애 ID**: {doc['incident_id']}")
                 st.write(f"**서비스명**: {doc['service_name']}")
                 st.write(f"**발생일자**: {doc['error_date']}")
+                if daynight:  # 시간대 정보가 있는 경우에만 표시
+                    st.write(f"**발생시간대**: {daynight}")
+                if week:  # 요일 정보가 있는 경우에만 표시
+                    st.write(f"**발생요일**: {week}")
                 st.write(f"**장애시간**: {doc['error_time']}분")
                 st.write(f"**영향도**: {doc['effect']}")
-                st.write(f"**현상**: {doc['symptom']}")
 
             with col2:
+                st.write(f"**현상**: {doc['symptom']}")
                 st.write(f"**장애등급**: {doc['incident_grade']}")
                 st.write(f"**장애원인**: {doc['root_cause']}")
                 st.write(f"**원인유형**: {doc['cause_type']}")
@@ -471,27 +487,31 @@ class UIComponentsLocal:
                     st.metric(metric_name.replace('_', ' ').title(), value)
     
     def show_query_optimization_tips(self, query_type):
-        """쿼리 타입별 최적화 팁 표시"""
+        """쿼리 타입별 최적화 팁 표시 - 시간 관련 팁 추가"""
         tips = {
             'repair': [
                 "서비스명과 장애현상을 모두 포함하세요",
                 "구체적인 오류 증상을 명시하세요",
-                "'복구방법', '해결방법' 키워드를 포함하세요"
+                "'복구방법', '해결방법' 키워드를 포함하세요",
+                "시간대나 요일을 명시하면 더 정확한 결과를 얻을 수 있습니다"
             ],
             'cause': [
                 "장애 현상을 구체적으로 설명하세요",
                 "'원인', '이유', '왜' 등의 키워드를 포함하세요",
-                "발생 시점이나 조건을 명시하세요"
+                "발생 시점이나 조건을 명시하세요",
+                "시간대(주간/야간)나 요일을 지정하면 더 정확한 분석이 가능합니다"
             ],
             'similar': [
                 "핵심 장애 현상만 간결하게 기술하세요",
                 "'유사', '비슷한', '동일한' 키워드를 포함하세요",
-                "서비스명이 불확실할 때 유용합니다"
+                "서비스명이 불확실할 때 유용합니다",
+                "특정 시간대나 요일에 발생한 유사 사례도 검색 가능합니다"
             ],
             'default': [
                 "통계나 현황 조회 시 기간을 명시하세요",
                 "구체적인 서비스명이나 조건을 포함하세요",
-                "'건수', '통계', '현황' 등의 키워드를 활용하세요"
+                "'건수', '통계', '현황' 등의 키워드를 활용하세요",
+                "시간대별(주간/야간) 또는 요일별 집계도 가능합니다"
             ]
         }
         
@@ -500,6 +520,37 @@ class UIComponentsLocal:
         with st.expander(f"{query_type.upper()} 쿼리 최적화 팁"):
             for tip in query_tips:
                 st.write(f"• {tip}")
+            
+            # 시간 관련 예시 추가
+            st.write("\n**시간 관련 질문 예시:**")
+            time_examples = [
+                "야간에 발생한 ERP 장애 현황",
+                "월요일에 발생한 API 오류 몇건?",
+                "주간에 발생한 보험가입 실패 복구방법",
+                "주말 SMS 발송 장애 원인 분석"
+            ]
+            for example in time_examples:
+                st.write(f"  - {example}")
+    
+    def display_time_filter_info(self, time_conditions):
+        """시간 조건 필터링 정보 표시"""
+        if not time_conditions or not time_conditions.get('is_time_query'):
+            return
+        
+        time_desc = []
+        if time_conditions.get('daynight'):
+            time_emoji = "🌞" if time_conditions['daynight'] == "주간" else "🌙"
+            time_desc.append(f"{time_emoji} 시간대: {time_conditions['daynight']}")
+        
+        if time_conditions.get('week'):
+            week_emoji = "📅"
+            week_desc = f"{time_conditions['week']}"
+            if time_conditions['week'] not in ['평일', '주말']:
+                week_desc += "요일"
+            time_desc.append(f"{week_emoji} {week_desc}")
+        
+        if time_desc:
+            st.info(f"⏰ 시간 조건 필터링 적용: {', '.join(time_desc)}")
     
     def display_validation_results(self, validation_result):
         """쿼리 처리 검증 결과 표시"""
@@ -518,3 +569,127 @@ class UIComponentsLocal:
             with st.expander("개선 권장사항"):
                 for recommendation in validation_result['recommendations']:
                     st.info(recommendation)
+    
+    def show_time_statistics(self, documents):
+        """시간대/요일별 통계 정보 표시"""
+        if not documents:
+            return
+        
+        # 시간대별 통계
+        daynight_stats = {}
+        week_stats = {}
+        
+        for doc in documents:
+            daynight = doc.get('daynight', '')
+            week = doc.get('week', '')
+            
+            if daynight:
+                daynight_stats[daynight] = daynight_stats.get(daynight, 0) + 1
+            
+            if week:
+                week_stats[week] = week_stats.get(week, 0) + 1
+        
+        if daynight_stats or week_stats:
+            with st.expander("시간별 통계 정보"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if daynight_stats:
+                        st.write("**시간대별 분포:**")
+                        for time_period, count in sorted(daynight_stats.items()):
+                            time_emoji = "🌞" if time_period == "주간" else "🌙"
+                            st.write(f"  {time_emoji} {time_period}: {count}건")
+                
+                with col2:
+                    if week_stats:
+                        st.write("**요일별 분포:**")
+                        # 요일 순서 정의
+                        week_order = ['월', '화', '수', '목', '금', '토', '일', '평일', '주말']
+                        sorted_weeks = sorted(week_stats.items(), 
+                                            key=lambda x: week_order.index(x[0]) if x[0] in week_order else 999)
+                        
+                        for week_day, count in sorted_weeks:
+                            week_desc = f"{week_day}요일" if week_day not in ['평일', '주말'] else week_day
+                            st.write(f"  📅 {week_desc}: {count}건")
+    
+    def show_department_statistics(self, documents):
+        """부서별 통계 정보 표시"""
+        if not documents:
+            return
+        
+        # 부서별 통계
+        department_stats = {}
+        
+        for doc in documents:
+            owner_depart = doc.get('owner_depart', '')
+            
+            if owner_depart:
+                department_stats[owner_depart] = department_stats.get(owner_depart, 0) + 1
+        
+        if department_stats:
+            with st.expander("부서별 통계 정보"):
+                st.write("**담당부서별 분포:**")
+                # 건수별로 내림차순 정렬
+                sorted_departments = sorted(department_stats.items(), 
+                                          key=lambda x: x[1], reverse=True)
+                
+                for department, count in sorted_departments:
+                    st.write(f"  🏢 {department}: {count}건")
+    
+    def show_comprehensive_statistics(self, documents):
+        """시간대/요일/부서별 종합 통계 정보 표시"""
+        if not documents:
+            return
+        
+        # 모든 통계 정보 수집
+        daynight_stats = {}
+        week_stats = {}
+        department_stats = {}
+        
+        for doc in documents:
+            daynight = doc.get('daynight', '')
+            week = doc.get('week', '')
+            owner_depart = doc.get('owner_depart', '')
+            
+            if daynight:
+                daynight_stats[daynight] = daynight_stats.get(daynight, 0) + 1
+            
+            if week:
+                week_stats[week] = week_stats.get(week, 0) + 1
+            
+            if owner_depart:
+                department_stats[owner_depart] = department_stats.get(owner_depart, 0) + 1
+        
+        # 통계 정보가 있는 경우에만 표시
+        if daynight_stats or week_stats or department_stats:
+            with st.expander("종합 통계 정보"):
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    if daynight_stats:
+                        st.write("**시간대별 분포:**")
+                        for time_period, count in sorted(daynight_stats.items()):
+                            time_emoji = "🌞" if time_period == "주간" else "🌙"
+                            st.write(f"  {time_emoji} {time_period}: {count}건")
+                
+                with col2:
+                    if week_stats:
+                        st.write("**요일별 분포:**")
+                        # 요일 순서 정의
+                        week_order = ['월', '화', '수', '목', '금', '토', '일', '평일', '주말']
+                        sorted_weeks = sorted(week_stats.items(), 
+                                            key=lambda x: week_order.index(x[0]) if x[0] in week_order else 999)
+                        
+                        for week_day, count in sorted_weeks:
+                            week_desc = f"{week_day}요일" if week_day not in ['평일', '주말'] else week_day
+                            st.write(f"  📅 {week_desc}: {count}건")
+                
+                with col3:
+                    if department_stats:
+                        st.write("**담당부서별 분포:**")
+                        # 상위 5개 부서만 표시
+                        sorted_departments = sorted(department_stats.items(), 
+                                                  key=lambda x: x[1], reverse=True)[:5]
+                        
+                        for department, count in sorted_departments:
+                            st.write(f"  🏢 {department}: {count}건")

@@ -3,7 +3,7 @@ import re
 from config.settings_local import AppConfigLocal
 
 class SearchManagerLocal:
-    """검색 관련 기능 관리 클래스 - 쿼리 타입별 적응형 검색 최적화"""
+    """검색 관련 기능 관리 클래스 - 시간대/요일 기반 필터링 지원 추가"""
     
     # 일반적인 용어로 사용되는 서비스명들 - 하드코딩 예외처리
     COMMON_TERM_SERVICES = {
@@ -25,6 +25,64 @@ class SearchManagerLocal:
         # effect 패턴 캐시
         self._effect_patterns_cache = None
         self._effect_cache_loaded = False
+    
+    def filter_documents_by_time_conditions(self, documents, time_conditions):
+        """시간 조건에 따른 문서 필터링"""
+        if not time_conditions or not time_conditions.get('is_time_query'):
+            return documents
+        
+        filtered_docs = []
+        filter_stats = {
+            'total': len(documents),
+            'daynight_filtered': 0,
+            'week_filtered': 0,
+            'final_count': 0
+        }
+        
+        for doc in documents:
+            # 시간대 필터링
+            if time_conditions.get('daynight'):
+                doc_daynight = doc.get('daynight', '').strip()
+                required_daynight = time_conditions['daynight']
+                
+                if not doc_daynight or doc_daynight != required_daynight:
+                    continue
+                filter_stats['daynight_filtered'] += 1
+            
+            # 요일 필터링
+            if time_conditions.get('week'):
+                doc_week = doc.get('week', '').strip()
+                required_week = time_conditions['week']
+                
+                # 평일/주말 처리
+                if required_week == '평일':
+                    if doc_week not in ['월', '화', '수', '목', '금']:
+                        continue
+                elif required_week == '주말':
+                    if doc_week not in ['토', '일']:
+                        continue
+                else:
+                    if not doc_week or doc_week != required_week:
+                        continue
+                filter_stats['week_filtered'] += 1
+            
+            filtered_docs.append(doc)
+            filter_stats['final_count'] += 1
+        
+        # 필터링 결과 로그
+        time_desc = []
+        if time_conditions.get('daynight'):
+            time_desc.append(f"시간대: {time_conditions['daynight']}")
+        if time_conditions.get('week'):
+            time_desc.append(f"요일: {time_conditions['week']}")
+        
+        st.info(f"""
+        ⏰ 시간 조건 필터링 결과 ({', '.join(time_desc)})
+        - 전체 검색 결과: {filter_stats['total']}건
+        - 시간 조건 매칭: {filter_stats['final_count']}건
+        """)
+        
+        return filtered_docs
     
     def is_common_term_service(self, service_name):
         """일반 용어로 사용되는 서비스명인지 확인"""
@@ -127,11 +185,12 @@ class SearchManagerLocal:
             if matches:
                 keywords['action_keywords'].extend(matches)
         
-        # 시간 관련 키워드
+        # 시간 관련 키워드 - 시간대/요일 키워드 추가
         time_patterns = [
             r'\b(\d{4})년',
             r'\b(\d{1,2})월',
             r'\b(야간|주간|오전|오후)',
+            r'\b(월요일|화요일|수요일|목요일|금요일|토요일|일요일|평일|주말)',
             r'\b(최근|recent|어제|오늘)'
         ]
         
@@ -235,7 +294,7 @@ class SearchManagerLocal:
         if not text:
             return ""
         
-        # 띄어쓰기 제거
+        # 도어쓰기 제거
         normalized = re.sub(r'\s+', '', text.lower())
         
         # 의미가 같은 표현들을 통일 - 확장된 동의어 사전
@@ -742,7 +801,7 @@ class SearchManagerLocal:
         정확성 우선 필터링 결과 (repair/cause 최적화)
         - 전체 검색 결과: {filter_stats['total']}개
         - 기본 점수 통과: {filter_stats['search_filtered']}개
-        - 총 서비스명 매칭: {filter_stats['service_filtered']}개{common_term_info}
+        - 이 서비스명 매칭: {filter_stats['service_filtered']}개{common_term_info}
         - Reranker 고품질: {filter_stats['reranker_qualified']}개
         - 하이브리드 통과: {filter_stats['hybrid_qualified']}개
         - 의미적 유사성 부스팅: {filter_stats['semantic_boosted']}개
@@ -870,7 +929,7 @@ class SearchManagerLocal:
         포괄성 우선 필터링 결과 (similar/default 최적화)
         - 전체 검색 결과: {filter_stats['total']}개
         - 기본 점수 통과: {filter_stats['search_filtered']}개
-        - 총 서비스명 매칭: {filter_stats['service_filtered']}개{common_term_info}
+        - 이 서비스명 매칭: {filter_stats['service_filtered']}개{common_term_info}
         - Reranker 고품질: {filter_stats['reranker_qualified']}개
         - 하이브리드 통과: {filter_stats['hybrid_qualified']}개
         - 의미적 유사성 부스팅: {filter_stats['semantic_boosted']}개
