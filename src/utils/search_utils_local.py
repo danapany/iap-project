@@ -84,6 +84,43 @@ class SearchManagerLocal:
         
         return filtered_docs
     
+    def filter_documents_by_department_conditions(self, documents, department_conditions):
+        """부서 조건에 따른 문서 필터링"""
+        if not department_conditions or not department_conditions.get('is_department_query'):
+            return documents
+        
+        filtered_docs = []
+        filter_stats = {
+            'total': len(documents),
+            'department_filtered': 0,
+            'final_count': 0
+        }
+        
+        for doc in documents:
+            # 부서 필터링
+            if department_conditions.get('owner_depart'):
+                doc_owner_depart = doc.get('owner_depart', '').strip()
+                required_department = department_conditions['owner_depart']
+                
+                # 부분 매칭도 허용 (예: "개발" 검색시 "개발팀", "개발부서" 등도 포함)
+                if not doc_owner_depart or required_department.lower() not in doc_owner_depart.lower():
+                    continue
+                filter_stats['department_filtered'] += 1
+            
+            filtered_docs.append(doc)
+            filter_stats['final_count'] += 1
+        
+        # 필터링 결과 로그
+        dept_desc = department_conditions.get('owner_depart', '해당 부서')
+        
+        st.info(f"""
+        🏢 부서 조건 필터링 결과 ({dept_desc})
+        - 전체 검색 결과: {filter_stats['total']}건
+        - 부서 조건 매칭: {filter_stats['final_count']}건
+        """)
+        
+        return filtered_docs
+
     def is_common_term_service(self, service_name):
         """일반 용어로 사용되는 서비스명인지 확인"""
         if not service_name:
