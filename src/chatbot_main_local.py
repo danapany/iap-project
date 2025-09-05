@@ -15,6 +15,9 @@ DEFAULT_MAX_RESULTS = 20             # 최대 결과 수 (6 ~ 10)
 DEFAULT_SEMANTIC_THRESHOLD = 0.3    # 의미적 유사성 임계값 (0.3 ~ 0.5)
 DEFAULT_HYBRID_THRESHOLD = 0.4      # 종합 점수 임계값 (0.4 ~ 0.6)
 
+# 디버그 모드 설정 (개발 시에만 True로 설정)
+DEBUG_MODE = False  # False로 설정하면 모든 중간 과정 메시지가 숨겨집니다
+
 def get_high_quality_config():
     """고급 설정 (정확성 우선) - repair/cause에 최적화된 관련없는 결과 최소화"""
     return {
@@ -124,13 +127,19 @@ def main():
     # 상단 변수 설정을 기본 품질 설정으로 사용
     if "고급" in DEFAULT_QUALITY_LEVEL:
         selected_quality_config = get_high_quality_config()
-        #st.info("정확성 우선 모드: repair/cause 쿼리에서 LLM 관련성 검증을 통한 최고 정확성 제공")
+        # 디버그 모드에서만 표시
+        if DEBUG_MODE:
+            st.info("정확성 우선 모드: repair/cause 쿼리에서 LLM 관련성 검증을 통한 최고 정확성 제공")
     elif "초급" in DEFAULT_QUALITY_LEVEL:
         selected_quality_config = get_low_quality_config()
-        #st.info("포괄성 우선 모드: similar/default 쿼리에서 광범위한 검색을 통한 최대 커버리지 제공")
+        # 디버그 모드에서만 표시
+        if DEBUG_MODE:
+            st.info("포괄성 우선 모드: similar/default 쿼리에서 광범위한 검색을 통한 최대 커버리지 제공")
     else:
         selected_quality_config = get_medium_quality_config()
-        #st.info("균형 모드: 모든 쿼리 타입에서 정확성과 포괄성의 최적 균형 제공")
+        # 디버그 모드에서만 표시
+        if DEBUG_MODE:
+            st.info("균형 모드: 모든 쿼리 타입에서 정확성과 포괄성의 최적 균형 제공")
     
     # 세션 상태에 품질 설정 저장
     st.session_state['quality_config'] = selected_quality_config
@@ -160,7 +169,6 @@ def main():
     if 'messages' not in st.session_state:
         st.session_state.messages = []
     
-    
     # 채팅 메시지 표시
     ui_components.display_chat_messages()
     
@@ -189,6 +197,11 @@ def main():
             config.azure_openai_model,
             config  # 쿼리 타입별 최적화가 적용된 config 객체를 전달
         )
+        
+        # 디버그 모드 설정을 쿼리 프로세서에 전달
+        query_processor.debug_mode = DEBUG_MODE
+        query_processor.search_manager.debug_mode = DEBUG_MODE
+        
         query_processor.process_query(user_query)
 
 

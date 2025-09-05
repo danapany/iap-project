@@ -3,6 +3,10 @@ import streamlit as st
 class UIComponentsLocal:
     """UI 컴포넌트 관리 클래스 - 시간대/요일 정보 표시 지원 추가"""
     
+    def __init__(self):
+        # 디버그 모드 설정 (개발 시에만 True로 설정)
+        self.debug_mode = False
+    
     def render_main_ui(self):
         """메인 UI 렌더링 - 적응형 처리 정보 포함"""
         html_code = """
@@ -248,7 +252,7 @@ class UIComponentsLocal:
         <h6>* 복구방법 : 마이페이지 보험가입불가 현상 복구방법 알려줘<br>
         * 장애원인 : ERP EP업무 처리시 간헐적 접속불가현상에 대한 장애원인이 뭐야?<br>
         * 유사사례 : 문자발송 실패 현상에 대한 조치방법 알려줘<br>
-        * 장애이력 : 야간에 발생한 블록체인기반지역화폐 장애내역 알려줘<br>
+        * 장애이력 : 블록체인기반지역화폐 야간에 발생한 장애내역 알려줘<br>
         * 장애건수 : 2025년 ERP 장애가 몇건이야?<p>
 
         <font color="red"> ※ 서비스명을 정확히 입력하시고 같이 검색하시면 보다 더 정확한 답변을 얻을 수 있습니다<br>
@@ -313,8 +317,8 @@ class UIComponentsLocal:
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     if message["role"] == "assistant":
-                        with st.expander("AI 답변 보기", expanded=True):
-                            st.write(message["content"])
+                        # 간단하게 표시 (expander 제거)
+                        st.write(message["content"])
                     else:
                         st.write(message["content"])
     
@@ -364,47 +368,52 @@ class UIComponentsLocal:
             if week:
                 time_info += f" 📅 {week}요일" if week not in ['평일', '주말'] else f" 📅 {week}"
             
-            st.markdown(f"### {tier_emoji} **문서 {i+1}** - {quality_tier}급 {tier_color} {match_emoji} {match_label}{time_info}")
-            st.markdown(f"**선별 기준**: {filter_reason}")
-            
-            # 점수 정보 표시 (확장된 메트릭 포함)
-            score_cols = st.columns(4 if relevance_score or keyword_relevance or semantic_similarity else 3)
-            
-            with score_cols[0]:
-                st.metric("검색 점수", f"{search_score:.2f}")
-            with score_cols[1]:
-                if reranker_score > 0:
-                    st.metric("Reranker 점수", f"{reranker_score:.2f}")
-                else:
-                    st.metric("Reranker 점수", "N/A")
-            with score_cols[2]:
-                st.metric("최종 점수", f"{final_score:.2f}")
-            
-            # 추가 점수 정보 (적응형 처리에서 계산된 경우)
-            if len(score_cols) > 3:
-                with score_cols[3]:
-                    if relevance_score is not None:
-                        st.metric("관련성 점수", f"{relevance_score}점")
-                    elif keyword_relevance is not None:
-                        st.metric("키워드 점수", f"{keyword_relevance}점")
-                    elif semantic_similarity is not None:
-                        st.metric("의미 유사성", f"{semantic_similarity:.2f}")
+            # 디버그 모드에서만 상세 정보 표시
+            if self.debug_mode:
+                st.markdown(f"### {tier_emoji} **문서 {i+1}** - {quality_tier}급 {tier_color} {match_emoji} {match_label}{time_info}")
+                st.markdown(f"**선별 기준**: {filter_reason}")
+                
+                # 점수 정보 표시 (확장된 메트릭 포함)
+                score_cols = st.columns(4 if relevance_score or keyword_relevance or semantic_similarity else 3)
+                
+                with score_cols[0]:
+                    st.metric("검색 점수", f"{search_score:.2f}")
+                with score_cols[1]:
+                    if reranker_score > 0:
+                        st.metric("Reranker 점수", f"{reranker_score:.2f}")
                     else:
-                        st.metric("추가 메트릭", "N/A")
-            
-            # 향상된 점수 정보 표시
-            if any([relevance_score, keyword_relevance, semantic_similarity]):
-                with st.expander("상세 점수 분석"):
-                    if relevance_score is not None:
-                        st.write(f"**LLM 관련성 점수**: {relevance_score}점 (70점 이상 통과)")
-                        validation_reason = doc.get('validation_reason', '검증됨')
-                        st.write(f"**검증 사유**: {validation_reason}")
-                    
-                    if keyword_relevance is not None:
-                        st.write(f"**키워드 관련성 점수**: {keyword_relevance}점 (30점 이상 관련)")
-                    
-                    if semantic_similarity is not None:
-                        st.write(f"**의미적 유사성**: {semantic_similarity:.2f} (0.3 이상 유사)")
+                        st.metric("Reranker 점수", "N/A")
+                with score_cols[2]:
+                    st.metric("최종 점수", f"{final_score:.2f}")
+                
+                # 추가 점수 정보 (적응형 처리에서 계산된 경우)
+                if len(score_cols) > 3:
+                    with score_cols[3]:
+                        if relevance_score is not None:
+                            st.metric("관련성 점수", f"{relevance_score}점")
+                        elif keyword_relevance is not None:
+                            st.metric("키워드 점수", f"{keyword_relevance}점")
+                        elif semantic_similarity is not None:
+                            st.metric("의미 유사성", f"{semantic_similarity:.2f}")
+                        else:
+                            st.metric("추가 메트릭", "N/A")
+                
+                # 향상된 점수 정보 표시
+                if any([relevance_score, keyword_relevance, semantic_similarity]):
+                    with st.expander("상세 점수 분석"):
+                        if relevance_score is not None:
+                            st.write(f"**LLM 관련성 점수**: {relevance_score}점 (70점 이상 통과)")
+                            validation_reason = doc.get('validation_reason', '검증됨')
+                            st.write(f"**검증 사유**: {validation_reason}")
+                        
+                        if keyword_relevance is not None:
+                            st.write(f"**키워드 관련성 점수**: {keyword_relevance}점 (30점 이상 관련)")
+                        
+                        if semantic_similarity is not None:
+                            st.write(f"**의미적 유사성**: {semantic_similarity:.2f} (0.3 이상 유사)")
+            else:
+                # 일반 모드에서는 간단한 제목만 표시
+                st.markdown(f"### {tier_emoji} **문서 {i+1}**{time_info}")
             
             # 주요 정보 표시 - 시간 정보 포함
             col1, col2 = st.columns(2)
@@ -438,7 +447,10 @@ class UIComponentsLocal:
             st.markdown("---")
     
     def display_processing_mode_info(self, query_type, processing_mode):
-        """처리 모드 정보 표시"""
+        """처리 모드 정보 표시 (디버그 모드에서만)"""
+        if not self.debug_mode:
+            return
+            
         mode_info = {
             'accuracy_first': {
                 'name': '정확성 우선',
@@ -476,8 +488,8 @@ class UIComponentsLocal:
         """, unsafe_allow_html=True)
     
     def display_performance_metrics(self, metrics):
-        """성능 메트릭 표시"""
-        if not metrics:
+        """성능 메트릭 표시 (디버그 모드에서만)"""
+        if not metrics or not self.debug_mode:
             return
         
         with st.expander("처리 성능 메트릭"):
@@ -487,7 +499,7 @@ class UIComponentsLocal:
                     st.metric(metric_name.replace('_', ' ').title(), value)
     
     def show_query_optimization_tips(self, query_type):
-        """쿼리 타입별 최적화 팁 표시 - 시간 관련 팁 추가"""
+        """쿼리 타입별 최적화 팁 표시 - 시간 관련 팁 추가 (선택적 표시)"""
         tips = {
             'repair': [
                 "서비스명과 장애현상을 모두 포함하세요",
@@ -517,6 +529,7 @@ class UIComponentsLocal:
         
         query_tips = tips.get(query_type, tips['default'])
         
+        # 선택적으로만 표시 (사용자가 확장해서 볼 수 있도록)
         with st.expander(f"{query_type.upper()} 쿼리 최적화 팁"):
             for tip in query_tips:
                 st.write(f"• {tip}")
@@ -533,8 +546,8 @@ class UIComponentsLocal:
                 st.write(f"  - {example}")
     
     def display_time_filter_info(self, time_conditions):
-        """시간 조건 필터링 정보 표시"""
-        if not time_conditions or not time_conditions.get('is_time_query'):
+        """시간 조건 필터링 정보 표시 (디버그 모드에서만)"""
+        if not time_conditions or not time_conditions.get('is_time_query') or not self.debug_mode:
             return
         
         time_desc = []
@@ -553,8 +566,8 @@ class UIComponentsLocal:
             st.info(f"⏰ 시간 조건 필터링 적용: {', '.join(time_desc)}")
     
     def display_validation_results(self, validation_result):
-        """쿼리 처리 검증 결과 표시"""
-        if not validation_result:
+        """쿼리 처리 검증 결과 표시 (디버그 모드에서만)"""
+        if not validation_result or not self.debug_mode:
             return
         
         if not validation_result['is_valid']:
@@ -571,7 +584,7 @@ class UIComponentsLocal:
                     st.info(recommendation)
     
     def show_time_statistics(self, documents):
-        """시간대/요일별 통계 정보 표시"""
+        """시간대/요일별 통계 정보 표시 (선택적)"""
         if not documents:
             return
         
@@ -613,7 +626,7 @@ class UIComponentsLocal:
                             st.write(f"  📅 {week_desc}: {count}건")
     
     def show_department_statistics(self, documents):
-        """부서별 통계 정보 표시"""
+        """부서별 통계 정보 표시 (선택적)"""
         if not documents:
             return
         
@@ -637,7 +650,7 @@ class UIComponentsLocal:
                     st.write(f"  🏢 {department}: {count}건")
     
     def show_comprehensive_statistics(self, documents):
-        """시간대/요일/부서별 종합 통계 정보 표시"""
+        """시간대/요일/부서별 종합 통계 정보 표시 (선택적)"""
         if not documents:
             return
         
