@@ -16,3 +16,4 @@ openai
 requests
 pandas
 openpyxl
+urllib3
