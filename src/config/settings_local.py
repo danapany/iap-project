@@ -2,10 +2,9 @@ import os
 from dotenv import load_dotenv
 
 class AppConfigLocal:
-    """애플리케이션 설정 클래스 - 쿼리 타입별 적응형 최적화"""
+    """애플리케이션 설정 클래스"""
     
     def __init__(self):
-        # .env 파일 로드
         load_dotenv()
         
         # Azure OpenAI 설정
@@ -19,13 +18,18 @@ class AppConfigLocal:
         self.search_key = os.getenv("SEARCH_API_KEY")
         self.search_index = os.getenv("INDEX_REBUILD_NAME")
         
-        # 기본 검색 품질 임계값 설정 (쿼리 타입별 적응형 최적화)
-        self.search_score_threshold = 0.20      # 균형잡힌 기본값
-        self.reranker_score_threshold = 1.8     # 적당한 품질 기준
-        self.hybrid_score_threshold = 0.35      # 하이브리드 점수 기준
-        self.semantic_score_threshold = 0.25    # 의미적 유사성 임계값
-        self.max_initial_results = 50           # 초기 검색 결과 수
-        self.max_final_results = 15             # 최종 결과 수
+        # LangSmith 설정
+        self.langchain_api_key = os.getenv("LANGCHAIN_API_KEY")
+        self.langsmith_tracing = os.getenv("LANGSMITH_TRACING", "false").lower() == "true"
+        self.langchain_project = os.getenv("LANGCHAIN_PROJECT", "trouble-chaser-chatbot")
+        
+        # 기본 검색 품질 임계값 설정
+        self.search_score_threshold = 0.20
+        self.reranker_score_threshold = 1.8
+        self.hybrid_score_threshold = 0.35
+        self.semantic_score_threshold = 0.25
+        self.max_initial_results = 50
+        self.max_final_results = 15
     
     def validate_config(self):
         """필수 설정값 검증"""
@@ -45,11 +49,32 @@ class AppConfigLocal:
             "OPENAI_KEY": "✅" if self.azure_openai_key else "❌",
             "SEARCH_ENDPOINT": "✅" if self.search_endpoint else "❌",
             "SEARCH_API_KEY": "✅" if self.search_key else "❌",
-            "INDEX_REBUILD_NAME": "✅" if self.search_index else "❌"
+            "INDEX_REBUILD_NAME": "✅" if self.search_index else "❌",
+            "LANGCHAIN_API_KEY": "✅" if self.langchain_api_key else "❌",
+            "LANGSMITH_TRACING": "✅" if self.langsmith_tracing else "❌",
+            "LANGCHAIN_PROJECT": "✅" if self.langchain_project else "❌"
+        }
+    
+    def setup_langsmith(self):
+        """LangSmith 환경 설정"""
+        if self.langchain_api_key and self.langsmith_tracing:
+            os.environ["LANGCHAIN_API_KEY"] = self.langchain_api_key
+            os.environ["LANGCHAIN_TRACING_V2"] = "true"
+            os.environ["LANGCHAIN_PROJECT"] = self.langchain_project
+            return True
+        return False
+    
+    def get_langsmith_status(self):
+        """LangSmith 설정 상태 반환"""
+        return {
+            "enabled": self.langsmith_tracing and bool(self.langchain_api_key),
+            "api_key_set": bool(self.langchain_api_key),
+            "tracing_enabled": self.langsmith_tracing,
+            "project_name": self.langchain_project
         }
     
     def get_dynamic_thresholds(self, query_type, query_text):
-        """쿼리 타입과 내용에 따라 동적으로 임계값 조정 - 적응형 최적화"""
+        """쿼리 타입과 내용에 따라 동적으로 임계값 조정"""
         
         # 특수 키워드 감지
         year_keywords = ['년도', '년', '월별', '기간', '현황', '통계', '건수', '발생', '발생일자', '언제']
@@ -72,7 +97,6 @@ class AppConfigLocal:
         if query_type == "repair":
             # 복구방법 쿼리 - 정확성 최우선
             if is_complex_query:
-                # 복잡한 복구방법 쿼리 - 매우 정확하게
                 return {
                     'search_threshold': 0.30,
                     'reranker_threshold': 2.5,
@@ -83,7 +107,6 @@ class AppConfigLocal:
                     'description': '복구방법 정확성 최우선 - LLM 관련성 검증'
                 }
             else:
-                # 일반 복구방법 쿼리
                 return {
                     'search_threshold': 0.25,
                     'reranker_threshold': 2.2,
@@ -116,6 +139,18 @@ class AppConfigLocal:
                 'max_results': 15,
                 'processing_mode': 'coverage_first',
                 'description': '유사사례 포괄성 우선 - 의미적 유사성 기반'
+            }
+        
+        elif query_type == "statistics":
+            # 🆕 통계 쿼리 - 완전성과 정확성 최우선
+            return {
+                'search_threshold': 0.10,  # 매우 낮은 임계값으로 모든 관련 데이터 수집
+                'reranker_threshold': 1.0,  # 낮은 재정렬 임계값
+                'hybrid_threshold': 0.20,   # 낮은 하이브리드 임계값
+                'semantic_threshold': 0.15,  # 낮은 시맨틱 임계값
+                'max_results': 50,  # 통계 집계를 위해 많은 결과 필요
+                'processing_mode': 'statistics_complete',
+                'description': '통계 완전성 우선 - 모든 관련 데이터 수집 및 정확한 집계'
             }
             
         elif query_type == "default" or is_statistical_query:
@@ -161,6 +196,15 @@ class AppConfigLocal:
                 "quality_over_quantity": False,
                 "strict_service_matching": False
             },
+            "statistics": {  # 🆕 통계 전용 최적화 설정
+                "use_llm_validation": False,
+                "keyword_relevance_weight": 0.05,  # 키워드 관련성 낮게 (모든 데이터 포함)
+                "semantic_boost_factor": 0.2,       # 시맨틱 부스팅 낮게
+                "quality_over_quantity": False,     # 양 우선 (완전한 통계를 위해)
+                "strict_service_matching": False,   # 유연한 매칭
+                "ensure_completeness": True,        # 완전성 보장
+                "aggregate_all_matches": True       # 모든 매칭 항목 집계
+            },
             "default": {
                 "use_llm_validation": False,
                 "keyword_relevance_weight": 0.1,
@@ -187,6 +231,12 @@ class AppConfigLocal:
                 'best_for': ['similar', 'default'],
                 'features': ['의미적 유사성 부스팅', '관대한 필터링', '포괄적 결과']
             },
+            'statistics_complete': {  # 🆕 통계 전용 처리 모드
+                'name': '통계 완전성',
+                'description': '정확한 통계 집계를 위한 완전한 데이터 수집',
+                'best_for': ['statistics'],
+                'features': ['모든 관련 데이터 수집', '정확한 집계', '일관성 검증', '중복 제거']
+            },
             'balanced': {
                 'name': '균형 처리',
                 'description': '정확성과 포괄성의 최적 균형',
@@ -199,20 +249,23 @@ class AppConfigLocal:
         """성능 메트릭 기준값 반환"""
         return {
             'accuracy_targets': {
-                'repair': 0.85,  # 85% 정확도 목표
-                'cause': 0.80,   # 80% 정확도 목표
-                'similar': 0.70, # 70% 정확도 목표
-                'default': 0.75  # 75% 정확도 목표
+                'repair': 0.85,
+                'cause': 0.80,
+                'similar': 0.70,
+                'statistics': 0.95,  # 🆕 통계는 매우 높은 정확도 요구
+                'default': 0.75
             },
             'response_time_targets': {
-                'accuracy_first': 8.0,   # 8초 이내
-                'coverage_first': 5.0,   # 5초 이내
-                'balanced': 6.0          # 6초 이내
+                'accuracy_first': 8.0,
+                'coverage_first': 5.0,
+                'statistics_complete': 10.0,  # 🆕 통계는 더 긴 처리 시간 허용
+                'balanced': 6.0
             },
             'result_count_targets': {
                 'repair': {'min': 3, 'max': 10, 'optimal': 6},
                 'cause': {'min': 3, 'max': 10, 'optimal': 6},
                 'similar': {'min': 5, 'max': 20, 'optimal': 12},
+                'statistics': {'min': 10, 'max': 100, 'optimal': 50},  # 🆕 통계는 많은 데이터 필요
                 'default': {'min': 5, 'max': 25, 'optimal': 15}
             }
         }
@@ -242,5 +295,7 @@ class AppConfigLocal:
             validation_result['recommendations'].append(f"{query_type} 쿼리는 정확성 우선 모드를 권장합니다.")
         elif query_type in ['similar', 'default'] and processing_mode != 'coverage_first':
             validation_result['recommendations'].append(f"{query_type} 쿼리는 포괄성 우선 모드를 권장합니다.")
+        elif query_type == 'statistics' and processing_mode != 'statistics_complete':  # 🆕 통계 검증
+            validation_result['recommendations'].append("statistics 쿼리는 통계 완전성 모드를 권장합니다.")
         
         return validation_result

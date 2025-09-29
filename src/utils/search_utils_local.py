@@ -3,9 +3,9 @@ import re
 from config.settings_local import AppConfigLocal
 
 class SearchManagerLocal:
-    """검색 관련 기능 관리 클래스 - 시간대/요일 기반 필터링 지원 추가 + 정확한 서비스명 필터링 강화"""
+    """검색 관련 기능 관리 클래스 - 통계 정확성 강화"""
     
-    # 일반적인 용어로 사용되는 서비스명들 - 하드코딩 예외처리
+    # 일반적인 용어로 사용되는 서비스명들
     COMMON_TERM_SERVICES = {
         'OTP': ['otp', '일회용비밀번호', '원타임패스워드', '2차인증', '이중인증'],           
         '본인인증': ['실명인증', '신원확인'],
@@ -17,115 +17,299 @@ class SearchManagerLocal:
         'URL': ['url', 'link', '링크', 'Uniform Resource Locator']
     }
     
+    # 네거티브 키워드 시스템
+    NEGATIVE_KEYWORDS = {
+        'repair': {
+            'strong': ['통계', '건수', '현황', '분석', '몇건', '개수', '이', '전체', '연도별', '월별'],
+            'weak': ['시간대별', '요일별', '부서별', '등급별']
+        },
+        'cause': {
+            'strong': ['복구방법', '해결방법', '조치방법', '대응방법', '복구절차'],
+            'weak': ['통계', '건수', '현황', '분석']
+        },
+        'similar': {
+            'strong': ['건수', '통계', '현황', '분석', '개수', '이'],
+            'weak': ['연도별', '월별', '시간대별']
+        },
+        'default': {
+            'strong': [],
+            'weak': []
+        }
+    }
+    
+    # 장애등급 관련 키워드
+    INCIDENT_GRADE_KEYWORDS = {
+        '1등급': ['1등급', '1급', '최고등급', '최고심각도', '1grade'],
+        '2등급': ['2등급', '2급', '2grade'],
+        '3등급': ['3등급', '3급', '3grade'],
+        '4등급': ['4등급', '4급', '최저등급', '4grade'],
+        '등급': ['등급', '장애등급', '전파등급', 'grade', '심각도']
+    }
+    
     def __init__(self, search_client, config=None):
         self.search_client = search_client
         self.config = config if config else AppConfigLocal()
         self._service_names_cache = None
         self._cache_loaded = False
-        # effect 패턴 캐시
         self._effect_patterns_cache = None
         self._effect_cache_loaded = False
-        # 디버그 모드 설정 (개발 시에만 True로 설정)
         self.debug_mode = False
     
+    def extract_incident_grade_from_query(self, query):
+        """쿼리에서 장애등급 정보 추출"""
+        grade_info = {
+            'has_grade_query': False,
+            'specific_grade': None,
+            'grade_keywords': []
+        }
+        
+        query_lower = query.lower()
+        
+        grade_general_keywords = ['등급', '장애등급', '전파등급', 'grade', '심각도']
+        if any(keyword in query_lower for keyword in grade_general_keywords):
+            grade_info['has_grade_query'] = True
+            grade_info['grade_keywords'].extend([k for k in grade_general_keywords if k in query_lower])
+        
+        grade_patterns = [
+            r'(\d+)등급',
+            r'(\d+)급',
+            r'(\d+)grade',
+            r'등급.*?(\d+)',
+            r'(\d+).*?등급'
+        ]
+        
+        for pattern in grade_patterns:
+            matches = re.findall(pattern, query_lower)
+            if matches:
+                grade_number = matches[0]
+                grade_info['specific_grade'] = f"{grade_number}등급"
+                grade_info['has_grade_query'] = True
+                grade_info['grade_keywords'].append(f"{grade_number}등급")
+                break
+        
+        return grade_info
+    
+    def build_grade_search_query(self, query, grade_info):
+        """장애등급 기반 검색 쿼리 구성"""
+        if not grade_info['has_grade_query']:
+            return query
+        
+        if grade_info['specific_grade']:
+            grade_query = f'incident_grade:"{grade_info["specific_grade"]}"'
+            
+            cleaned_query = query
+            for keyword in grade_info['grade_keywords']:
+                cleaned_query = cleaned_query.replace(keyword, '').strip()
+            
+            if not cleaned_query or len(cleaned_query.strip()) < 2:
+                enhanced_query = grade_query
+            else:
+                enhanced_query = f'({grade_query}) AND ({cleaned_query})'
+        else:
+            enhanced_query = query
+        
+        return enhanced_query
+    
+    def filter_documents_by_grade(self, documents, grade_info):
+        """장애등급 기반 문서 필터링"""
+        if not grade_info['has_grade_query']:
+            return documents
+        
+        filtered_docs = []
+        filter_stats = {
+            'total': len(documents),
+            'grade_matched': 0,
+            'grade_filtered': 0
+        }
+        
+        for doc in documents:
+            doc_grade = doc.get('incident_grade', '').strip()
+            
+            if grade_info['specific_grade']:
+                if doc_grade == grade_info['specific_grade']:
+                    filter_stats['grade_matched'] += 1
+                    filtered_docs.append(doc)
+                    doc['grade_match_type'] = 'exact'
+                else:
+                    filter_stats['grade_filtered'] += 1
+                    continue
+            else:
+                if doc_grade:
+                    filter_stats['grade_matched'] += 1
+                    filtered_docs.append(doc)
+                    doc['grade_match_type'] = 'general'
+                else:
+                    filter_stats['grade_filtered'] += 1
+                    continue
+        
+        def grade_sort_key(doc):
+            grade = doc.get('incident_grade', '')
+            if '1등급' in grade:
+                return 1
+            elif '2등급' in grade:
+                return 2
+            elif '3등급' in grade:
+                return 3
+            elif '4등급' in grade:
+                return 4
+            else:
+                return 999
+        
+        filtered_docs.sort(key=grade_sort_key)
+        return filtered_docs
+    
+    def check_negative_keywords(self, text, query_type):
+        """텍스트에 네거티브 키워드가 포함되어 있는지 확인"""
+        if not text or query_type not in self.NEGATIVE_KEYWORDS:
+            return {'has_strong': False, 'has_weak': False, 'strong_keywords': [], 'weak_keywords': []}
+        
+        text_lower = text.lower()
+        keywords = self.NEGATIVE_KEYWORDS[query_type]
+        
+        strong_found = []
+        weak_found = []
+        
+        for keyword in keywords['strong']:
+            if keyword in text_lower:
+                strong_found.append(keyword)
+        
+        for keyword in keywords['weak']:
+            if keyword in text_lower:
+                weak_found.append(keyword)
+        
+        return {
+            'has_strong': len(strong_found) > 0,
+            'has_weak': len(weak_found) > 0,
+            'strong_keywords': strong_found,
+            'weak_keywords': weak_found
+        }
+    
     def filter_documents_by_time_conditions(self, documents, time_conditions):
-        """시간 조건에 따른 문서 필터링 - 엄격한 매칭"""
+        """시간 조건에 따른 문서 필터링"""
         if not time_conditions or not time_conditions.get('is_time_query'):
             return documents
         
         filtered_docs = []
         filter_stats = {
             'total': len(documents),
+            'year_filtered': 0,
+            'month_filtered': 0,
             'daynight_filtered': 0,
             'week_filtered': 0,
             'final_count': 0,
+            'excluded_year': 0,
+            'excluded_month': 0,
             'excluded_daynight': 0,
             'excluded_week': 0
         }
         
         for doc in documents:
+            if doc is None:
+                continue
+                
             should_include = True
             
-            # **수정: 시간대 필터링 - 더 엄격한 매칭**
-            if time_conditions.get('daynight'):
+            # 연도 필터링
+            if time_conditions.get('year'):
+                required_year = time_conditions['year']
+                doc_year = None
+                
+                if doc.get('year'):
+                    doc_year = str(doc.get('year')).strip()
+                
+                if not doc_year and doc.get('error_date'):
+                    error_date = str(doc.get('error_date')).strip()
+                    if len(error_date) >= 4 and error_date[:4].isdigit():
+                        doc_year = error_date[:4]
+                
+                if not doc_year or doc_year != required_year:
+                    should_include = False
+                    filter_stats['excluded_year'] += 1
+                    continue
+                else:
+                    filter_stats['year_filtered'] += 1
+            
+            # 월 필터링
+            if time_conditions.get('month') and should_include:
+                required_month = time_conditions['month']
+                doc_month = None
+                
+                if doc.get('month'):
+                    month_val = str(doc.get('month')).strip()
+                    try:
+                        month_num = int(month_val)
+                        if 1 <= month_num <= 12:
+                            doc_month = str(month_num)
+                    except (ValueError, TypeError):
+                        pass
+                
+                if not doc_month and doc.get('error_date'):
+                    error_date = str(doc.get('error_date')).strip()
+                    parts = error_date.split('-')
+                    if len(parts) >= 2 and parts[1].isdigit():
+                        try:
+                            month_num = int(parts[1])
+                            if 1 <= month_num <= 12:
+                                doc_month = str(month_num)
+                        except (ValueError, TypeError):
+                            pass
+                
+                if not doc_month or doc_month != required_month:
+                    should_include = False
+                    filter_stats['excluded_month'] += 1
+                    continue
+                else:
+                    filter_stats['month_filtered'] += 1
+            
+            # 시간대 필터링
+            if time_conditions.get('daynight') and should_include:
                 doc_daynight = doc.get('daynight', '').strip()
                 required_daynight = time_conditions['daynight']
                 
-                # 문서에 시간대 정보가 없거나 요구 조건과 다르면 제외
                 if not doc_daynight:
                     should_include = False
                     filter_stats['excluded_daynight'] += 1
-                    if self.debug_mode:
-                        st.warning(f"제외 (시간대 정보 없음): {doc.get('incident_id', '')} - {doc.get('service_name', '')}")
                     continue
                 elif doc_daynight != required_daynight:
                     should_include = False
                     filter_stats['excluded_daynight'] += 1
-                    if self.debug_mode:
-                        st.warning(f"제외 (시간대 불일치): {doc.get('incident_id', '')} - 요구:{required_daynight}, 실제:{doc_daynight}")
                     continue
                 else:
                     filter_stats['daynight_filtered'] += 1
             
-            # **수정: 요일 필터링 - 더 엄격한 매칭**
+            # 요일 필터링
             if time_conditions.get('week') and should_include:
                 doc_week = doc.get('week', '').strip()
                 required_week = time_conditions['week']
                 
-                # 평일/주말 처리
                 if required_week == '평일':
                     if doc_week not in ['월', '화', '수', '목', '금']:
                         should_include = False
                         filter_stats['excluded_week'] += 1
-                        if self.debug_mode:
-                            st.warning(f"제외 (평일 아님): {doc.get('incident_id', '')} - 실제:{doc_week}")
                         continue
                 elif required_week == '주말':
                     if doc_week not in ['토', '일']:
                         should_include = False
                         filter_stats['excluded_week'] += 1
-                        if self.debug_mode:
-                            st.warning(f"제외 (주말 아님): {doc.get('incident_id', '')} - 실제:{doc_week}")
                         continue
                 else:
-                    # 특정 요일 매칭
                     if not doc_week:
                         should_include = False
                         filter_stats['excluded_week'] += 1
-                        if self.debug_mode:
-                            st.warning(f"제외 (요일 정보 없음): {doc.get('incident_id', '')} - {doc.get('service_name', '')}")
                         continue
                     elif doc_week != required_week:
                         should_include = False
                         filter_stats['excluded_week'] += 1
-                        if self.debug_mode:
-                            st.warning(f"제외 (요일 불일치): {doc.get('incident_id', '')} - 요구:{required_week}, 실제:{doc_week}")
                         continue
                 
                 filter_stats['week_filtered'] += 1
             
-            # 모든 조건을 만족하는 경우에만 포함
             if should_include:
                 filtered_docs.append(doc)
                 filter_stats['final_count'] += 1
         
-        # 필터링 결과 로그 (디버그 모드에서만)
         if self.debug_mode:
-            time_desc = []
-            if time_conditions.get('daynight'):
-                time_desc.append(f"시간대: {time_conditions['daynight']}")
-            if time_conditions.get('week'):
-                time_desc.append(f"요일: {time_conditions['week']}")
-            
-            st.info(f"""
-            ⏰ 엄격한 시간 조건 필터링 결과 ({', '.join(time_desc)})
-            - 전체 검색 결과: {filter_stats['total']}건
-            - 시간대 조건 매칭: {filter_stats['daynight_filtered']}건
-            - 요일 조건 매칭: {filter_stats['week_filtered']}건
-            - 시간대 불일치로 제외: {filter_stats['excluded_daynight']}건
-            - 요일 불일치로 제외: {filter_stats['excluded_week']}건
-            - 최종 선별: {filter_stats['final_count']}건
-            """)
+            print(f"Time filtering stats: {filter_stats}")
         
         return filtered_docs
     
@@ -142,12 +326,13 @@ class SearchManagerLocal:
         }
         
         for doc in documents:
-            # 부서 필터링
+            if doc is None:
+                continue
+                
             if department_conditions.get('owner_depart'):
                 doc_owner_depart = doc.get('owner_depart', '').strip()
                 required_department = department_conditions['owner_depart']
                 
-                # 부분 매칭도 허용 (예: "개발" 검색시 "개발팀", "개발부서" 등도 포함)
                 if not doc_owner_depart or required_department.lower() not in doc_owner_depart.lower():
                     continue
                 filter_stats['department_filtered'] += 1
@@ -155,22 +340,12 @@ class SearchManagerLocal:
             filtered_docs.append(doc)
             filter_stats['final_count'] += 1
         
-        # 필터링 결과 로그 (디버그 모드에서만)
-        if self.debug_mode:
-            dept_desc = department_conditions.get('owner_depart', '해당 부서')
-            
-            st.info(f"""
-            🏢 부서 조건 필터링 결과 ({dept_desc})
-            - 전체 검색 결과: {filter_stats['total']}건
-            - 부서 조건 매칭: {filter_stats['final_count']}건
-            """)
-        
         return filtered_docs
 
     def is_common_term_service(self, service_name):
         """일반 용어로 사용되는 서비스명인지 확인"""
         if not service_name:
-            return False
+            return False, None
         
         service_lower = service_name.lower().strip()
         
@@ -181,7 +356,7 @@ class SearchManagerLocal:
         return False, None
     
     def get_common_term_search_patterns(self, service_name):
-        """일반 용어 서비스명에 대한 검색 패턴 생성 - 정확한 서비스명 매칭 강화"""
+        """일반 용어 서비스명에 대한 검색 패턴 생성"""
         is_common, main_service = self.is_common_term_service(service_name)
         
         if not is_common:
@@ -190,15 +365,11 @@ class SearchManagerLocal:
         patterns = []
         aliases = self.COMMON_TERM_SERVICES.get(main_service, [])
         
-        # **수정: 서비스명 필드에서만 정확히 매칭되는 패턴을 우선으로 생성**
-        # 먼저 정확한 서비스명 매칭을 위한 패턴
         patterns.append(f'service_name:"{main_service}"')
         
-        # 별칭들도 서비스명에서 정확히 매칭
         for alias in aliases:
             patterns.append(f'service_name:"{alias}"')
         
-        # 그 다음 다른 필드에서의 패턴 (가중치 낮게)
         for term in [main_service] + aliases:
             patterns.extend([
                 f'(effect:"{term}")',
@@ -211,7 +382,7 @@ class SearchManagerLocal:
         return patterns
 
     def extract_query_keywords(self, query):
-        """질문에서 핵심 키워드 추출 - 관련성 검증용 (repair/cause 전용)"""
+        """질문에서 핵심 키워드 추출"""
         keywords = {
             'service_keywords': [],
             'symptom_keywords': [],
@@ -219,7 +390,6 @@ class SearchManagerLocal:
             'time_keywords': []
         }
         
-        # 서비스 관련 키워드 - 일반 용어 서비스명 추가
         service_patterns = [
             r'\b(관리자|admin)\s*(웹|web|페이지|page)',
             r'\b(API|api)\s*(링크|link|서비스)',
@@ -228,7 +398,6 @@ class SearchManagerLocal:
             r'\b(보험|insurance)',
             r'\b(커뮤니티|community)',
             r'\b(블록체인|blockchain)',
-            # 일반 용어 서비스명 패턴 추가
             r'\b(OTP|otp|일회용비밀번호)\b',
             r'\b(SMS|sms|문자|단문)\b',
             r'\b(VPN|vpn|가상사설망)\b',
@@ -241,7 +410,6 @@ class SearchManagerLocal:
             if matches:
                 keywords['service_keywords'].extend([match if isinstance(match, str) else ' '.join(match) for match in matches])
         
-        # 증상/현상 관련 키워드 - 의미적 동의어 확장
         symptom_patterns = [
             r'\b(로그인|login)\s*(불가|실패|안됨|오류)',
             r'\b(접속|연결)\s*(불가|실패|안됨|오류)',
@@ -249,9 +417,8 @@ class SearchManagerLocal:
             r'\b(결제|구매|주문)\s*(불가|실패|오류)',
             r'\b(응답|response)\s*(지연|느림|없음)',
             r'\b(페이지|page)\s*(로딩|loading)\s*(불가|실패)',
-            r'\b(문자|SMS)\s*(발송|전송)\s*(불가|실패|안됨)',  # 확장된 패턴
-            r'\b(발송|전송|송신)\s*(불가|실패|안됨|오류)',     # 추가 패턴
-            # OTP 관련 증상 패턴 추가
+            r'\b(문자|SMS)\s*(발송|전송)\s*(불가|실패|안됨)',
+            r'\b(발송|전송|송신)\s*(불가|실패|안됨|오류)',
             r'\b(OTP|otp|일회용비밀번호)\s*(불가|실패|안됨|오류|지연)',
             r'\b(인증|2차인증|이중인증)\s*(불가|실패|안됨|오류)'
         ]
@@ -261,7 +428,6 @@ class SearchManagerLocal:
             if matches:
                 keywords['symptom_keywords'].extend([match if isinstance(match, str) else ' '.join(match) for match in matches])
         
-        # 요청 행동 관련 키워드
         action_patterns = [
             r'\b(복구|해결|수리)(?:방법|조치)',
             r'\b(원인|이유|cause)',
@@ -275,7 +441,6 @@ class SearchManagerLocal:
             if matches:
                 keywords['action_keywords'].extend(matches)
         
-        # 시간 관련 키워드 - 시간대/요일 키워드 추가
         time_patterns = [
             r'\b(\d{4})년',
             r'\b(\d{1,2})월',
@@ -292,12 +457,11 @@ class SearchManagerLocal:
         return keywords
     
     def calculate_keyword_relevance_score(self, query, document):
-        """키워드 기반 관련성 점수 계산 - repair/cause용 정확성 향상"""
+        """키워드 기반 관련성 점수 계산"""
         query_keywords = self.extract_query_keywords(query)
         score = 0
         max_score = 100
         
-        # 문서 텍스트 준비
         doc_text = f"""
         {document.get('service_name', '')} 
         {document.get('symptom', '')} 
@@ -380,41 +544,22 @@ class SearchManagerLocal:
             return {}
     
     def _normalize_text_for_similarity(self, text):
-        """텍스트를 의미적 유사성 비교를 위해 정규화 - 의미적 동의어 확장"""
+        """텍스트를 의미적 유사성 비교를 위해 정규화"""
         if not text:
             return ""
         
-        # 도어쓰기 제거
         normalized = re.sub(r'\s+', '', text.lower())
         
-        # 의미가 같은 표현들을 통일 - 확장된 동의어 사전
         replacements = {
-            # 불가/실패 관련 확장
             '불가능': '불가', '실패': '불가', '안됨': '불가', '되지않음': '불가', 
             '할수없음': '불가', '불능': '불가', '에러': '불가', '장애': '불가',
-            
-            # 접속/연결 관련
             '접속': '연결', '로그인': '접속', '액세스': '접속', '진입': '접속',
-            
-            # 오류/에러 관련
             '오류': '에러', '장애': '에러', '문제': '에러', '이슈': '에러', '버그': '에러',
-            
-            # 지연/느림 관련
             '지연': '느림', '늦음': '느림', '응답없음': '느림', '타임아웃': '느림',
-            
-            # 서비스/기능 관련
             '서비스': '기능', '시스템': '서비스', '플랫폼': '서비스',
-            
-            # 가입/등록 관련
             '가입': '등록', '신청': '등록', '회원가입': '등록', '회원등록': '등록',
-            
-            # 결제/구매 관련
             '결제': '구매', '구매': '결제', '주문': '결제', '거래': '결제', '구입': '결제',
-            
-            # 발송/전송 관련 - 확장
             '발송': '전송', '송신': '전송', '전달': '전송', '보내기': '전송',
-            
-            # 일반 용어 서비스명 정규화
             'otp': 'OTP', '일회용비밀번호': 'OTP', '원타임패스워드': 'OTP',
             'api': 'API', 'sms': 'SMS', '문자': 'SMS', '단문': 'SMS',
             'vpn': 'VPN', '가상사설망': 'VPN', 'dns': 'DNS', '도메인': 'DNS'
@@ -426,26 +571,19 @@ class SearchManagerLocal:
         return normalized
     
     def _extract_semantic_keywords(self, text):
-        """텍스트에서 의미적 키워드 추출 - 발송/전송 관련 확장"""
+        """텍스트에서 의미적 키워드 추출"""
         if not text:
             return []
         
         keyword_patterns = [
-            # 동작 + 대상 패턴 - 발송/전송 관련 추가
             r'(\w+)(불가|실패|에러|오류|지연|느림)',
             r'(\w+)(가입|등록|신청)',
             r'(\w+)(결제|구매|주문)',
             r'(\w+)(접속|연결|로그인)',
             r'(\w+)(조회|검색|확인)',
-            r'(\w+)(발송|전송|송신)',  # 새로 추가
-            
-            # 대상 + 상태 패턴 - 확장
+            r'(\w+)(발송|전송|송신)',
             r'(보험|가입|결제|접속|로그인|조회|검색|주문|구매|발송|전송|문자|SMS|OTP|API)(\w*)',
-            
-            # 서비스명 관련
             r'(앱|웹|사이트|페이지|시스템|서비스)(\w*)',
-            
-            # 단독 중요 키워드 - 발송 관련 추가
             r'\b(보험|가입|불가|실패|에러|오류|지연|접속|로그인|결제|구매|주문|조회|검색|발송|전송|문자|SMS|OTP|API)\b'
         ]
         
@@ -474,7 +612,7 @@ class SearchManagerLocal:
         return self._effect_patterns_cache or {}
     
     def _expand_query_with_semantic_similarity(self, query):
-        """쿼리를 의미적으로 유사한 표현들로 확장 - 동의어 확장"""
+        """쿼리를 의미적으로 유사한 표현들로 확장"""
         effect_patterns = self.get_effect_patterns_from_rag()
         
         if not effect_patterns:
@@ -486,18 +624,14 @@ class SearchManagerLocal:
         similar_effects = set()
         semantic_expansions = set()
         
-        # 동의어 확장을 위한 추가 처리
         expanded_query_keywords = set(query_keywords)
         
-        # 불가/실패 동의어 확장
         if any(keyword in query.lower() for keyword in ['불가', '실패', '안됨', '에러', '오류']):
             expanded_query_keywords.update(['불가', '실패', '안됨', '에러', '오류', '장애'])
         
-        # 발송/전송 동의어 확장
         if any(keyword in query.lower() for keyword in ['발송', '전송', '문자', 'sms']):
             expanded_query_keywords.update(['발송', '전송', '송신', '문자', 'sms'])
         
-        # 일반 용어 서비스명 확장
         for common_service in self.COMMON_TERM_SERVICES.keys():
             if common_service.lower() in query.lower():
                 aliases = self.COMMON_TERM_SERVICES[common_service]
@@ -511,7 +645,7 @@ class SearchManagerLocal:
                         pattern_info['normalized_effect']
                     )
                     
-                    if similarity > 0.2:  # 임계값을 낮춰서 더 포괄적으로
+                    if similarity > 0.2:
                         similar_effects.add(pattern_info['original_effect'])
                         semantic_expansions.update(pattern_info['keywords'])
         
@@ -519,7 +653,6 @@ class SearchManagerLocal:
             expanded_terms = []
             expanded_terms.append(f'({query})')
             
-            # 동의어 기반 확장 쿼리 추가
             synonyms = []
             if '불가' in query or '실패' in query:
                 synonyms.extend(['불가', '실패', '안됨', '에러', '오류'])
@@ -626,8 +759,6 @@ class SearchManagerLocal:
             return sorted_service_names
             
         except Exception as e:
-            if self.debug_mode:
-                st.warning(f"RAG 데이터에서 서비스명 로드 실패: {str(e)}")
             return []
     
     def get_service_names_from_rag(self):
@@ -638,11 +769,10 @@ class SearchManagerLocal:
         return self._service_names_cache or []
     
     def _normalize_service_name(self, service_name):
-        """서비스명을 정규화 - 특수문자 제거 및 공백 처리"""
+        """서비스명을 정규화"""
         if not service_name:
             return ""
         
-        # 특수문자를 공백으로 변환 후 중복 공백 제거
         normalized = re.sub(r'[^\w\s가-힣]', ' ', service_name)
         normalized = re.sub(r'\s+', ' ', normalized).strip().lower()
         
@@ -653,9 +783,7 @@ class SearchManagerLocal:
         if not service_name:
             return []
         
-        # 특수문자 제거하고 단어 토큰으로 분리
         tokens = re.findall(r'[A-Za-z가-힣0-9]+', service_name)
-        # 길이 2 이상인 토큰만 유효하다고 판단
         valid_tokens = [token.lower() for token in tokens if len(token) >= 2]
         
         return valid_tokens
@@ -668,27 +796,20 @@ class SearchManagerLocal:
         query_set = set(query_tokens)
         service_set = set(service_tokens)
         
-        # Jaccard 유사도
         intersection = len(query_set.intersection(service_set))
         union = len(query_set.union(service_set))
         
         jaccard_score = intersection / union if union > 0 else 0
-        
-        # 포함 비율 (쿼리 토큰이 서비스 토큰에 얼마나 포함되는지)
         inclusion_score = intersection / len(query_set) if len(query_set) > 0 else 0
         
-        # 두 점수의 가중 평균 (포함 비율을 더 중시)
         final_score = (jaccard_score * 0.3) + (inclusion_score * 0.7)
         
         return final_score
     
     def extract_service_name_from_query(self, query):
-        """개선된 RAG 데이터 기반 서비스명 추출 - 토큰 기반 유사도 매칭 + 일반용어 예외처리"""
-        # 1단계: 일반 용어 서비스명 확인
+        """개선된 RAG 데이터 기반 서비스명 추출"""
         is_common, common_service = self.is_common_term_service(query)
         if is_common:
-            if self.debug_mode:
-                st.info(f"일반 용어 서비스명 감지: **{common_service}** (정확한 서비스명 매칭 모드)")
             return common_service
         
         rag_service_names = self.get_service_names_from_rag()
@@ -702,7 +823,6 @@ class SearchManagerLocal:
         if not query_tokens:
             return None
         
-        # 후보 서비스명과 유사도 점수를 저장할 리스트
         candidates = []
         
         for service_name in rag_service_names:
@@ -711,12 +831,10 @@ class SearchManagerLocal:
             if not service_tokens:
                 continue
             
-            # 1단계: 완전 일치 검색 (최고 우선순위)
             if service_name.lower() in query_lower:
                 candidates.append((service_name, 1.0, 'exact_match'))
                 continue
             
-            # 2단계: 정규화된 텍스트 포함 관계
             normalized_query = self._normalize_service_name(query)
             normalized_service = self._normalize_service_name(service_name)
             
@@ -724,31 +842,21 @@ class SearchManagerLocal:
                 candidates.append((service_name, 0.9, 'normalized_inclusion'))
                 continue
             
-            # 3단계: 토큰 기반 유사도 계산
             similarity = self._calculate_service_similarity(query_tokens, service_tokens)
             
-            if similarity >= 0.5:  # 50% 이상 유사도
+            if similarity >= 0.5:
                 candidates.append((service_name, similarity, 'token_similarity'))
         
-        # 후보가 없으면 None 반환
         if not candidates:
             return None
         
-        # 유사도 점수 기준으로 정렬 (높은 순)
         candidates.sort(key=lambda x: x[1], reverse=True)
-        
-        # 가장 높은 점수의 서비스명 반환
         best_match = candidates[0]
-        
-        # 디버깅을 위한 정보 출력 (디버그 모드에서만)
-        if len(candidates) > 1 and self.debug_mode:
-            st.info(f"서비스명 매칭 결과: '{best_match[0]}' (유사도: {best_match[1]:.2f}, 방식: {best_match[2]})")
         
         return best_match[0]
 
     def calculate_hybrid_score(self, search_score, reranker_score):
-        """검색 점수와 Reranker 점수를 조합하여 하이브리드 점수 계산 - None 값 처리"""
-        # None 값 처리
+        """검색 점수와 Reranker 점수를 조합하여 하이브리드 점수 계산"""
         search_score = search_score if search_score is not None else 0.0
         reranker_score = reranker_score if reranker_score is not None else 0.0
         
@@ -761,13 +869,15 @@ class SearchManagerLocal:
         
         return hybrid_score
 
-    def advanced_filter_documents_for_accuracy(self, documents, query_type="default", query_text="", target_service_name=None):
-        """정확성 우선 필터링 - repair/cause용 - None 값 처리 강화 + 정확한 서비스명 매칭 강화"""
+    def advanced_filter_documents_for_accuracy(self, documents, query_type="default", query_text="", target_service_name=None, grade_info=None):
+        """정확성 우선 필터링 - repair/cause용"""
         
         thresholds = self.config.get_dynamic_thresholds(query_type, query_text)
         documents = self._boost_semantic_documents(documents, query_text)
         
-        # 일반 용어 서비스명인지 확인
+        if grade_info and grade_info['has_grade_query']:
+            documents = self.filter_documents_by_grade(documents, grade_info)
+        
         is_common_service = False
         if target_service_name:
             is_common, _ = self.is_common_term_service(target_service_name)
@@ -785,42 +895,39 @@ class SearchManagerLocal:
             'semantic_boosted': 0,
             'keyword_relevant': 0,
             'final_selected': 0,
-            'common_term_matches': 0
+            'common_term_matches': 0,
+            'grade_matched': 0
         }
         
         for doc in documents:
-            # None 값 처리
             search_score = doc.get('score', 0) if doc.get('score') is not None else 0.0
             reranker_score = doc.get('reranker_score', 0) if doc.get('reranker_score') is not None else 0.0
             
             if 'semantic_similarity' in doc:
                 filter_stats['semantic_boosted'] += 1
             
-            # 키워드 기반 관련성 점수 계산
+            if doc.get('grade_match_type'):
+                filter_stats['grade_matched'] += 1
+            
             keyword_relevance = self.calculate_keyword_relevance_score(query_text, doc)
             if keyword_relevance >= 30:
                 filter_stats['keyword_relevant'] += 1
                 doc['keyword_relevance_score'] = keyword_relevance
             
-            # 기본 검색 점수 필터링
             if search_score < thresholds['search_threshold']:
                 continue
             filter_stats['search_filtered'] += 1
             
-            # **수정: 서비스명 매칭 - 정확한 서비스명 필터링 강화**
             if target_service_name:
                 doc_service_name = doc.get('service_name', '').strip()
                 
                 if is_common_service:
-                    # 일반 용어 서비스명인 경우: 서비스명 필드에서 정확히 매칭되는지 우선 확인
                     if doc_service_name.lower() == target_service_name.lower():
                         filter_stats['service_exact_match'] += 1
                         doc['service_match_type'] = 'exact_common_term'
                     else:
-                        # 서비스명에서 정확히 매칭되지 않으면 제외 (다른 필드는 체크하지 않음)
                         continue
                 else:
-                    # 일반적인 서비스명 매칭
                     if doc_service_name.lower() == target_service_name.lower():
                         filter_stats['service_exact_match'] += 1
                         doc['service_match_type'] = 'exact'
@@ -834,76 +941,72 @@ class SearchManagerLocal:
                 
             filter_stats['service_filtered'] += 1
             
-            # Reranker 점수 우선 평가
             if reranker_score >= thresholds['reranker_threshold']:
                 filter_stats['reranker_qualified'] += 1
                 match_type = doc.get('service_match_type', 'unknown')
+                grade_info_text = f" (등급: {doc.get('incident_grade', 'N/A')})" if grade_info and grade_info['has_grade_query'] else ""
                 relevance_info = f" (키워드 관련성: {keyword_relevance}점)" if keyword_relevance >= 30 else ""
                 match_desc = "정확한 일반용어" if match_type == 'exact_common_term' else match_type
-                doc['filter_reason'] = f"정확성 우선 - {match_desc} 매칭 + Reranker 고품질 (점수: {reranker_score:.2f}){relevance_info}"
+                doc['filter_reason'] = f"정확성 우선 - {match_desc} 매칭 + Reranker 고품질 (점수: {reranker_score:.2f}){grade_info_text}{relevance_info}"
                 doc['final_score'] = reranker_score
                 doc['quality_tier'] = 'Premium'
                 filtered_docs.append(doc)
                 filter_stats['final_selected'] += 1
                 continue
             
-            # 하이브리드 점수 평가
             hybrid_score = self.calculate_hybrid_score(search_score, reranker_score)
             final_score = doc.get('final_score', hybrid_score)
-            
-            # final_score도 None일 수 있으므로 처리
             final_score = final_score if final_score is not None else 0.0
             
             if final_score >= thresholds['hybrid_threshold']:
                 filter_stats['hybrid_qualified'] += 1
                 match_type = doc.get('service_match_type', 'unknown')
+                grade_info_text = f" (등급: {doc.get('incident_grade', 'N/A')})" if grade_info and grade_info['has_grade_query'] else ""
                 relevance_info = f" (키워드 관련성: {keyword_relevance}점)" if keyword_relevance >= 30 else ""
                 match_desc = "정확한 일반용어" if match_type == 'exact_common_term' else match_type
-                doc['filter_reason'] = f"정확성 우선 - {match_desc} 매칭 + 하이브리드 통과 (점수: {final_score:.2f}){relevance_info}"
+                doc['filter_reason'] = f"정확성 우선 - {match_desc} 매칭 + 하이브리드 통과 (점수: {final_score:.2f}){grade_info_text}{relevance_info}"
                 doc['quality_tier'] = 'Standard'
                 filtered_docs.append(doc)
                 filter_stats['final_selected'] += 1
         
-        # 정확성 우선 정렬
         def sort_key(doc):
             match_priority = {'exact': 3, 'partial': 2, 'exact_common_term': 3, 'all': 1}
             semantic_boost = doc.get('semantic_similarity', 0) or 0
             keyword_boost = doc.get('keyword_relevance_score', 0) or 0
             final_score = doc.get('final_score', 0) or 0
             
+            grade_priority = 0
+            if grade_info and grade_info['has_grade_query']:
+                grade = doc.get('incident_grade', '')
+                if '1등급' in grade:
+                    grade_priority = 4
+                elif '2등급' in grade:
+                    grade_priority = 3
+                elif '3등급' in grade:
+                    grade_priority = 2
+                elif '4등급' in grade:
+                    grade_priority = 1
+            
             return (
+                grade_priority,
                 match_priority.get(doc.get('service_match_type', 'all'), 0), 
                 final_score + (semantic_boost * 0.1) + (keyword_boost * 0.001)
             )
         
         filtered_docs.sort(key=sort_key, reverse=True)
         final_docs = filtered_docs[:thresholds['max_results']]
-       
-        # 디버그 모드에서만 상세 통계 표시
-        if self.debug_mode:
-            common_term_info = f"\n        - 정확한 일반용어 매칭: {filter_stats['service_exact_match']}개" if is_common_service else ""
-            
-            st.info(f"""
-            정확성 우선 필터링 결과 (repair/cause 최적화 + 정확한 서비스명 매칭)
-            - 전체 검색 결과: {filter_stats['total']}개
-            - 기본 점수 통과: {filter_stats['search_filtered']}개
-            - 이 서비스명 매칭: {filter_stats['service_filtered']}개{common_term_info}
-            - Reranker 고품질: {filter_stats['reranker_qualified']}개
-            - 하이브리드 통과: {filter_stats['hybrid_qualified']}개
-            - 의미적 유사성 부스팅: {filter_stats['semantic_boosted']}개
-            - 키워드 관련성 확보: {filter_stats['keyword_relevant']}개
-            - 최종 선별: {len(final_docs)}개
-            """)
         
         return final_docs
 
-    def simple_filter_documents_for_coverage(self, documents, query_type="default", query_text="", target_service_name=None):
-        """포괄성 우선 필터링 - similar/default용 - None 값 처리 강화 + 정확한 서비스명 매칭 강화"""
+    def simple_filter_documents_for_coverage(self, documents, query_type="default", query_text="", target_service_name=None, grade_info=None):
+        """포괄성 우선 필터링 - similar/default용"""
         
         thresholds = self.config.get_dynamic_thresholds(query_type, query_text)
         documents = self._boost_semantic_documents(documents, query_text)
         
-        # 일반 용어 서비스명인지 확인
+        if grade_info and grade_info['has_grade_query']:
+            documents = self.filter_documents_by_grade(documents, grade_info)
+        
         is_common_service = False
         if target_service_name:
             is_common, _ = self.is_common_term_service(target_service_name)
@@ -918,36 +1021,34 @@ class SearchManagerLocal:
             'hybrid_qualified': 0,
             'semantic_boosted': 0,
             'final_selected': 0,
-            'common_term_matches': 0
+            'common_term_matches': 0,
+            'grade_matched': 0
         }
         
         for doc in documents:
-            # None 값 처리
             search_score = doc.get('score', 0) if doc.get('score') is not None else 0.0
             reranker_score = doc.get('reranker_score', 0) if doc.get('reranker_score') is not None else 0.0
             
             if 'semantic_similarity' in doc:
                 filter_stats['semantic_boosted'] += 1
             
-            # 기본 검색 점수 필터링
+            if doc.get('grade_match_type'):
+                filter_stats['grade_matched'] += 1
+            
             if search_score < thresholds['search_threshold']:
                 continue
             filter_stats['search_filtered'] += 1
             
-            # **수정: 서비스명 매칭 - 정확한 서비스명 필터링 강화**
             if target_service_name:
                 doc_service_name = doc.get('service_name', '').strip()
                 
                 if is_common_service:
-                    # 일반 용어 서비스명인 경우: 서비스명 필드에서 정확히 매칭되는지 우선 확인
                     if doc_service_name.lower() == target_service_name.lower():
                         filter_stats['common_term_matches'] += 1
                         doc['service_match_type'] = 'exact_common_term'
                     else:
-                        # 서비스명에서 정확히 매칭되지 않으면 제외
                         continue
                 else:
-                    # 일반적인 서비스명 매칭
                     if doc_service_name.lower() == target_service_name.lower():
                         doc['service_match_type'] = 'exact'
                     elif target_service_name.lower() in doc_service_name.lower() or doc_service_name.lower() in target_service_name.lower():
@@ -959,107 +1060,157 @@ class SearchManagerLocal:
                 
             filter_stats['service_filtered'] += 1
             
-            # Reranker 점수 우선 평가
             if reranker_score >= thresholds['reranker_threshold']:
                 filter_stats['reranker_qualified'] += 1
                 match_type = doc.get('service_match_type', 'unknown')
+                grade_info_text = f" (등급: {doc.get('incident_grade', 'N/A')})" if grade_info and grade_info['has_grade_query'] else ""
                 match_desc = "정확한 일반용어" if match_type == 'exact_common_term' else match_type
-                doc['filter_reason'] = f"포괄성 우선 - {match_desc} 매칭 + Reranker 고품질 (점수: {reranker_score:.2f})"
+                doc['filter_reason'] = f"포괄성 우선 - {match_desc} 매칭 + Reranker 고품질 (점수: {reranker_score:.2f}){grade_info_text}"
                 doc['final_score'] = reranker_score
                 doc['quality_tier'] = 'Premium'
                 filtered_docs.append(doc)
                 filter_stats['final_selected'] += 1
                 continue
             
-            # 하이브리드 점수 평가
             hybrid_score = self.calculate_hybrid_score(search_score, reranker_score)
             final_score = doc.get('final_score', hybrid_score)
-            
-            # final_score도 None일 수 있으므로 처리
             final_score = final_score if final_score is not None else 0.0
             
             if final_score >= thresholds['hybrid_threshold']:
                 filter_stats['hybrid_qualified'] += 1
                 match_type = doc.get('service_match_type', 'unknown')
+                grade_info_text = f" (등급: {doc.get('incident_grade', 'N/A')})" if grade_info and grade_info['has_grade_query'] else ""
                 match_desc = "정확한 일반용어" if match_type == 'exact_common_term' else match_type
-                doc['filter_reason'] = f"포괄성 우선 - {match_desc} 매칭 + 하이브리드 통과 (점수: {final_score:.2f})"
+                doc['filter_reason'] = f"포괄성 우선 - {match_desc} 매칭 + 하이브리드 통과 (점수: {final_score:.2f}){grade_info_text}"
                 doc['quality_tier'] = 'Standard'
                 filtered_docs.append(doc)
                 filter_stats['final_selected'] += 1
         
-        # 포괄성 우선 정렬 (의미적 유사성 중시)
         def sort_key(doc):
             match_priority = {'exact': 3, 'partial': 2, 'exact_common_term': 3, 'all': 1}
             semantic_boost = doc.get('semantic_similarity', 0) or 0
             final_score = doc.get('final_score', 0) or 0
             
+            grade_priority = 0
+            if grade_info and grade_info['has_grade_query']:
+                grade = doc.get('incident_grade', '')
+                if '1등급' in grade:
+                    grade_priority = 4
+                elif '2등급' in grade:
+                    grade_priority = 3
+                elif '3등급' in grade:
+                    grade_priority = 2
+                elif '4등급' in grade:
+                    grade_priority = 1
+            
             return (
+                grade_priority,
                 match_priority.get(doc.get('service_match_type', 'all'), 0), 
                 final_score + (semantic_boost * 0.1)
             )
         
         filtered_docs.sort(key=sort_key, reverse=True)
         final_docs = filtered_docs[:thresholds['max_results']]
-       
-        # 디버그 모드에서만 상세 통계 표시
-        if self.debug_mode:
-            common_term_info = f"\n        - 정확한 일반용어 매칭: {filter_stats['common_term_matches']}개" if is_common_service else ""
-            
-            st.info(f"""
-            포괄성 우선 필터링 결과 (similar/default 최적화 + 정확한 서비스명 매칭)
-            - 전체 검색 결과: {filter_stats['total']}개
-            - 기본 점수 통과: {filter_stats['search_filtered']}개
-            - 이 서비스명 매칭: {filter_stats['service_filtered']}개{common_term_info}
-            - Reranker 고품질: {filter_stats['reranker_qualified']}개
-            - 하이브리드 통과: {filter_stats['hybrid_qualified']}개
-            - 의미적 유사성 부스팅: {filter_stats['semantic_boosted']}개
-            - 최종 선별: {len(final_docs)}개
-            """)
         
         return final_docs
 
     def semantic_search_with_adaptive_filtering(self, query, target_service_name=None, query_type="default", top_k=50):
-        """쿼리 타입별 적응형 필터링을 적용한 시맨틱 검색 - 오류 처리 강화 + 정확한 서비스명 매칭 강화"""
+        """시맨틱 검색 - 월 조건 검색 쿼리 강화 및 통계 쿼리 통합"""
         try:
-            # 일반 용어 서비스명 확인
+            print(f"DEBUG: ========== SEARCH START ==========")
+            print(f"DEBUG: Query: '{query}'")
+            print(f"DEBUG: Target service: {target_service_name}")
+            print(f"DEBUG: Query type: {query_type}")
+            
+            grade_info = self.extract_incident_grade_from_query(query)
+            time_info = self._extract_year_month_from_query_unified(query)
+            
+            print(f"DEBUG: Unified time info extracted: {time_info}")
+            print(f"DEBUG: Grade info extracted: {grade_info}")
+            
             is_common_service = False
-            common_service_patterns = []
             if target_service_name:
                 is_common, _ = self.is_common_term_service(target_service_name)
                 if is_common:
                     is_common_service = True
-                    if self.debug_mode:
-                        st.info(f"일반 용어 서비스명 '{target_service_name}' 검색: 정확한 서비스명 매칭 모드")
             
-            # 의미적 유사성 기반 쿼리 확장
             expanded_query = self._expand_query_with_semantic_similarity(query)
+            print(f"DEBUG: Expanded query: '{expanded_query}'")
             
-            # 쿼리 타입별 초기 검색 결과 수 조정
-            if query_type in ['repair', 'cause']:
-                top_k = max(top_k, 80)
-                if self.debug_mode:
-                    st.info(f"초기 검색 결과 수집 중... (정확성 우선 - LLM 검증 준비)")
-            else:
-                top_k = max(top_k, 30)
-                if self.debug_mode:
-                    st.info(f"초기 검색 결과 수집 중... (포괄성 우선 - 광범위한 검색)")
+            if grade_info['has_grade_query']:
+                expanded_query = self.build_grade_search_query(expanded_query, grade_info)
+                print(f"DEBUG: Query with grade filter: '{expanded_query}'")
             
-            # **수정: RAG 기반 서비스명 포함 검색을 위한 검색 쿼리 구성 - 정확한 서비스명 매칭 강화**
-            if target_service_name:
-                if is_common_service:
-                    # 일반 용어 서비스명: 서비스명 필드에서만 정확히 매칭
-                    enhanced_query = f'service_name:"{target_service_name}"'
-                    if expanded_query != target_service_name:
-                        enhanced_query += f" AND ({expanded_query})"
+            # 개선된 통합 시간 조건 처리
+            if time_info['year'] or time_info['months']:
+                time_conditions = []
+                
+                # 연도 조건 (정확한 매칭만)
+                if time_info['year']:
+                    year_conditions = [
+                        f'year:"{time_info["year"]}"',
+                        f'error_date:{time_info["year"]}-*'
+                    ]
+                    time_conditions.append(f'({" OR ".join(year_conditions)})')
+                    print(f"DEBUG: Year condition added: {year_conditions}")
+                
+                # 통합된 월 조건 처리 (범위와 개별 월 모두 동일하게 처리)
+                if time_info['months']:
+                    month_conditions = []
+                    for month_num in time_info['months']:
+                        # month 필드 정확 매칭
+                        month_conditions.append(f'month:"{month_num}"')
+                        
+                        # error_date 월 매칭 (YYYY-MM-DD 형식)
+                        month_str = f"{month_num:02d}"
+                        if time_info['year']:
+                            month_conditions.append(f'error_date:{time_info["year"]}-{month_str}-*')
+                        else:
+                            # 연도 없이 월만 지정된 경우
+                            month_conditions.append(f'error_date:*-{month_str}-*')
+                    
+                    time_conditions.append(f'({" OR ".join(month_conditions)})')
+                    print(f"DEBUG: Unified months condition added for months: {time_info['months']}")
+                
+                # 최종 시간 필터 적용
+                if time_conditions:
+                    time_filter = " AND ".join(time_conditions)
+                    if expanded_query and expanded_query.strip():
+                        enhanced_query = f'({expanded_query}) AND {time_filter}'
+                    else:
+                        enhanced_query = time_filter
+                    
+                    print(f"DEBUG: Final enhanced query with unified time filter: '{enhanced_query}'")
                 else:
-                    # 일반적인 서비스명 검색
-                    enhanced_query = f'(service_name:"{target_service_name}" OR service_name:*{target_service_name}*)'
-                    if expanded_query != target_service_name:
-                        enhanced_query += f" AND ({expanded_query})"
+                    enhanced_query = expanded_query
             else:
                 enhanced_query = expanded_query
             
-            # 시맨틱 검색 실행
+            # 서비스명 조건 추가
+            if target_service_name:
+                if is_common_service:
+                    service_query = f'service_name:"{target_service_name}"'
+                    if enhanced_query != target_service_name:
+                        enhanced_query = f'{service_query} AND ({enhanced_query})'
+                    else:
+                        enhanced_query = f'{service_query} AND (*)'
+                else:
+                    service_query = f'(service_name:"{target_service_name}" OR service_name:*{target_service_name}*)'
+                    if enhanced_query != target_service_name:
+                        enhanced_query = f'{service_query} AND ({enhanced_query})'
+                    else:
+                        enhanced_query = f'{service_query} AND (*)'
+            
+            print(f"DEBUG: Final search query: '{enhanced_query}'")
+            
+            # Azure Cognitive Search 실행
+            if query_type in ['repair', 'cause']:
+                top_k = max(top_k, 80)
+            else:
+                top_k = max(top_k, 30)
+            
+            print(f"DEBUG: Executing Azure search with top_k={top_k}")
+            
             results = self.search_client.search(
                 search_text=enhanced_query,
                 top=top_k,
@@ -1074,12 +1225,34 @@ class SearchManagerLocal:
                 ]
             )
             
+            # 검색 결과를 문서 리스트로 변환
             documents = []
-            for result in results:
+            print(f"DEBUG: ========== SEARCH RESULTS ==========")
+            
+            for i, result in enumerate(results):
+                if i < 5:  # 처음 5개만 로그
+                    incident_id = result.get("incident_id", "N/A")
+                    error_date = result.get("error_date", "N/A")
+                    year = result.get("year", "N/A")
+                    month = result.get("month", "N/A")
+                    score = result.get("@search.score", 0)
+                    print(f"DEBUG: Search result {i+1}: ID={incident_id}, error_date={error_date}, year={year}, month={month}, score={score}")
+                
+                error_time_raw = result.get("error_time", 0)
+                try:
+                    if error_time_raw is None:
+                        error_time = 0
+                    elif isinstance(error_time_raw, str):
+                        error_time = int(float(error_time_raw.strip())) if error_time_raw.strip() else 0
+                    else:
+                        error_time = int(error_time_raw)
+                except (ValueError, TypeError):
+                    error_time = 0
+                
                 documents.append({
                     "incident_id": result.get("incident_id", ""),
                     "service_name": result.get("service_name", ""),
-                    "error_time": result.get("error_time", 0) if result.get("error_time") is not None else 0,
+                    "error_time": error_time,
                     "effect": result.get("effect", ""),
                     "symptom": result.get("symptom", ""),
                     "repair_notice": result.get("repair_notice", ""),
@@ -1099,41 +1272,142 @@ class SearchManagerLocal:
                     "reranker_score": result.get("@search.reranker_score", 0) if result.get("@search.reranker_score") is not None else 0.0
                 })
             
-            processing_mode = "정확성 우선 + 정확한 서비스명 매칭" if is_common_service and query_type in ['repair', 'cause'] else \
-                             "포괄성 우선 + 정확한 서비스명 매칭" if is_common_service else \
-                             "정확성 우선" if query_type in ['repair', 'cause'] else "포괄성 우선"
+            print(f"DEBUG: Total search results: {len(documents)}")
             
-            if self.debug_mode:
-                st.info(f"쿼리 타입별 적응형 문서 선별 중... ({processing_mode} 최적화)")
-            
-            # 쿼리 타입별 적응형 필터링 적용
+            # 추가 필터링 적용
             if query_type in ['repair', 'cause']:
-                filtered_documents = self.advanced_filter_documents_for_accuracy(documents, query_type, query, target_service_name)
+                filtered_documents = self.advanced_filter_documents_for_accuracy(documents, query_type, query, target_service_name, grade_info)
             else:
-                filtered_documents = self.simple_filter_documents_for_coverage(documents, query_type, query, target_service_name)
+                filtered_documents = self.simple_filter_documents_for_coverage(documents, query_type, query, target_service_name, grade_info)
+            
+            print(f"DEBUG: After document filtering: {len(filtered_documents)}")
+            print(f"DEBUG: ========== SEARCH END ==========")
             
             return filtered_documents
             
         except Exception as e:
-            if self.debug_mode:
-                st.warning(f"시맨틱 검색 실패, 일반 검색으로 대체: {str(e)}")
+            print(f"DEBUG: Search error: {e}")
             return self.search_documents_with_service_filter(query, target_service_name, query_type, top_k//2)
 
+    def _extract_year_month_from_query_unified(self, query):
+        """통합된 연도와 월 조건 추출 - 범위와 개별 월을 동일하게 처리"""
+        import re
+        
+        time_info = {
+            'year': None,
+            'months': []  # 모든 월을 리스트로 통합 관리
+        }
+        
+        if not query:
+            return time_info
+        
+        print(f"DEBUG: Unified time extraction from query: '{query}'")
+        
+        # 연도 추출
+        year_patterns = [
+            r'\b(\d{4})년\b',
+            r'\b(\d{4})\s*년도\b',
+            r'\b(\d{4})년도\b'
+        ]
+        
+        for pattern in year_patterns:
+            matches = re.findall(pattern, query, re.IGNORECASE)
+            if matches:
+                time_info['year'] = matches[-1]
+                print(f"DEBUG: Extracted year from query: {time_info['year']}")
+                break
+        
+        # 모든 월 관련 패턴을 통합하여 처리
+        months_set = set()
+        
+        # 월 범위 패턴들
+        month_range_patterns = [
+            r'\b(\d+)\s*~\s*(\d+)월\b',
+            r'\b(\d+)월\s*~\s*(\d+)월\b',  
+            r'\b(\d+)\s*-\s*(\d+)월\b',
+            r'\b(\d+)월\s*-\s*(\d+)월\b'
+        ]
+        
+        for pattern in month_range_patterns:
+            matches = re.findall(pattern, query, re.IGNORECASE)
+            if matches:
+                for match in matches:
+                    start_month = int(match[0])
+                    end_month = int(match[1])
+                    if 1 <= start_month <= 12 and 1 <= end_month <= 12 and start_month <= end_month:
+                        for month_num in range(start_month, end_month + 1):
+                            months_set.add(month_num)
+                        print(f"DEBUG: Added month range {start_month}~{end_month} to months set")
+        
+        # 개별 월 패턴들
+        individual_month_patterns = [
+            r'\b(\d{1,2})월\b',
+            r'\b(\d{1,2})\s*월\b'
+        ]
+        
+        for pattern in individual_month_patterns:
+            matches = re.findall(pattern, query, re.IGNORECASE)
+            if matches:
+                for match in matches:
+                    month_num = int(match)
+                    if 1 <= month_num <= 12:
+                        months_set.add(month_num)
+                        print(f"DEBUG: Added individual month {month_num} to months set")
+        
+        # 콤마로 구분된 월 패턴 (1월, 2월, 3월, 4월, 5월, 6월)
+        comma_separated_pattern = r'(\d{1,2})월(?:\s*,\s*(\d{1,2})월)*'
+        comma_matches = re.findall(r'(\d{1,2})월', query)
+        if comma_matches:
+            for match in comma_matches:
+                month_num = int(match)
+                if 1 <= month_num <= 12:
+                    months_set.add(month_num)
+                    print(f"DEBUG: Added comma-separated month {month_num} to months set")
+        
+        # 최종 months 리스트 생성 (정렬된 상태)
+        time_info['months'] = sorted(list(months_set))
+        
+        print(f"DEBUG: Final unified time info: year={time_info['year']}, months={time_info['months']}")
+        
+        return time_info
+
     def search_documents_with_service_filter(self, query, target_service_name=None, query_type="default", top_k=15):
-        """서비스명 필터링을 지원하는 일반 검색 (fallback용) - 오류 처리 강화 + 정확한 서비스명 매칭 강화"""
+        """서비스명 필터링을 지원하는 일반 검색 (fallback용)"""
         try:
-            # **수정: 일반 용어 서비스명 확인 및 처리 - 정확한 서비스명 매칭 강화**
+            grade_info = self.extract_incident_grade_from_query(query)
+            time_info = self._extract_year_month_from_query_unified(query)
+            
+            enhanced_query = query
+            if grade_info['has_grade_query']:
+                enhanced_query = self.build_grade_search_query(query, grade_info)
+            
+            if time_info['year'] or time_info['months']:
+                time_conditions = []
+                
+                if time_info['year']:
+                    year_conditions = [
+                        f'year:"{time_info["year"]}"',
+                        f'error_date:{time_info["year"]}*'
+                    ]
+                    time_conditions.append(f'({" OR ".join(year_conditions)})')
+                
+                if time_info['months']:
+                    month_conditions = []
+                    for month_num in time_info['months']:
+                        month_conditions.append(f'month:"{month_num}"')
+                    time_conditions.append(f'({" OR ".join(month_conditions)})')
+                
+                if time_conditions:
+                    time_filter = " AND ".join(time_conditions)
+                    enhanced_query = f'({enhanced_query}) AND {time_filter}'
+            
             if target_service_name:
                 is_common, _ = self.is_common_term_service(target_service_name)
                 
                 if is_common:
-                    # 일반 용어 서비스명: 서비스명 필드에서만 정확히 매칭
-                    enhanced_query = f'service_name:"{target_service_name}" AND ({query})'
+                    enhanced_query = f'service_name:"{target_service_name}" AND ({enhanced_query})'
                 else:
-                    # 일반적인 서비스명 검색
-                    enhanced_query = f'(service_name:"{target_service_name}" OR service_name:*{target_service_name}*) AND ({query})'
-            else:
-                enhanced_query = query
+                    enhanced_query = f'(service_name:"{target_service_name}" OR service_name:*{target_service_name}*) AND ({enhanced_query})'
             
             results = self.search_client.search(
                 search_text=enhanced_query,
@@ -1149,10 +1423,21 @@ class SearchManagerLocal:
             
             documents = []
             for result in results:
+                error_time_raw = result.get("error_time", 0)
+                try:
+                    if error_time_raw is None:
+                        error_time = 0
+                    elif isinstance(error_time_raw, str):
+                        error_time = int(float(error_time_raw.strip())) if error_time_raw.strip() else 0
+                    else:
+                        error_time = int(error_time_raw)
+                except (ValueError, TypeError):
+                    error_time = 0
+                
                 documents.append({
                     "incident_id": result.get("incident_id", ""),
                     "service_name": result.get("service_name", ""),
-                    "error_time": result.get("error_time", 0) if result.get("error_time") is not None else 0,
+                    "error_time": error_time,
                     "effect": result.get("effect", ""),
                     "symptom": result.get("symptom", ""),
                     "repair_notice": result.get("repair_notice", ""),
@@ -1172,21 +1457,21 @@ class SearchManagerLocal:
                     "reranker_score": result.get("@search.reranker_score", 0) if result.get("@search.reranker_score") is not None else 0.0
                 })
             
-            # 쿼리 타입별 적응형 필터링 적용
             if query_type in ['repair', 'cause']:
-                filtered_documents = self.advanced_filter_documents_for_accuracy(documents, query_type, query, target_service_name)
+                filtered_documents = self.advanced_filter_documents_for_accuracy(documents, query_type, query, target_service_name, grade_info)
             else:
-                filtered_documents = self.simple_filter_documents_for_coverage(documents, query_type, query, target_service_name)
+                filtered_documents = self.simple_filter_documents_for_coverage(documents, query_type, query, target_service_name, grade_info)
             
             return filtered_documents
             
         except Exception as e:
-            st.error(f"일반 검색 실패: {str(e)}")
             return []
 
     def search_documents_fallback(self, query, target_service_name=None, top_k=25):
-        """매우 관대한 기준의 대체 검색 - 오류 처리 강화 + 정확한 서비스명 매칭 강화"""
+        """매우 관대한 기준의 대체 검색"""
         try:
+            grade_info = self.extract_incident_grade_from_query(query)
+            
             fallback_thresholds = {
                 'search_threshold': 0.05,
                 'reranker_threshold': 0.5,
@@ -1199,13 +1484,14 @@ class SearchManagerLocal:
                 is_common, _ = self.is_common_term_service(target_service_name)
                 
                 if is_common:
-                    # 일반 용어 서비스명: 서비스명에서만 검색
                     search_query = f'service_name:*{target_service_name}*'
                 else:
-                    # 일반적인 서비스명 검색
                     search_query = f'service_name:*{target_service_name}*'
             else:
                 search_query = query
+            
+            if grade_info['has_grade_query'] and grade_info['specific_grade']:
+                search_query += f' AND incident_grade:"{grade_info["specific_grade"]}"'
             
             results = self.search_client.search(
                 search_text=search_query,
@@ -1225,10 +1511,21 @@ class SearchManagerLocal:
                 score = score if score is not None else 0.0
                 
                 if score >= fallback_thresholds['search_threshold']:
+                    error_time_raw = result.get("error_time", 0)
+                    try:
+                        if error_time_raw is None:
+                            error_time = 0
+                        elif isinstance(error_time_raw, str):
+                            error_time = int(float(error_time_raw.strip())) if error_time_raw.strip() else 0
+                        else:
+                            error_time = int(error_time_raw)
+                    except (ValueError, TypeError):
+                        error_time = 0
+                    
                     doc = {
                         "incident_id": result.get("incident_id", ""),
                         "service_name": result.get("service_name", ""),
-                        "error_time": result.get("error_time", 0) if result.get("error_time") is not None else 0,
+                        "error_time": error_time,
                         "effect": result.get("effect", ""),
                         "symptom": result.get("symptom", ""),
                         "repair_notice": result.get("repair_notice", ""),
@@ -1251,20 +1548,32 @@ class SearchManagerLocal:
                         "filter_reason": f"대체 검색 (관대한 기준, 점수: {score:.2f})",
                         "service_match_type": "fallback"
                     }
+                    
+                    if grade_info['has_grade_query']:
+                        doc_grade = result.get("incident_grade", "")
+                        if grade_info['specific_grade'] and doc_grade == grade_info['specific_grade']:
+                            doc['grade_match_type'] = 'exact'
+                            doc['filter_reason'] += f" (등급: {doc_grade})"
+                        elif doc_grade:
+                            doc['grade_match_type'] = 'general'
+                            doc['filter_reason'] += f" (등급: {doc_grade})"
+                    
                     documents.append(doc)
+            
+            if grade_info['has_grade_query']:
+                documents = self.filter_documents_by_grade(documents, grade_info)
             
             documents.sort(key=lambda x: x.get('final_score', 0) or 0, reverse=True)
             
             return documents[:fallback_thresholds['max_results']]
             
         except Exception as e:
-            st.error(f"대체 검색도 실패: {str(e)}")
             return []
 
     def _extract_service_name_legacy(self, query):
         """기존 패턴 기반 서비스명 추출 (fallback)"""
         service_patterns = [
-            r'([A-Za-z가-힣][A-Za-z0-9가-힣_\-/\+\(\)\s]*[A-Za-z0-9가-힣_\-/\+\)])\s+(?:년도별|월별|건수|장애|현상|복구|서비스|통계|발생|발생일자|언제)',
+            r'([A-Za-z가-힣][A-Za-z0-9가-힣_\-/\+\(\)\s]*[A-Za-z0-9가-힣_\-/\+\)])\s+(?:연도별|월별|건수|장애|현상|복구|서비스|통계|발생|발생일자|언제)',
             r'서비스.*?([A-Za-z가-힣][A-Za-z0-9가-힣_\-/\+\(\)\s]*[A-Za-z0-9가-힣_\-/\+\)])',
             r'^([A-Za-z가-힣][A-Za-z0-9가-힣_\-/\+\(\)\s]*[A-Za-z0-9가-힣_\-/\+\)])\s+(?!으로|에서|에게|에|을|를|이|가)',
             r'["\']([A-Za-z가-힣][A-Za-z0-9가-힣_\-/\+\(\)\s]*[A-Za-z0-9가-힣_\-/\+\)])["\']',

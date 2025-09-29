@@ -17,3 +17,6 @@ requests
 pandas
 openpyxl
 urllib3
+plotly
+seaborn
+chardet

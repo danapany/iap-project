@@ -2,10 +2,35 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
+import seaborn as sns
+import numpy as np
 import platform
 import os
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
+
+# -----------------------------
+# 📐 페이지 레이아웃 설정
+# -----------------------------
+st.set_page_config(
+    page_title="서비스별 오류 시즌성 분석기",
+    page_icon="📊",
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
+
+# CSS를 사용하여 좌측 정렬 및 너비 900px 고정
+st.markdown("""
+    <style>
+    .main .block-container {
+        max-width: 900px;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        margin-left: 0;
+        margin-right: auto;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # -----------------------------
 # 🎨 폰트 설정 (한글 지원) - Azure 웹앱 최적화
@@ -117,10 +142,102 @@ def setup_korean_font():
 font_name = setup_korean_font()
 
 # -----------------------------
-# 📥 1. 데이터 업로드 / 로드
+# 📊 분석 함수들
+# -----------------------------
+def calculate_trend_metrics(df, current_month, current_mmdd):
+    """트렌드 및 메트릭 계산 함수"""
+    # 전체 오류 수
+    total_errors = len(df)
+    
+    # 이번 달 오류 수
+    current_month_errors = len(df[df['month'] == current_month])
+    
+    # 지난 달 오류 수 (비교용)
+    last_month = current_month - 1 if current_month > 1 else 12
+    last_month_errors = len(df[df['month'] == last_month])
+    
+    # 증가율 계산
+    if last_month_errors > 0:
+        month_change = ((current_month_errors - last_month_errors) / last_month_errors) * 100
+    else:
+        month_change = 0
+    
+    # 오늘 날짜 기준 오류 수
+    today_errors = len(df[df['month_day'] == current_mmdd])
+    
+    # 가장 위험한 서비스 (이번 달 기준)
+    current_month_df = df[df['month'] == current_month]
+    if not current_month_df.empty:
+        risk_service = current_month_df['service'].value_counts().index[0]
+        risk_count = current_month_df['service'].value_counts().iloc[0]
+    else:
+        risk_service = "N/A"
+        risk_count = 0
+    
+    return {
+        'total_errors': total_errors,
+        'current_month_errors': current_month_errors,
+        'month_change': month_change,
+        'today_errors': today_errors,
+        'risk_service': risk_service,
+        'risk_count': risk_count
+    }
+
+def create_heatmap_data(df, selected_service=None):
+    """히트맵 데이터 생성 함수"""
+    if selected_service:
+        df_filtered = df[df['service'] == selected_service]
+    else:
+        df_filtered = df
+    
+    # 월-일 조합으로 집계
+    heatmap_data = df_filtered.groupby(['month', 'day']).size().reset_index(name='count')
+    
+    # 피벗 테이블 생성 (월 x 일)
+    pivot_data = heatmap_data.pivot(index='month', columns='day', values='count').fillna(0)
+    
+    # 1-12월, 1-31일 전체 범위로 확장
+    full_months = range(1, 13)
+    full_days = range(1, 32)
+    
+    pivot_data = pivot_data.reindex(index=full_months, columns=full_days, fill_value=0)
+    
+    return pivot_data
+
+def calculate_moving_average(data, window=3):
+    """이동평균 계산 함수 - 수정된 버전"""
+    data_array = np.array(data)
+    
+    # 데이터가 window보다 작으면 None 반환 (그래프에서 트렌드 라인을 그리지 않음)
+    if len(data_array) < window:
+        return None, None
+    
+    # 이동평균 계산 (valid mode: 길이 = len(data) - window + 1)
+    moving_avg = np.convolve(data_array, np.ones(window)/window, mode='valid')
+    
+    # 이동평균에 해당하는 인덱스 계산
+    # window=3이면 첫 번째 값은 0,1,2의 평균 -> 인덱스 1 (중앙값)
+    # window=7이면 첫 번째 값은 0,1,2,3,4,5,6의 평균 -> 인덱스 3 (중앙값)
+    start_idx = window // 2
+    end_idx = len(data_array) - (window - 1) + start_idx
+    indices = np.arange(start_idx, end_idx)
+    
+    return moving_avg, indices
+
+def get_moving_average_info(window):
+    """이동평균 정보 반환 함수"""
+    center_offset = window // 2
+    return {
+        'window': window,
+        'center_offset': center_offset,
+        'description': f"{window}기간 이동평균 (중앙값 기준 정렬)"
+    }
+
+# -----------------------------
+# 🔥 1. 데이터 업로드 / 로드
 # -----------------------------
 st.title("📊 서비스별 오류 시즌성 분석기")
-st.write("서비스별 오류 발생 데이터를 분석해 현재 월/일 기준 오류가 자주 발생할 가능성이 높은 서비스를 예측합니다.")
+st.write("서비스별 오류 발생 데이터를 분석해 현재 월/일 기준 시즌얼리티 정보를 제공합니다.")
 
 # 업로드 대신 정해진 경로의 파일을 자동 로드
 csv_path = "./data/csv/seasonality.csv"
@@ -148,17 +265,59 @@ weekday_map = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "�
 df["week"] = df["weekday"].map(weekday_map)
 
 # -----------------------------
-# 📊 3. 집계 처리
-# -----------------------------
-monthly_counts = df.groupby(["service", "month"]).size().reset_index(name="count")
-day_counts = df.groupby(["service", "month_day"]).size().reset_index(name="count")
-
-# -----------------------------
-# 📅 4. 현재 기준 예측
+# 📈 3. 메트릭 카드 표시
 # -----------------------------
 today = datetime.today()
 current_month = today.month
 current_mmdd = today.strftime("%m-%d")
+
+# 메트릭 계산
+metrics = calculate_trend_metrics(df, current_month, current_mmdd)
+
+# 메트릭 카드를 4개 컬럼으로 배치
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric(
+        label="📈 전체 오류 수",
+        value=f"{metrics['total_errors']:,}",
+        help="전체 기간 동안 발생한 총 오류 수"
+    )
+
+with col2:
+    st.metric(
+        label=f"📅 {current_month}월 오류 수",
+        value=f"{metrics['current_month_errors']:,}",
+        delta=f"{metrics['month_change']:.1f}%",
+        help="이번 달 오류 수 (전월 대비 증가율)"
+    )
+
+with col3:
+    st.metric(
+        label=f"🎯 오늘({current_mmdd}) 예상",
+        value=f"{metrics['today_errors']}",
+        help="과거 동일 날짜 기준 예상 오류 수"
+    )
+
+with col4:
+    st.metric(
+        label="🚨 위험 서비스",
+        value=f"{metrics['risk_service']}",
+        delta=f"{metrics['risk_count']}건",
+        help="이번 달 가장 많은 오류가 발생한 서비스"
+    )
+
+# -----------------------------
+# 📊 4. 집계 처리
+# -----------------------------
+monthly_counts = df.groupby(["service", "month"]).size().reset_index(name="count")
+day_counts = df.groupby(["service", "month_day"]).size().reset_index(name="count")
+
+
+# -----------------------------
+# 📅 6. 현재 기준 예측 (기존)
+# -----------------------------
+st.subheader(f"📅 현재 월({current_month}월) 기준 위험 서비스")
 
 top_services_month = (
     monthly_counts[monthly_counts["month"] == current_month]
@@ -166,20 +325,23 @@ top_services_month = (
     .reset_index(drop=True)
 )
 
+if not top_services_month.empty:
+    st.dataframe(top_services_month, use_container_width=True)
+else:
+    st.info("현재 월에 해당하는 데이터가 없습니다.")
+
+st.subheader(f"📆 오늘({current_mmdd}) 기준 위험 서비스")
+
 top_services_day = (
     day_counts[day_counts["month_day"] == current_mmdd]
     .sort_values(by="count", ascending=False)
     .reset_index(drop=True)
 )
 
-# -----------------------------
-# 📈 5. 결과 표시
-# -----------------------------
-st.subheader(f"📅 현재 월({current_month}월) 기준")
-st.dataframe(top_services_month, use_container_width=True)
-
-st.subheader(f"📆 오늘({current_mmdd}) 기준")
-st.dataframe(top_services_day, use_container_width=True)
+if not top_services_day.empty:
+    st.dataframe(top_services_day, use_container_width=True)
+else:
+    st.info("오늘 날짜에 해당하는 과거 데이터가 없습니다.")
 
 # -----------------------------
 # 기본 서비스 선택을 위한 설정
@@ -192,7 +354,7 @@ else:
     default_service = df["service"].unique().tolist()[0]
 
 # -----------------------------
-# 📉 6. 특정 서비스 시각화
+# 📉 7. 특정 서비스 시각화 - 월별 (수정된 이동평균)
 # -----------------------------
 st.subheader("📊 서비스별 월별 오류 시즌성 그래프")
 
@@ -206,20 +368,65 @@ selected_service = st.selectbox("서비스 선택", unique_services)
 
 service_monthly = monthly_counts[monthly_counts["service"] == selected_service]
 
-fig, ax = plt.subplots(figsize=(10, 6))
-ax.bar(service_monthly["month"], service_monthly["count"])
-ax.set_title(f"{selected_service} - 월별 오류 발생 패턴", fontsize=14, pad=20)
+# 1-12월 전체 데이터로 확장 (없는 월은 0으로)
+full_months = pd.DataFrame({'month': range(1, 13)})
+service_monthly_full = pd.merge(full_months, service_monthly[['month', 'count']], on='month', how='left')
+
+# fillna 전에 디버깅 정보 출력 (개발용)
+if service_monthly_full['count'].isna().any():
+    service_monthly_full['count'] = service_monthly_full['count'].fillna(0)
+service_monthly_full['count'] = service_monthly_full['count'].astype(int)
+
+# 트렌드 라인 계산 (3개월 이동평균) - 수정된 버전
+window_months = 3
+ma_info_months = get_moving_average_info(window_months)
+trend_data_months, trend_indices_months = calculate_moving_average(service_monthly_full['count'].values, window_months)
+
+fig, ax = plt.subplots(figsize=(12, 6))
+
+# 실제 데이터 막대그래프
+bars = ax.bar(service_monthly_full["month"], service_monthly_full["count"], alpha=0.7, label="실제 오류 수")
+
+# 트렌드 라인 추가 (데이터가 충분한 경우에만)
+if trend_data_months is not None and trend_indices_months is not None:
+    # 실제 월 번호로 변환 (인덱스는 0부터 시작하므로 +1)
+    trend_months_actual = trend_indices_months + 1
+    ax.plot(trend_months_actual, trend_data_months, 
+           color='red', linewidth=3, marker='o', markersize=6, 
+           label=f"트렌드 ({ma_info_months['description']})", alpha=0.8)
+
+ax.set_title(f"{selected_service} - 월별 오류 발생 패턴 및 트렌드", fontsize=14, pad=20)
 ax.set_xlabel("월", fontsize=12)
 ax.set_ylabel("오류 수", fontsize=12)
 ax.set_xticks(range(1, 13))
 ax.grid(True, alpha=0.3)
+ax.legend()
+
+# 현재 월 강조
+current_month_idx = current_month - 1
+if current_month_idx < len(bars):
+    bars[current_month_idx].set_color('orange')
+    bars[current_month_idx].set_alpha(1.0)
+
 plt.tight_layout()
 st.pyplot(fig)
 
+# 트렌드 분석 설명
+with st.expander("📈 트렌드 분석 해석"):
+    st.write(f"""
+    - **주황색 막대**: 현재 월
+    - **빨간색 선**: {ma_info_months['description']}
+    - **상승 트렌드**: 오류가 증가하는 추세
+    - **하강 트렌드**: 오류가 감소하는 추세
+    - **평평한 트렌드**: 오류가 안정적인 상태
+    
+    **이동평균 설명**: {window_months}개월간의 평균값을 계산하여 단기 변동을 제거하고 장기 추세를 파악합니다.
+    """)
+
 # -----------------------------
-# 📉 7. 서비스별 일별 오류 시즌성 그래프 (월 선택 가능)
+# 📉 8. 서비스별 일별 오류 시즌성 그래프 (수정된 이동평균)
 # -----------------------------
-st.subheader("📊 서비스별 일별 오류 시즌성 그래프 (월 선택 가능)")
+st.subheader("📊 서비스별 일별 오류 시즌성 그래프")
 
 # 기본 서비스를 리스트 앞쪽으로 이동
 unique_services_day = df["service"].unique().tolist()
@@ -258,23 +465,50 @@ else:
     daily_counts = all_days.copy()
     daily_counts["count"] = 0
 
+# 트렌드 라인 계산 (7일 이동평균) - 수정된 버전
+window_days = 7
+ma_info_days = get_moving_average_info(window_days)
+trend_data_days, trend_indices_days = calculate_moving_average(daily_counts['count'].values, window_days)
+
 # 최댓값 계산 (Y축 최소 5 보장)
 y_max = max(5, daily_counts["count"].max())
 
 # 막대그래프 출력
-fig2, ax2 = plt.subplots(figsize=(12, 6))
-ax2.bar(daily_counts["day"], daily_counts["count"])
 month_title = selected_month_option if selected_month_option != "전체" else "전체 기간"
-ax2.set_title(f"{selected_service_day} - {month_title} 일별 오류 발생 패턴", fontsize=14, pad=20)
+fig2, ax2 = plt.subplots(figsize=(14, 6))
+
+# 실제 데이터 막대그래프
+bars2 = ax2.bar(daily_counts["day"], daily_counts["count"], alpha=0.7, label="실제 오류 수")
+
+# 트렌드 라인 추가 (데이터가 충분한 경우에만)
+if trend_data_days is not None and trend_indices_days is not None:
+    # 실제 일 번호로 변환 (인덱스는 0부터 시작하므로 +1)
+    trend_days_actual = trend_indices_days + 1
+    ax2.plot(trend_days_actual, trend_data_days, 
+           color='red', linewidth=2, marker='o', markersize=4, 
+           label=f"트렌드 ({ma_info_days['description']})", alpha=0.8)
+
+ax2.set_title(f"{selected_service_day} - {month_title} 일별 오류 발생 패턴 및 트렌드", fontsize=14, pad=20)
 ax2.set_xlabel("일", fontsize=12)
 ax2.set_ylabel("오류 수", fontsize=12)
 ax2.set_xticks(range(1, 32))
-ax2.set_ylim(0, y_max)
+ax2.set_ylim(0, y_max * 1.1)
 ax2.grid(True, alpha=0.3)
+ax2.legend()
+
+# 현재 날짜 강조 (해당 월인 경우)
+if selected_month_option == "전체" or int(selected_month_option.replace("월", "")) == current_month:
+    current_day = today.day
+    if current_day <= 31:
+        current_day_idx = current_day - 1
+        if current_day_idx < len(bars2):
+            bars2[current_day_idx].set_color('orange')
+            bars2[current_day_idx].set_alpha(1.0)
+
 plt.tight_layout()
 st.pyplot(fig2)
 
-# 📆 8. 서비스별 요일별 오류 그래프
+# 📆 9. 서비스별 요일별 오류 그래프
 st.subheader("📆 서비스별 요일별 오류 발생 패턴")
 
 # 기본 서비스를 리스트 앞쪽으로 이동
@@ -296,7 +530,15 @@ weekday_counts = (
 )
 
 fig3, ax3 = plt.subplots(figsize=(10, 6))
-ax3.bar(weekday_counts["week"], weekday_counts["count"])
+bars3 = ax3.bar(weekday_counts["week"], weekday_counts["count"])
+
+# 현재 요일 강조
+today_weekday = weekday_map[today.weekday()]
+for i, bar in enumerate(bars3):
+    if weekday_counts.iloc[i]["week"] == today_weekday:
+        bar.set_color('orange')
+        bar.set_alpha(1.0)
+
 ax3.set_title(f"{selected_service_week} - 요일별 오류 발생 패턴", fontsize=14, pad=20)
 ax3.set_xlabel("요일", fontsize=12)
 ax3.set_ylabel("오류 수", fontsize=12)
@@ -304,7 +546,7 @@ ax3.grid(True, alpha=0.3)
 plt.tight_layout()
 st.pyplot(fig3)
 
-# 🌙 9. 서비스별 주간/야간 오류 그래프
+# 🌙 10. 서비스별 주간/야간 오류 그래프
 if 'daynight' in df.columns:
     st.subheader("🌙 서비스별 주간/야간 오류 발생 패턴")
 
@@ -335,3 +577,125 @@ if 'daynight' in df.columns:
     st.pyplot(fig4)
 else:
     st.info("주간/야간 데이터(daynight 컬럼)가 없어 해당 차트를 표시할 수 없습니다.")
+
+# -----------------------------
+# 📋 11. 요약 및 인사이트
+# -----------------------------
+st.subheader("💡 주요 인사이트")
+
+# 인사이트 생성
+insights = []
+
+# 가장 활발한 월 찾기
+most_active_month = df.groupby('month').size().idxmax()
+insights.append(f"🔥 **{most_active_month}월**이 가장 오류가 많이 발생하는 월입니다.")
+
+# 가장 활발한 요일 찾기
+most_active_weekday = df.groupby('week').size().idxmax()
+insights.append(f"📅 **{most_active_weekday}요일**에 오류가 가장 많이 발생합니다.")
+
+# 가장 문제가 많은 서비스
+most_problematic_service = df['service'].value_counts().index[0]
+insights.append(f"⚠️ **{most_problematic_service}** 서비스가 전체적으로 가장 많은 오류를 발생시킵니다.")
+
+# 계절성 패턴
+winter_months = df[df['month'].isin([12, 1, 2])].shape[0]
+summer_months = df[df['month'].isin([6, 7, 8])].shape[0]
+if winter_months > summer_months * 1.2:
+    insights.append("❄️ 겨울철 (12-2월)에 오류가 집중되는 경향을 보입니다.")
+elif summer_months > winter_months * 1.2:
+    insights.append("☀️ 여름철 (6-8월)에 오류가 집중되는 경향을 보입니다.")
+
+for insight in insights:
+    st.write(insight)
+
+# 사용법 안내
+with st.expander("🎯 분석 활용 가이드"):
+    st.write("""
+    **이 분석을 활용하는 방법:**
+    
+    1. **메트릭 대시보드**: 전체적인 현황을 한눈에 파악
+    2. **히트맵**: 월-일별 패턴을 시각적으로 분석해 특정 시기의 위험도 예측
+    3. **트렌드 라인**: 이동평균을 통해 장기적인 추세 파악
+    4. **현재 기준 예측**: 오늘과 이번 달의 위험 서비스 미리 파악
+    5. **시각화 차트**: 각 서비스별 상세한 패턴 분석
+    
+    **이동평균 해석:**
+    - **월별 트렌드**: 3개월 이동평균으로 계절성 및 장기 추세 파악
+    - **일별 트렌드**: 7일 이동평균으로 주간 패턴 및 단기 추세 파악
+    - 이동평균은 데이터의 노이즈를 제거하고 전반적인 경향을 보여줍니다
+    
+    **주의사항:**
+    - 과거 데이터 기반 예측이므로 새로운 변수(시스템 변경, 외부 요인 등)는 고려되지 않음
+    - 트렌드 라인은 평활화된 데이터이므로 급격한 변화는 감지하기 어려움
+    """)
+
+# 이동평균 계산 방법 설명
+with st.expander("🔢 이동평균 계산 방법"):
+    st.write("""
+    **이동평균 계산 상세:**
+    
+    **월별 데이터 (3개월 이동평균):**
+    - 1-3월 평균 → 2월 위치에 표시 (예: (2+0+0)÷3 = 0.67)
+    - 2-4월 평균 → 3월 위치에 표시
+    - 3-5월 평균 → 4월 위치에 표시
+    - ...
+    - 10-12월 평균 → 11월 위치에 표시
+    
+    **일별 데이터 (7일 이동평균):**
+    - 1-7일 평균 → 4일 위치에 표시
+    - 2-8일 평균 → 5일 위치에 표시
+    - 3-9일 평균 → 6일 위치에 표시
+    - ...
+    - 25-31일 평균 → 28일 위치에 표시
+    
+    **이동평균의 효과:**
+    - 단기적인 변동을 제거하여 장기 추세를 명확히 파악
+    - 노이즈가 많은 데이터에서 패턴을 찾는데 유용
+    - 중앙값 기준으로 정렬하여 정확한 시점 표현
+    """)
+
+
+    # -----------------------------
+# 🔥 5. 히트맵 시각화
+# -----------------------------
+st.subheader("🔥 월-일별 오류 발생 히트맵")
+
+# 히트맵용 서비스 선택
+heatmap_services = ["전체"] + df["service"].unique().tolist()
+selected_heatmap_service = st.selectbox("히트맵 서비스 선택", heatmap_services, key="heatmap_service")
+
+# 히트맵 데이터 생성
+if selected_heatmap_service == "전체":
+    heatmap_data = create_heatmap_data(df)
+    title_suffix = "전체 서비스"
+else:
+    heatmap_data = create_heatmap_data(df, selected_heatmap_service)
+    title_suffix = selected_heatmap_service
+
+# 히트맵 그리기
+fig_heatmap, ax_heatmap = plt.subplots(figsize=(16, 8))
+sns.heatmap(
+    heatmap_data, 
+    annot=False, 
+    cmap='YlOrRd', 
+    ax=ax_heatmap,
+    cbar_kws={'label': '오류 발생 수'},
+    linewidths=0.1,
+    linecolor='white'
+)
+ax_heatmap.set_title(f"{title_suffix} - 월별/일별 오류 발생 히트맵", fontsize=16, pad=20)
+ax_heatmap.set_xlabel("일", fontsize=12)
+ax_heatmap.set_ylabel("월", fontsize=12)
+ax_heatmap.set_yticklabels([f"{i}월" for i in range(1, 13)], rotation=0)
+plt.tight_layout()
+st.pyplot(fig_heatmap)
+
+# 히트맵 해석 도움말
+with st.expander("📖 히트맵 해석 가이드"):
+    st.write("""
+    - **색깔이 진할수록**: 해당 월-일 조합에서 오류가 많이 발생
+    - **가로축(일)**: 1일부터 31일까지
+    - **세로축(월)**: 1월부터 12월까지
+    - **패턴 분석**: 특정 시기에 집중되는 오류 패턴을 한눈에 파악 가능
+    """)
