@@ -415,8 +415,6 @@ IT 기술 관련 질문으로 다시 문의해주시기 바랍니다.
             # IT 관련 질문으로 확인됨 - 기존 처리 로직 계속 진행
             if self.debug_mode:
                 st.success("✅ DEBUG: IT 관련 질문으로 확인됨")
-            else:
-                st.success("✅ IT 기술 지원 질문으로 확인되었습니다")
 
             # LLM 기반 쿼리 타입 자동 분류
             if query_type is None:
@@ -435,8 +433,6 @@ IT 기술 관련 질문으로 다시 문의해주시기 바랍니다.
                     # DEBUG 모드에서만 상세 분류 정보 표시
                     if self.debug_mode:
                         st.info(f"📋 DEBUG: 질문 유형 분석 결과 - **{type_labels.get(query_type, '📋 일반 문의')}**")
-                    else:
-                        st.info(f"📋 질문 유형: **{type_labels.get(query_type, '📋 일반 문의')}**")
             else:
                 type_labels = {
                     'repair': '🔧 문제 해결방법',
@@ -451,8 +447,6 @@ IT 기술 관련 질문으로 다시 문의해주시기 바랍니다.
             if target_service_name:
                 if self.debug_mode:
                     st.success(f"🎯 DEBUG: 감지된 대상 서비스 - **{target_service_name}**")
-                else:
-                    st.success(f"🎯 감지된 대상 서비스: **{target_service_name}**")
             
             # SerpApi 설정 확인
             if not self.internet_search.is_available():
