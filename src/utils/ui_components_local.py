@@ -1,4 +1,5 @@
 import streamlit as st
+import re
 
 class UIComponentsLocal:
     """UI 컴포넌트 관리 클래스"""
@@ -6,84 +7,57 @@ class UIComponentsLocal:
     def __init__(self):
         self.debug_mode = False
     
-    def convert_cause_box_to_html(self, text):
-        """장애원인 마커를 HTML로 변환"""
-        if '[CAUSE_BOX_START]' not in text or '[CAUSE_BOX_END]' not in text:
-            return text, False
-        
-        start_marker = '[CAUSE_BOX_START]'
-        end_marker = '[CAUSE_BOX_END]'
-        
-        start_idx = text.find(start_marker)
-        end_idx = text.find(end_marker)
-        
-        if start_idx == -1 or end_idx == -1:
-            return text, False
-        
-        cause_content = text[start_idx + len(start_marker):end_idx].strip()
-        
-        import re
+    def _parse_cause_content(self, cause_content):
+        """원인 컨텐츠 파싱"""
         cause_pattern = r'원인(\d+):\s*([^\n원]*(?:\n(?!원인\d+:)[^\n]*)*)'
         matches = re.findall(cause_pattern, cause_content, re.MULTILINE)
         
-        formatted_causes = []
-        
         if matches:
-            for i, (num, content) in enumerate(matches[:3]):
-                clean_content = content.strip()
-                if clean_content:
-                    clean_content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', clean_content)
-                    formatted_causes.append(
-                        f'<li style="margin-bottom: 8px; line-height: 1.5;"><strong>원인{num}:</strong> {clean_content}</li>'
-                    )
-        else:
-            lines = [line.strip() for line in cause_content.split('\n') if line.strip()]
-            
-            bullet_lines = []
-            for line in lines:
-                if line.startswith('•') or line.startswith('-') or line.startswith('*'):
-                    content = line[1:].strip()
-                    if content:
-                        bullet_lines.append(content)
-                elif line:
-                    bullet_lines.append(line)
-                
-                if len(bullet_lines) >= 3:
-                    break
-            
-            if not bullet_lines:
-                bullet_lines = [cause_content]
-            
-            for i, content in enumerate(bullet_lines[:3]):
-                content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', content)
-                formatted_causes.append(
-                    f'<li style="margin-bottom: 8px; line-height: 1.5;"><strong>원인{i+1}:</strong> {content}</li>'
-                )
+            return [(num, re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', content.strip()))
+                    for num, content in matches[:3] if content.strip()]
         
-        cause_html = f'<ul style="margin: 0; padding-left: 20px; list-style-type: none;">{"".join(formatted_causes)}</ul>'
+        lines = [line.strip() for line in cause_content.split('\n') if line.strip()]
+        bullet_lines = []
+        for line in lines:
+            if line.startswith(('•', '-', '*')):
+                content = line[1:].strip()
+                if content:
+                    bullet_lines.append(content)
+            elif line:
+                bullet_lines.append(line)
+            if len(bullet_lines) >= 3:
+                break
         
-        html_box = f"""
+        return [(str(i+1), re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', content))
+                for i, content in enumerate((bullet_lines or [cause_content])[:3])]
+    
+    def _create_info_box(self, content, title, emoji, icon):
+        """정보 박스 HTML 생성"""
+        return f"""
 <div style="background: #e8f5e8; border: 1px solid #10b981; border-radius: 8px; padding: 15px; margin: 15px 0; display: flex; align-items: flex-start; gap: 12px;">
-    <div style="background: #10b981; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; flex-shrink: 0; margin-top: 2px;">📋</div>
+    <div style="background: #10b981; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; flex-shrink: 0; margin-top: 2px;">{icon}</div>
     <div style="flex: 1;">
-        <h4 style="color: #065f46; margin: 0 0 8px 0; font-size: 16px; font-weight: bold;">장애원인</h4>
-        <div style="color: #065f46; line-height: 1.5; font-size: 14px;">
-            {cause_html}
-        </div>
+        <h4 style="color: #065f46; margin: 0 0 8px 0; font-size: 16px; font-weight: bold;">{title}</h4>
+        <div style="color: #065f46; line-height: 1.5; font-size: 14px;">{content}</div>
     </div>
 </div>
 """
-        
-        result = text[:start_idx] + html_box + text[end_idx + len(end_marker):]
-        return result, True
-
+    
+    def convert_cause_box_to_html(self, text):
+        """장애원인 마커를 HTML로 변환"""
+        return self._convert_box_to_html(text, 'CAUSE_BOX', '장애원인', '📋', True)
+    
     def convert_repair_box_to_html(self, text):
         """복구방법 마커를 HTML로 변환"""
-        if '[REPAIR_BOX_START]' not in text or '[REPAIR_BOX_END]' not in text:
-            return text, False
+        return self._convert_box_to_html(text, 'REPAIR_BOX', '복구방법 (incident_repair 기준)', '🤖', False)
+    
+    def _convert_box_to_html(self, text, box_type, title, icon, parse_causes):
+        """박스 마커를 HTML로 변환하는 공통 로직"""
+        start_marker = f'[{box_type}_START]'
+        end_marker = f'[{box_type}_END]'
         
-        start_marker = '[REPAIR_BOX_START]'
-        end_marker = '[REPAIR_BOX_END]'
+        if start_marker not in text or end_marker not in text:
+            return text, False
         
         start_idx = text.find(start_marker)
         end_idx = text.find(end_marker)
@@ -91,23 +65,18 @@ class UIComponentsLocal:
         if start_idx == -1 or end_idx == -1:
             return text, False
         
-        repair_content = text[start_idx + len(start_marker):end_idx].strip()
-        repair_content = repair_content.replace('**', '<strong>').replace('**', '</strong>')
+        content = text[start_idx + len(start_marker):end_idx].strip()
         
-        html_box = f"""
-<div style="background: #e8f5e8; border: 1px solid #10b981; border-radius: 8px; padding: 15px; margin: 15px 0; display: flex; align-items: flex-start; gap: 12px;">
-    <div style="background: #10b981; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; flex-shrink: 0; margin-top: 2px;">🤖</div>
-    <div style="flex: 1;">
-        <h4 style="color: #065f46; margin: 0 0 8px 0; font-size: 16px; font-weight: bold;">복구방법 (incident_repair 기준)</h4>
-        <div style="color: #065f46; line-height: 1.5; font-size: 14px;">
-            {repair_content}
-        </div>
-    </div>
-</div>
-"""
+        if parse_causes:
+            parsed = self._parse_cause_content(content)
+            formatted = ''.join([f'<li style="margin-bottom: 8px; line-height: 1.5;"><strong>원인{num}:</strong> {c}</li>' 
+                               for num, c in parsed])
+            content = f'<ul style="margin: 0; padding-left: 20px; list-style-type: none;">{formatted}</ul>'
+        else:
+            content = content.replace('**', '<strong>').replace('**', '</strong>')
         
-        result = text[:start_idx] + html_box + text[end_idx + len(end_marker):]
-        return result, True
+        html_box = self._create_info_box(content, title, '', icon)
+        return text[:start_idx] + html_box + text[end_idx + len(end_marker):], True
     
     def render_main_ui(self):
         """메인 UI 렌더링 - 좌측정렬로 수정"""
@@ -134,7 +103,7 @@ class UIComponentsLocal:
                 min-height: 350px;
                 overflow: hidden;
                 max-width: 1000px;
-                margin: 20px 0; /* 좌측 정렬을 위해 margin: auto 제거 */
+                margin: 20px 0;
                 box-shadow: 0 20px 60px rgba(30, 144, 255, 0.2);
             }
             
@@ -179,7 +148,7 @@ class UIComponentsLocal:
             }
             
             .title {
-                text-align: center; /* 중앙정렬에서 좌측정렬로 변경 */
+                text-align: center;
                 color: #1e3a8a;
                 font-size: 24px;
                 font-weight: 500;
@@ -279,7 +248,7 @@ class UIComponentsLocal:
             }
             
             .web-subtitle {
-                text-align: left; /* 중앙정렬에서 좌측정렬로 변경 */
+                text-align: left;
                 margin-top: 70px;
                 color: #4682b4;
                 font-size: 15px;
@@ -334,7 +303,7 @@ class UIComponentsLocal:
                 .web-journey-path {
                     flex-direction: column;
                     gap: 30px;
-                    align-items: flex-start; /* 모바일에서도 좌측정렬 */
+                    align-items: flex-start;
                 }
                 
                 .web-path-line {
@@ -399,14 +368,16 @@ class UIComponentsLocal:
                 </div>
             </div>
         </div>
-        <div style="text-align: left;"> <!-- 질문예시 부분도 좌측정렬 -->
+        <div style="text-align: left;">
         <h4>💬 질문예시</h4>
         <h6>* 복구방법 : 마이페이지 보험가입불가 현상 복구방법 알려줘<br>
         * 장애원인 : ERP EP업무 처리시 간헐적 접속불가현상에 대한 장애원인이 뭐야?<br>
         * 유사사례 : 문자발송 실패 현상에 대한 조치방법 알려줘<br>
-        * 장애이력 : 블록체인기반지역화폐 야간에 발생한 장애내역 알려줘<br>
-        * 장애건수 : 2025년 ERP 장애가 몇건이야?<br>
-        * 차트분석 : ERP 년도별 장애건수 차트로 그려줘    ※ 제공가능: 가로/세로 막대차트, 선 차트, 파이 차트<p>
+        * 장애이력 : 블록체인기반지역화폐 일간에 발생한 장애내역 알려줘<br>
+        * 장애통계 : 년, 월, 서비스별, 원인유형별, 요일별, 주/야간 통계정보에 최적화 되어있습니다<br>
+           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- ERP 2025년 장애가 몇건이야? / 2025년 원인유형별 장애건수 알려줘 / 2025년 버그 원인으로 발생한 장애건수 알려줘<br>
+           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- 2등급 장애 년도별 건수 알려줘 / 2025년 요일별 건수 알려줘 / ERP 2025년 야간에 발생한 장애건수 알려줘<br>
+        * 차트분석 : ERP 연도별 장애건수 차트로 그려줘    ※ 제공가능: 가로/세로 막대차트, 선 차트, 파이 차트<p>
 
         <font color="red"> ※ 서비스명을 정확히 입력하시고 같이 검색하시면 보다 더 정확한 답변을 얻을 수 있습니다<br>
         ※ 대량조회가 안되도록 임계치 설정 및 일부 인시던트는 학습데이터에서 제외되어 통계성 질문은 일부 부정확 할 수있다는 점 양해 부탁드립니다.<br>
@@ -415,7 +386,6 @@ class UIComponentsLocal:
         </div>
         </div>
         """
-        
         st.markdown(html_code, unsafe_allow_html=True)
     
     def show_config_error(self, env_status):
@@ -440,7 +410,6 @@ class UIComponentsLocal:
         INDEX_REBUILD_NAME=your-index-name
         ```
         """)
-        
         st.write("**환경변수 상태:**")
         for var, status in env_status.items():
             st.write(f"{status} {var}")
@@ -461,160 +430,115 @@ class UIComponentsLocal:
     
     def display_chat_messages(self):
         """채팅 메시지 표시"""
-        chat_container = st.container()
-        
-        with chat_container:
+        with st.container():
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     if message["role"] == "assistant":
                         content = message["content"]
-                        
-                        converted_content = content
                         html_converted = False
                         
-                        if '[REPAIR_BOX_START]' in converted_content and '[REPAIR_BOX_END]' in converted_content:
-                            converted_content, has_repair_html = self.convert_repair_box_to_html(converted_content)
-                            if has_repair_html:
-                                html_converted = True
+                        if '[REPAIR_BOX_START]' in content:
+                            content, has_html = self.convert_repair_box_to_html(content)
+                            html_converted = html_converted or has_html
                         
-                        if '[CAUSE_BOX_START]' in converted_content and '[CAUSE_BOX_END]' in converted_content:
-                            converted_content, has_cause_html = self.convert_cause_box_to_html(converted_content)
-                            if has_cause_html:
-                                html_converted = True
+                        if '[CAUSE_BOX_START]' in content:
+                            content, has_html = self.convert_cause_box_to_html(content)
+                            html_converted = html_converted or has_html
                         
                         if html_converted or ('<div style=' in content and ('장애원인' in content or '복구방법' in content)):
-                            st.markdown(converted_content, unsafe_allow_html=True)
+                            st.markdown(content, unsafe_allow_html=True)
                         else:
-                            st.write(converted_content)
+                            st.write(content)
                     else:
                         st.write(message["content"])
     
-    # 나머지 메서드들은 기존 코드와 동일하므로 생략...
-    
     def display_documents_with_quality_info(self, documents):
         """품질 정보와 처리 방식 정보를 포함한 문서 표시"""
+        tier_map = {'Premium': ('🏆', '🟢'), 'Standard': ('🎯', '🟡'), 'Basic': ('📋', '🔵')}
+        match_map = {"exact": ("🎯", "정확 매칭"), "partial": ("🔍", "포함 매칭"), 
+                     "all": ("📋", "전체"), "fallback": ("🔄", "대체 검색"), "unknown": ("❓", "알 수 없음")}
+        
         for i, doc in enumerate(documents):
-            quality_tier = doc.get('quality_tier', 'Standard')
-            filter_reason = doc.get('filter_reason', '기본 선별')
-            service_match_type = doc.get('service_match_type', 'unknown')
-            search_score = doc.get('score', 0)
-            reranker_score = doc.get('reranker_score', 0)
-            final_score = doc.get('final_score', 0)
-            relevance_score = doc.get('relevance_score', None)
-            keyword_relevance = doc.get('keyword_relevance_score', None)
-            semantic_similarity = doc.get('semantic_similarity', None)
-            
-            daynight = doc.get('daynight', '')
-            week = doc.get('week', '')
-            
-            if quality_tier == 'Premium':
-                tier_emoji = "🆔"
-                tier_color = "🟢"
-            elif quality_tier == 'Standard':
-                tier_emoji = "🎯"
-                tier_color = "🟡"
-            else:
-                tier_emoji = "📋"
-                tier_color = "🔵"
-            
-            match_emoji = {"exact": "🎯", "partial": "🔍", "all": "📋", "fallback": "🔄"}.get(service_match_type, "❓")
-            match_label = {
-                "exact": "정확 매칭", 
-                "partial": "포함 매칭", 
-                "all": "전체", 
-                "fallback": "대체 검색",
-                "unknown": "알 수 없음"
-            }.get(service_match_type, "알 수 없음")
+            tier = doc.get('quality_tier', 'Standard')
+            tier_emoji, tier_color = tier_map.get(tier, tier_map['Standard'])
+            match_type = doc.get('service_match_type', 'unknown')
+            match_emoji, match_label = match_map.get(match_type, match_map['unknown'])
             
             time_info = ""
-            if daynight:
-                time_emoji = "🌞" if daynight == "주간" else "🌙"
-                time_info += f" {time_emoji} {daynight}"
-            if week:
-                time_info += f" 📅 {week}요일" if week not in ['평일', '주말'] else f" 📅 {week}"
+            if daynight := doc.get('daynight'):
+                time_info += f" {'🌞' if daynight == '주간' else '🌙'} {daynight}"
+            if week := doc.get('week'):
+                time_info += f" 📅 {week}{'요일' if week not in ['평일', '주말'] else ''}"
             
             if self.debug_mode:
-                st.markdown(f"### {tier_emoji} **문서 {i+1}** - {quality_tier}급 {tier_color} {match_emoji} {match_label}{time_info}")
-                st.markdown(f"**선별 기준**: {filter_reason}")
+                st.markdown(f"### {tier_emoji} **문서 {i+1}** - {tier}급 {tier_color} {match_emoji} {match_label}{time_info}")
+                st.markdown(f"**선별 기준**: {doc.get('filter_reason', '기본 선별')}")
                 
-                score_cols = st.columns(4 if relevance_score or keyword_relevance or semantic_similarity else 3)
-                
+                score_cols = st.columns(4 if any([doc.get('relevance_score'), doc.get('keyword_relevance_score'), 
+                                                  doc.get('semantic_similarity')]) else 3)
                 with score_cols[0]:
-                    st.metric("검색 점수", f"{search_score:.2f}")
+                    st.metric("검색 점수", f"{doc.get('score', 0):.2f}")
                 with score_cols[1]:
-                    if reranker_score > 0:
-                        st.metric("Reranker 점수", f"{reranker_score:.2f}")
-                    else:
-                        st.metric("Reranker 점수", "N/A")
+                    reranker = doc.get('reranker_score', 0)
+                    st.metric("Reranker 점수", f"{reranker:.2f}" if reranker > 0 else "N/A")
                 with score_cols[2]:
-                    st.metric("최종 점수", f"{final_score:.2f}")
+                    st.metric("최종 점수", f"{doc.get('final_score', 0):.2f}")
                 
                 if len(score_cols) > 3:
                     with score_cols[3]:
-                        if relevance_score is not None:
-                            st.metric("관련성 점수", f"{relevance_score}점")
-                        elif keyword_relevance is not None:
-                            st.metric("키워드 점수", f"{keyword_relevance}점")
-                        elif semantic_similarity is not None:
-                            st.metric("의미 유사성", f"{semantic_similarity:.2f}")
+                        if rel := doc.get('relevance_score'):
+                            st.metric("관련성 점수", f"{rel}점")
+                        elif kw := doc.get('keyword_relevance_score'):
+                            st.metric("키워드 점수", f"{kw}점")
+                        elif sem := doc.get('semantic_similarity'):
+                            st.metric("의미 유사성", f"{sem:.2f}")
                         else:
                             st.metric("추가 메트릭", "N/A")
                 
-                if any([relevance_score, keyword_relevance, semantic_similarity]):
+                if any([doc.get('relevance_score'), doc.get('keyword_relevance_score'), doc.get('semantic_similarity')]):
                     with st.expander("상세 점수 분석"):
-                        if relevance_score is not None:
-                            st.write(f"**LLM 관련성 점수**: {relevance_score}점 (70점 이상 통과)")
-                            validation_reason = doc.get('validation_reason', '검증됨')
-                            st.write(f"**검증 사유**: {validation_reason}")
-                        
-                        if keyword_relevance is not None:
-                            st.write(f"**키워드 관련성 점수**: {keyword_relevance}점 (30점 이상 관련)")
-                        
-                        if semantic_similarity is not None:
-                            st.write(f"**의미적 유사성**: {semantic_similarity:.2f} (0.3 이상 유사)")
+                        if rel := doc.get('relevance_score'):
+                            st.write(f"**LLM 관련성 점수**: {rel}점 (70점 이상 통과)")
+                            st.write(f"**검증 사유**: {doc.get('validation_reason', '검증됨')}")
+                        if kw := doc.get('keyword_relevance_score'):
+                            st.write(f"**키워드 관련성 점수**: {kw}점 (30점 이상 관련)")
+                        if sem := doc.get('semantic_similarity'):
+                            st.write(f"**의미적 유사성**: {sem:.2f} (0.3 이상 유사)")
             else:
                 st.markdown(f"### {tier_emoji} **문서 {i+1}**{time_info}")
             
             col1, col2 = st.columns(2)
             with col1:
-                st.write(f"**장애 ID**: {doc['incident_id']}")
-                st.write(f"**서비스명**: {doc['service_name']}")
-                st.write(f"**발생일자**: {doc['error_date']}")
-                if daynight:
+                for k, v in [('incident_id', '장애 ID'), ('service_name', '서비스명'), 
+                            ('error_date', '발생일자'), ('error_time', '장애시간'), ('effect', '영향도')]:
+                    if val := doc.get(k):
+                        st.write(f"**{v}**: {val}{'분' if k == 'error_time' else ''}")
+                if daynight := doc.get('daynight'):
                     st.write(f"**발생시간대**: {daynight}")
-                if week:
+                if week := doc.get('week'):
                     st.write(f"**발생요일**: {week}")
-                st.write(f"**장애시간**: {doc['error_time']}분")
-                st.write(f"**영향도**: {doc['effect']}")
 
             with col2:
-                st.write(f"**현상**: {doc['symptom']}")
-                st.write(f"**장애등급**: {doc['incident_grade']}")
-                st.write(f"**장애원인**: {doc['root_cause']}")
-                st.write(f"**원인유형**: {doc['cause_type']}")
-                st.write(f"**처리유형**: {doc['done_type']}")
-                st.write(f"**담당부서**: {doc['owner_depart']}")
+                for k, v in [('symptom', '현상'), ('incident_grade', '장애등급'), 
+                            ('root_cause', '장애원인'), ('cause_type', '원인유형'), 
+                            ('done_type', '처리유형'), ('owner_depart', '담당부서')]:
+                    if val := doc.get(k):
+                        st.write(f"**{v}**: {val}")
             
-            incident_repair = doc.get('incident_repair', '').strip()
-            incident_plan = doc.get('incident_plan', '').strip()
+            repair = doc.get('incident_repair', '').strip()
+            plan = doc.get('incident_plan', '').strip()
             
-            if incident_repair:
+            if repair:
                 st.write("**복구방법 (incident_repair)**:")
-                if incident_plan and incident_plan in incident_repair:
-                    clean_repair = incident_repair.replace(incident_plan, '').strip()
-                    if clean_repair:
-                        st.write(f"  {clean_repair[:300]}...")
-                    else:
-                        st.write(f"  {incident_repair[:300]}...")
-                else:
-                    st.write(f"  {incident_repair[:300]}...")
+                clean = repair.replace(plan, '').strip() if plan and plan in repair else repair
+                st.write(f"  {(clean or repair)[:300]}...")
             
-            if incident_plan:
+            if plan:
                 st.write("**개선계획 (incident_plan) - 참고용**:")
-                st.write(f"  {incident_plan[:300]}...")
+                st.write(f"  {plan[:300]}...")
             
-            if doc.get('repair_notice'):
-                st.write(f"**복구공지**: {doc['repair_notice'][:200]}...")
+            if notice := doc.get('repair_notice'):
+                st.write(f"**복구공지**: {notice[:200]}...")
             
             st.markdown("---")
     
@@ -622,40 +546,19 @@ class UIComponentsLocal:
         """처리 모드 정보 표시"""
         if not self.debug_mode:
             return
-            
-        mode_info = {
-            'accuracy_first': {
-                'name': '정확성 우선',
-                'color': '#ff6b6b',
-                'icon': '🎯',
-                'description': 'LLM 관련성 검증을 통한 최고 정확도 제공'
-            },
-            'coverage_first': {
-                'name': '포괄성 우선',
-                'color': '#4ecdc4',
-                'icon': '📋',
-                'description': '의미적 유사성 기반 광범위한 검색 결과 제공'
-            },
-            'balanced': {
-                'name': '균형 처리',
-                'color': '#45b7d1',
-                'icon': '⚖️',
-                'description': '정확성과 포괄성의 최적 균형'
-            }
+        
+        modes = {
+            'accuracy_first': ('정확성 우선', '#ff6b6b', '🎯', 'LLM 관련성 검증을 통한 최고 정확도 제공'),
+            'coverage_first': ('포괄성 우선', '#4ecdc4', '📋', '의미적 유사성 기반 광범위한 검색 결과 제공'),
+            'balanced': ('균형 처리', '#45b7d1', '⚖️', '정확성과 포괄성의 최적 균형')
         }
         
-        info = mode_info.get(processing_mode, mode_info['balanced'])
-        
+        name, color, icon, desc = modes.get(processing_mode, modes['balanced'])
         st.markdown(f"""
-        <div style="
-            background-color: {info['color']}15;
-            border-left: 4px solid {info['color']};
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-        ">
-            <strong>{info['icon']} {info['name']} ({query_type.upper()})</strong><br>
-            <small>{info['description']}</small>
+        <div style="background-color: {color}15; border-left: 4px solid {color}; padding: 10px; 
+                    border-radius: 5px; margin: 10px 0;">
+            <strong>{icon} {name} ({query_type.upper()})</strong><br>
+            <small>{desc}</small>
         </div>
         """, unsafe_allow_html=True)
     
@@ -663,12 +566,11 @@ class UIComponentsLocal:
         """성능 메트릭 표시"""
         if not metrics or not self.debug_mode:
             return
-        
         with st.expander("처리 성능 메트릭"):
             cols = st.columns(len(metrics))
-            for i, (metric_name, value) in enumerate(metrics.items()):
+            for i, (name, value) in enumerate(metrics.items()):
                 with cols[i]:
-                    st.metric(metric_name.replace('_', ' ').title(), value)
+                    st.metric(name.replace('_', ' ').title(), value)
     
     def show_query_optimization_tips(self, query_type):
         """쿼리 타입별 최적화 팁 표시"""
@@ -714,8 +616,8 @@ class UIComponentsLocal:
                 "주간에 발생한 보험가입 실패 복구방법",
                 "주말 SMS 발송 장애 원인 분석"
             ]
-            for example in time_examples:
-                st.write(f"  - {example}")
+            for ex in time_examples:
+                st.write(f"  - {ex}")
             
             if query_type == 'default':
                 st.write("\n**📊 자동 차트 생성 예시:**")
@@ -726,8 +628,8 @@ class UIComponentsLocal:
                     "장애등급별 발생 비율 → 등급별 원형 그래프",
                     "월별 장애 발생 추이 → 월별 선 그래프"
                 ]
-                for example in chart_examples:
-                    st.write(f"  - {example}")
+                for ex in chart_examples:
+                    st.write(f"  - {ex}")
             
             if query_type == 'repair':
                 st.write("\n**복구방법 관련 중요 안내:**")
@@ -740,20 +642,15 @@ class UIComponentsLocal:
         if not time_conditions or not time_conditions.get('is_time_query') or not self.debug_mode:
             return
         
-        time_desc = []
-        if time_conditions.get('daynight'):
-            time_emoji = "🌞" if time_conditions['daynight'] == "주간" else "🌙"
-            time_desc.append(f"{time_emoji} 시간대: {time_conditions['daynight']}")
+        desc = []
+        if daynight := time_conditions.get('daynight'):
+            desc.append(f"{'🌞' if daynight == '주간' else '🌙'} 시간대: {daynight}")
+        if week := time_conditions.get('week'):
+            week_desc = f"{week}{'요일' if week not in ['평일', '주말'] else ''}"
+            desc.append(f"📅 {week_desc}")
         
-        if time_conditions.get('week'):
-            week_emoji = "📅"
-            week_desc = f"{time_conditions['week']}"
-            if time_conditions['week'] not in ['평일', '주말']:
-                week_desc += "요일"
-            time_desc.append(f"{week_emoji} {week_desc}")
-        
-        if time_desc:
-            st.info(f"⏰ 시간 조건 필터링 적용: {', '.join(time_desc)}")
+        if desc:
+            st.info(f"⏰ 시간 조건 필터링 적용: {', '.join(desc)}")
     
     def display_validation_results(self, validation_result):
         """쿼리 처리 검증 결과 표시"""
@@ -765,31 +662,39 @@ class UIComponentsLocal:
         
         if validation_result['warnings']:
             with st.expander("경고사항"):
-                for warning in validation_result['warnings']:
-                    st.warning(warning)
+                for w in validation_result['warnings']:
+                    st.warning(w)
         
         if validation_result['recommendations']:
             with st.expander("개선 권장사항"):
-                for recommendation in validation_result['recommendations']:
-                    st.info(recommendation)
+                for r in validation_result['recommendations']:
+                    st.info(r)
+    
+    def _get_stats(self, documents, field, label_map=None):
+        """통계 데이터 추출"""
+        stats = {}
+        for doc in documents:
+            if val := doc.get(field):
+                stats[val] = stats.get(val, 0) + 1
+        return stats
+    
+    def _display_stats(self, stats, label, emoji_map=None, sort_key=None):
+        """통계 표시"""
+        if not stats:
+            return
+        st.write(f"**{label}:**")
+        items = sorted(stats.items(), key=sort_key or (lambda x: x[1]), reverse=True)
+        for key, count in items:
+            emoji = emoji_map.get(key, '') if emoji_map else ''
+            st.write(f"  {emoji} {key}: {count}건")
     
     def show_time_statistics(self, documents):
         """시간대/요일별 통계 정보 표시"""
         if not documents:
             return
         
-        daynight_stats = {}
-        week_stats = {}
-        
-        for doc in documents:
-            daynight = doc.get('daynight', '')
-            week = doc.get('week', '')
-            
-            if daynight:
-                daynight_stats[daynight] = daynight_stats.get(daynight, 0) + 1
-            
-            if week:
-                week_stats[week] = week_stats.get(week, 0) + 1
+        daynight_stats = self._get_stats(documents, 'daynight')
+        week_stats = self._get_stats(documents, 'week')
         
         if daynight_stats or week_stats:
             with st.expander("시간별 통계 정보"):
@@ -797,97 +702,52 @@ class UIComponentsLocal:
                 
                 with col1:
                     if daynight_stats:
-                        st.write("**시간대별 분포:**")
-                        for time_period, count in sorted(daynight_stats.items()):
-                            time_emoji = "🌞" if time_period == "주간" else "🌙"
-                            st.write(f"  {time_emoji} {time_period}: {count}건")
+                        self._display_stats(daynight_stats, "시간대별 분포", 
+                                          {'주간': '🌞', '야간': '🌙'})
                 
                 with col2:
                     if week_stats:
-                        st.write("**요일별 분포:**")
                         week_order = ['월', '화', '수', '목', '금', '토', '일', '평일', '주말']
-                        sorted_weeks = sorted(week_stats.items(), 
-                                            key=lambda x: week_order.index(x[0]) if x[0] in week_order else 999)
-                        
-                        for week_day, count in sorted_weeks:
-                            week_desc = f"{week_day}요일" if week_day not in ['평일', '주말'] else week_day
-                            st.write(f"  📅 {week_desc}: {count}건")
+                        self._display_stats(week_stats, "요일별 분포", 
+                                          sort_key=lambda x: week_order.index(x[0]) if x[0] in week_order else 999)
     
     def show_department_statistics(self, documents):
         """부서별 통계 정보 표시"""
         if not documents:
             return
         
-        department_stats = {}
-        
-        for doc in documents:
-            owner_depart = doc.get('owner_depart', '')
-            
-            if owner_depart:
-                department_stats[owner_depart] = department_stats.get(owner_depart, 0) + 1
-        
-        if department_stats:
+        dept_stats = self._get_stats(documents, 'owner_depart')
+        if dept_stats:
             with st.expander("부서별 통계 정보"):
-                st.write("**담당부서별 분포:**")
-                sorted_departments = sorted(department_stats.items(), 
-                                          key=lambda x: x[1], reverse=True)
-                
-                for department, count in sorted_departments:
-                    st.write(f"  🏢 {department}: {count}건")
+                self._display_stats(dept_stats, "담당부서별 분포")
     
     def show_comprehensive_statistics(self, documents):
         """시간대/요일/부서별 종합 통계 정보 표시"""
         if not documents:
             return
         
-        daynight_stats = {}
-        week_stats = {}
-        department_stats = {}
+        daynight = self._get_stats(documents, 'daynight')
+        week = self._get_stats(documents, 'week')
+        dept = self._get_stats(documents, 'owner_depart')
         
-        for doc in documents:
-            daynight = doc.get('daynight', '')
-            week = doc.get('week', '')
-            owner_depart = doc.get('owner_depart', '')
-            
-            if daynight:
-                daynight_stats[daynight] = daynight_stats.get(daynight, 0) + 1
-            
-            if week:
-                week_stats[week] = week_stats.get(week, 0) + 1
-            
-            if owner_depart:
-                department_stats[owner_depart] = department_stats.get(owner_depart, 0) + 1
-        
-        if daynight_stats or week_stats or department_stats:
+        if any([daynight, week, dept]):
             with st.expander("종합 통계 정보"):
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
-                    if daynight_stats:
-                        st.write("**시간대별 분포:**")
-                        for time_period, count in sorted(daynight_stats.items()):
-                            time_emoji = "🌞" if time_period == "주간" else "🌙"
-                            st.write(f"  {time_emoji} {time_period}: {count}건")
+                    if daynight:
+                        self._display_stats(daynight, "시간대별 분포", {'주간': '🌞', '야간': '🌙'})
                 
                 with col2:
-                    if week_stats:
-                        st.write("**요일별 분포:**")
+                    if week:
                         week_order = ['월', '화', '수', '목', '금', '토', '일', '평일', '주말']
-                        sorted_weeks = sorted(week_stats.items(), 
-                                            key=lambda x: week_order.index(x[0]) if x[0] in week_order else 999)
-                        
-                        for week_day, count in sorted_weeks:
-                            week_desc = f"{week_day}요일" if week_day not in ['평일', '주말'] else week_day
-                            st.write(f"  📅 {week_desc}: {count}건")
+                        self._display_stats(week, "요일별 분포",
+                                          sort_key=lambda x: week_order.index(x[0]) if x[0] in week_order else 999)
                 
                 with col3:
-                    if department_stats:
-                        st.write("**담당부서별 분포:**")
-                        sorted_departments = sorted(department_stats.items(), 
-                                                  key=lambda x: x[1], reverse=True)[:5]
-                        
-                        for department, count in sorted_departments:
-                            st.write(f"  🏢 {department}: {count}건")
+                    if dept:
+                        top5 = dict(sorted(dept.items(), key=lambda x: x[1], reverse=True)[:5])
+                        self._display_stats(top5, "담당부서별 분포")
     
     def show_repair_plan_distinction_info(self):
         """복구방법과 개선계획 구분 안내 정보"""
@@ -930,7 +790,7 @@ class UIComponentsLocal:
             
             **💡 차트 생성 조건:**
             - 통계 관련 키워드 포함 (건수, 통계, 현황, 분포 등)
-            - 분류 관련 키워드 포함 (년도별, 부서별, 서비스별 등)
+            - 분류 관련 키워드 포함 (연도별, 부서별, 서비스별 등)
             - 검색 결과가 2개 이상인 경우
             
             **📋 제공되는 추가 정보:**

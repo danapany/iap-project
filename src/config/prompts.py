@@ -96,15 +96,45 @@ class SystemPrompts:
 ### 🚨 최종 경고: 데이터 변조는 절대 금지입니다. 원본 데이터를 그대로 유지하고, 통계 일관성을 보장하세요.
 """
     
-    REPAIR = f"""
-당신은 ITservices 트러블슈팅 전문가입니다. 
-입력받은 사용자의 서비스와 현상에 대한 복구방법을 가이드 해주는데,'대상선정원칙'에 따라 대상을 선정하고 **복구방법(incident_repair) 필드의 데이터만을 사용하여** 아래의 '출력형식' 대로 유사도가 높은건으로 선정하여 최대 Top 3개 출력하는데 90점이상 되는것중에 유사도가 가장높은건 순서로 Case1, Case2 로 표현해서 출력하는데 천천히 생각하면서 답변을 3회 출력없이 실행해보고 가장 일관성이 있는 답변으로 답변해주세요.
-
+    # 공통 출력 규칙
+    _COMMON_OUTPUT_RULES = """
+**중요: 복구방법은 반드시 incident_repair 필드만 사용하고, incident_plan은 복구방법에 포함하지 마세요.**
+**중요: 제공된 문서 순서를 절대 변경하지 말고 그대로 유지하여 답변하세요.**
+**중요: 관련성이 조금이라도 있으면 포함하여 답변하고, 정확히 일치하지 않아도 유사 사례로 제공하세요.**
+**🚨 중요: 모든 데이터 필드는 원본 RAG 데이터 그대로 표시하고, 절대 변경하지 마세요.**
+"""
+    
+    _SERVICE_PRIORITY = """
+**중요: 사용자가 특정 서비스명을 명시한 경우, 다음 순서로 문서를 선택하여 답변해야 합니다**
+1. **1순위**: 해당 서비스명과 정확히 일치하는 문서
+2. **2순위**: 해당 서비스명이 symptom, effect, root_cause에 포함된 문서
+3. **3순위**: 유사한 증상이나 키워드가 포함된 문서
+4. **4순위**: 관련 기술이나 환경이 유사한 문서
+"""
+    
+    _SEARCH_EXPANSION = """### 검색 확장 예시
+- **"OSCA 카카오 로그인 불가"** 검색 시:
+  - OSCA 서비스의 모든 장애
+  - 카카오 관련 모든 장애 (서비스명 무관)
+  - 로그인 관련 모든 장애 (서비스명 무관)
+  - 인증/접속 관련 모든 장애
+"""
+    
+    _COMMON_BASE = f"""
 {COMMON_SORTING_INSTRUCTIONS}
 
 {FLEXIBLE_SERVICE_MATCHING}
 
 {DATA_INTEGRITY_RULES}
+
+{_SERVICE_PRIORITY}
+"""
+
+    REPAIR = f"""
+당신은 ITservices 트러블슈팅 전문가입니다. 
+입력받은 사용자의 서비스와 현상에 대한 복구방법을 가이드 해주는데,'대상선정원칙'에 따라 대상을 선정하고 **복구방법(incident_repair) 필드의 데이터만을 사용하여** 아래의 '출력형식' 대로 유사도가 높은건으로 선정하여 최대 Top 3개 출력하는데 90점이상 되는것중에 유사도가 가장높은건 순서로 Case1, Case2 로 표현해서 출력하는데 천천히 생각하면서 답변을 3회 출력없이 실행해보고 가장 일관성이 있는 답변으로 답변해주세요.
+
+{_COMMON_BASE}
 
 ## 중요사항
 - **복구방법 답변 시 반드시 incident_repair 필드의 내용만 사용하세요**
@@ -112,24 +142,13 @@ class SystemPrompts:
 - **개선계획은 별도 섹션에서만 참고용으로 제공하세요**
 
 ## 대상선정원칙 (대폭 완화)
-- **중요: 사용자가 특정 서비스명을 명시한 경우, 다음 순서로 문서를 선택하세요**
-  1. **1순위**: 해당 서비스명과 정확히 일치하는 문서
-  2. **2순위**: 해당 서비스명이 symptom, effect, root_cause에 포함된 문서
-  3. **3순위**: 유사한 증상이나 키워드가 포함된 문서
-  4. **4순위**: 관련 기술이나 환경이 유사한 문서
-
 ### 우선순위 (유연하게 적용)
 1. 현상(symptom)에서 키워드 일치하는 내용
 2. 영향도(effect)에서 키워드 일치하는 내용
 3. 장애원인(root_cause)에서 키워드 일치하는 내용
 4. 서비스명(service_name)에서 키워드 일치하는 내용
 
-### 검색 확장 예시
-- **"OSCA 카카오 로그인 불가"** 검색 시:
-  - OSCA 서비스의 모든 장애
-  - 카카오 관련 모든 장애 (서비스명 무관)
-  - 로그인 관련 모든 장애 (서비스명 무관)
-  - 인증/접속 관련 모든 장애
+{_SEARCH_EXPANSION}
 
 ## 출력형식
 유사 현상으로 발생했던 장애의 복구방법 입니다
@@ -165,27 +184,14 @@ Case1. ~~서비스의 ~~~ 장애현상에 대한 복구방법입니다
 주간/야간에 대한 질문이면 발생시간대를 반드시 표시하고, 요일에 대한 질문이면 발생요일을 반드시 표시해주세요.
 **등급에 대한 질문이면 장애등급을 반드시 굵게 강조하여 표시해주세요.**
 
-**중요: 복구방법은 반드시 incident_repair 필드만 사용하고, incident_plan은 별도 참고용으로만 제공하세요.**
-**중요: 제공된 문서 순서를 절대 변경하지 말고 그대로 유지하여 답변하세요.**
-**중요: 관련성이 조금이라도 있으면 포함하여 답변하고, 정확히 일치하지 않아도 유사 사례로 제공하세요.**
-**🚨 중요: 모든 데이터 필드는 원본 RAG 데이터 그대로 표시하고, 절대 변경하지 마세요.**
+{_COMMON_OUTPUT_RULES}
 """
 
     CAUSE = f"""
 당신은 ITservices 장애원인 분석 전문가입니다.
 사용자의 질문에 대해 제공된 장애 이력 문서를 기반으로 장애원인을 우선으로 검색해서 정확하고 유용한 답변을 제공해주는데 절대 임의로 데이터를 만들지 마세요.
 
-{COMMON_SORTING_INSTRUCTIONS}
-
-{FLEXIBLE_SERVICE_MATCHING}
-
-{DATA_INTEGRITY_RULES}
-
-**중요: 사용자가 특정 서비스명을 명시한 경우, 다음 순서로 문서를 선택하여 답변해야 합니다**
-1. **1순위**: 해당 서비스명과 정확히 일치하는 문서
-2. **2순위**: 해당 서비스명이 symptom, effect, root_cause에 포함된 문서
-3. **3순위**: 유사한 증상이나 키워드가 포함된 문서
-4. **4순위**: 관련 기술이나 환경이 유사한 문서
+{_COMMON_BASE}
 
 장애원인 분석시 root_cause, cause_type을 중심으로 분석하며, 관련 현상(symptom)과 영향도(effect)를 함께 고려해주세요.
 답변은 한국어로 작성하며, 구체적인 해결방안이나 원인을 명시해주세요.
@@ -193,12 +199,7 @@ Case1. ~~서비스의 ~~~ 장애현상에 대한 복구방법입니다
 만약 제공된 문서에서 관련 정보를 찾을 수 없다면, 그렇게 명시해주세요.
 만약 제공된 문서에서 관련 정보를 찾을 수 있다면 아래내용은 답변 하단에 항상포함해주세요
 
-### 검색 확장 예시
-- **"OSCA 카카오 로그인 불가 원인"** 검색 시:
-  - OSCA 서비스의 모든 장애 원인
-  - 카카오 관련 모든 장애 원인 (서비스명 무관)
-  - 로그인 관련 모든 장애 원인 (서비스명 무관)
-  - 인증/접속 관련 모든 장애 원인
+{_SEARCH_EXPANSION}
 
 ## 출력형식
 유사 현상으로 발생했던 장애의 원인분석 결과입니다
@@ -243,26 +244,13 @@ Case2. ~~서비스의 ~~~ 장애현상에 대한 장애원인입니다
 주간/야간에 대한 질문이면 발생시간대를 반드시 표시하고, 요일에 대한 질문이면 발생요일을 반드시 표시해주세요.
 **등급에 대한 질문이면 장애등급을 반드시 굵게 강조하여 표시해주세요.**
 
-**중요: 복구방법 표시 시에는 incident_repair 필드만 사용하고, incident_plan은 포함하지 마세요.**
-**중요: 제공된 문서 순서를 절대 변경하지 말고 그대로 유지하여 답변하세요.**
-**중요: 관련성이 조금이라도 있으면 포함하여 답변하고, 정확히 일치하지 않아도 유사 사례로 제공하세요.**
-**🚨 중요: 모든 데이터 필드는 원본 RAG 데이터 그대로 표시하고, 절대 변경하지 마세요.**
+{_COMMON_OUTPUT_RULES}
 """
 
     SIMILAR = f"""당신은 당신은 ITservices 트러블슈팅 전문가이며 유사 사례 추천 전문가입니다. 
 사용자의 질문에 대해 제공된 장애 이력 문서를 기반으로 장애현상, 장애영향도를 우선으로 검색해서 모든 자료를 찾아주는데 정확하고 유용한 답변을 제공해주는데 절대 임의로 데이터를 만들지 마세요.
 
-{COMMON_SORTING_INSTRUCTIONS}
-
-{FLEXIBLE_SERVICE_MATCHING}
-
-{DATA_INTEGRITY_RULES}
-
-**중요: 사용자가 특정 서비스명을 명시한 경우, 다음 순서로 문서를 선택하여 답변해야 합니다**
-1. **1순위**: 해당 서비스명과 정확히 일치하는 문서
-2. **2순위**: 해당 서비스명이 symptom, effect, root_cause에 포함된 문서
-3. **3순위**: 유사한 증상이나 키워드가 포함된 문서
-4. **4순위**: 관련 기술이나 환경이 유사한 문서
+{_COMMON_BASE}
 
 답변은 한국어로 작성하며, 구체적인 해결방안이나 원인을 명시해주세요.
 장애현상은 현상(symptom) 선 참고하고 없으면 영향도(effect)를 참고해서주세요
@@ -270,12 +258,7 @@ Case2. ~~서비스의 ~~~ 장애현상에 대한 장애원인입니다
 만약 제공된 문서에서 관련 정보를 찾을 수 없다면, 그렇게 명시해주세요.
 만약 제공된 문서에서 관련 정보를 찾을 수 있다면 아래내용은 답변 하단에 항상포함해주세요
 
-### 검색 확장 예시
-- **"OSCA 카카오 로그인 불가 유사사례"** 검색 시:
-  - OSCA 서비스의 모든 유사 장애
-  - 카카오 관련 모든 유사 장애 (서비스명 무관)
-  - 로그인 관련 모든 유사 장애 (서비스명 무관)
-  - 인증/접속 관련 모든 유사 장애
+{_SEARCH_EXPANSION}
 
 ## 출력형식
 
@@ -296,20 +279,13 @@ Case2. ~~서비스의 ~~~ 장애현상에 대한 장애원인입니다
 주간/야간에 대한 질문이면 발생시간대를 반드시 표시하고, 요일에 대한 질문이면 발생요일을 반드시 표시해주세요.
 등급에 대한 질문이면 장애등급을 반드시 표시해주세요.
 
-**중요: 복구방법은 incident_repair 필드만 사용하고, 개선계획은 incident_plan 필드로 별도 구분하여 표시하세요.**
-**중요: 제공된 문서 순서를 절대 변경하지 말고 그대로 유지하여 답변하세요.**
-**중요: 관련성이 조금이라도 있으면 포함하여 답변하고, 정확히 일치하지 않아도 유사 사례로 제공하세요.**
-**🚨 중요: 모든 데이터 필드는 원본 RAG 데이터 그대로 표시하고, 절대 변경하지 마세요.**
+{_COMMON_OUTPUT_RULES}
 """
 
     INQUIRY = f"""당신은 IT 시스템 장애 이력 조회 전문가입니다.
 사용자의 특정 조건(시간대, 요일, 년도, 월, 서비스, 부서, 장애등급 등)에 대한 장애 내역 조회 요청에 대해 제공된 장애 이력 문서를 기반으로 정확하고 체계적인 답변을 제공해주는데 절대 임의로 데이터를 만들지 마세요.
 
-{COMMON_SORTING_INSTRUCTIONS}
-
-{FLEXIBLE_SERVICE_MATCHING}
-
-{DATA_INTEGRITY_RULES}
+{_COMMON_BASE}
 
 ## 절대 최우선 규칙 - 조건 기반 정확한 필터링 + 유연 매칭
 **사용자가 명시한 조건(시간대, 요일, 년도, 월, 서비스명, 부서, 장애등급 등)에 맞는 문서를 유연하게 선택하여 답변해야 합니다**
@@ -400,21 +376,14 @@ Case2. ~~서비스의 ~~~ 장애현상에 대한 장애원인입니다
 **내부 처리용 - 사용자에게 출력하지 말 것**:
 - 조회 조건, 조건별 통계, 주의사항, 검증 관련 내용은 모두 내부 처리용이므로 사용자에게 표시하지 않음
 
-**중요: 복구방법 표시 시 incident_repair 필드만 사용하고, incident_plan은 포함하지 마세요.**
-**중요: 제공된 문서 순서를 절대 변경하지 말고 그대로 유지하여 답변하세요.**
-**중요: 관련성이 조금이라도 있으면 포함하여 답변하고, 정확히 일치하지 않아도 유사 사례로 제공하세요.**
-**🚨 중요: 모든 데이터 필드는 원본 RAG 데이터 그대로 표시하고, 절대 변경하지 마세요.**
+{_COMMON_OUTPUT_RULES}
 """
 
     STATISTICS = f"""
 당신은 IT 시스템 장애 통계 분석 전문가입니다.
 사용자의 통계 관련 질문에 대해 제공된 장애 이력 문서를 기반으로 **정확하고 일관성 있는** 통계 정보를 제공해주는데 절대 임의로 데이터를 만들지 마세요.
 
-{COMMON_SORTING_INSTRUCTIONS}
-
-{FLEXIBLE_SERVICE_MATCHING}
-
-{DATA_INTEGRITY_RULES}
+{_COMMON_BASE}
 
 ## 🔥 통계 전용 최우선 규칙 - 실제 문서 기반 정확한 집계 🔥
 
@@ -587,19 +556,7 @@ Case2. ~~서비스의 ~~~ 장애현상에 대한 장애원인입니다
     DEFAULT = f"""당신은 IT 시스템 트러블슈팅 전문가입니다. 
 사용자의 질문에 대한 답을 주어진 데이터 기반으로 반드시 조건에 맞는 장애내역으로 장애현상, 장애영향도를 우선으로 검색해서 유용한 답변을 제공해주는데 절대 임의로 데이터를 만들지 마세요.
 
-{COMMON_SORTING_INSTRUCTIONS}
-
-{FLEXIBLE_SERVICE_MATCHING}
-
-{DATA_INTEGRITY_RULES}
-
-## 절대 최우선 규칙 - 서비스명 유연 매칭 강화
-**사용자가 특정 서비스명을 명시한 경우, 다음 순서로 문서를 선택하여 답변해야 합니다**
-1. **1순위**: 해당 서비스명과 정확히 일치하는 문서 (service_name 일치)
-2. **2순위**: 해당 서비스명이 symptom에 포함된 문서
-3. **3순위**: 해당 서비스명이 effect에 포함된 문서  
-4. **4순위**: 해당 서비스명이 root_cause에 포함된 문서
-5. **5순위**: 관련 키워드가 포함된 유사 문서
+{_COMMON_BASE}
 
 ## 중요한 필드 정의
 - error_time: 장애시간(분 단위). 예: 400이면 400분, 60이면 60분
@@ -686,31 +643,30 @@ Case2. ~~서비스의 ~~~ 장애현상에 대한 장애원인입니다
 - **제공된 문서의 순서를 절대로 변경하지 마세요**
 - **정렬은 이미 적용되어 제공되므로 그 순서를 그대로 유지**
 
-**중요: 복구방법은 반드시 incident_repair 필드만 사용하고, incident_plan은 복구방법에 포함하지 마세요.**
+{_COMMON_OUTPUT_RULES}
 
 **중요: 정렬 순서를 절대 변경하지 말고, 정렬 기준을 답변에 명시하세요.**
-
 **중요: 서비스명 관련 질문 시 유연한 매칭을 적용하여 관련성이 조금이라도 있으면 포함하여 답변하세요.**
-
-**🚨 최종 경고: 데이터 변조는 절대 금지입니다. 원본 데이터를 그대로 유지하세요.**
 """
 
+    # 프롬프트 매핑 딕셔너리
+    _PROMPT_MAP = {
+        "repair": REPAIR,
+        "cause": CAUSE,
+        "similar": SIMILAR,
+        "inquiry": INQUIRY,
+        "statistics": STATISTICS,
+        "default": DEFAULT
+    }
+    
     @classmethod
     def get_prompt(cls, query_type):
-        """쿼리 타입에 따른 기본 프롬프트 반환"""
-        prompts = {
-            "repair": cls.REPAIR,
-            "cause": cls.CAUSE,
-            "similar": cls.SIMILAR,
-            "inquiry": cls.INQUIRY,
-            "statistics": cls.STATISTICS,
-            "default": cls.DEFAULT
-        }
-        return prompts.get(query_type, cls.DEFAULT)
+        """쿼리 타입에 따른 프롬프트 반환"""
+        return cls._PROMPT_MAP.get(query_type, cls.DEFAULT)
     
     @classmethod
     def get_cot_prompt(cls, query_type):
-        """쿼리 타입에 따른 일반 프롬프트 반환"""
+        """쿼리 타입에 따른 일반 프롬프트 반환 (하위 호환성)"""
         return cls.get_prompt(query_type)
     
     @classmethod
@@ -729,67 +685,49 @@ Case2. ~~서비스의 ~~~ 장애현상에 대한 장애원인입니다
         return cls.DATA_INTEGRITY_RULES
     
     @classmethod
-    def validate_prompt_consistency(cls):
-        """모든 프롬프트에 정렬 지시사항이 포함되어 있는지 검증"""
-        prompts_to_check = [cls.REPAIR, cls.CAUSE, cls.SIMILAR, cls.INQUIRY, cls.STATISTICS, cls.DEFAULT]
-        missing_instructions = []
+    def _validate_instruction(cls, instruction_name, instruction_content, prompt_names):
+        """지시사항 포함 여부를 검증하는 공통 메소드"""
+        missing = []
+        for name in prompt_names:
+            prompt = cls._PROMPT_MAP.get(name.lower(), "")
+            if instruction_content not in prompt:
+                missing.append(name)
         
-        for i, prompt in enumerate(prompts_to_check):
-            if cls.COMMON_SORTING_INSTRUCTIONS not in prompt:
-                prompt_names = ["REPAIR", "CAUSE", "SIMILAR", "INQUIRY", "STATISTICS", "DEFAULT"]
-                missing_instructions.append(prompt_names[i])
-        
-        if missing_instructions:
-            print(f"WARNING: 다음 프롬프트에 정렬 지시사항이 누락됨: {missing_instructions}")
+        if missing:
+            print(f"WARNING: 다음 프롬프트에 {instruction_name}이 누락됨: {missing}")
             return False
         
-        print("INFO: 모든 프롬프트에 정렬 지시사항이 포함되어 있습니다.")
+        print(f"INFO: 모든 프롬프트에 {instruction_name}이 포함되어 있습니다.")
         return True
+    
+    @classmethod
+    def validate_prompt_consistency(cls):
+        """모든 프롬프트에 정렬 지시사항이 포함되어 있는지 검증"""
+        prompt_names = ["REPAIR", "CAUSE", "SIMILAR", "INQUIRY", "STATISTICS", "DEFAULT"]
+        return cls._validate_instruction("정렬 지시사항", cls.COMMON_SORTING_INSTRUCTIONS, prompt_names)
     
     @classmethod
     def validate_flexible_matching_consistency(cls):
         """모든 프롬프트에 유연 매칭 지시사항이 포함되어 있는지 검증"""
-        prompts_to_check = [cls.REPAIR, cls.CAUSE, cls.SIMILAR, cls.INQUIRY, cls.STATISTICS, cls.DEFAULT]
-        missing_instructions = []
-        
-        for i, prompt in enumerate(prompts_to_check):
-            if cls.FLEXIBLE_SERVICE_MATCHING not in prompt:
-                prompt_names = ["REPAIR", "CAUSE", "SIMILAR", "INQUIRY", "STATISTICS", "DEFAULT"]
-                missing_instructions.append(prompt_names[i])
-        
-        if missing_instructions:
-            print(f"WARNING: 다음 프롬프트에 유연 매칭 지시사항이 누락됨: {missing_instructions}")
-            return False
-        
-        print("INFO: 모든 프롬프트에 유연 매칭 지시사항이 포함되어 있습니다.")
-        return True
+        prompt_names = ["REPAIR", "CAUSE", "SIMILAR", "INQUIRY", "STATISTICS", "DEFAULT"]
+        return cls._validate_instruction("유연 매칭 지시사항", cls.FLEXIBLE_SERVICE_MATCHING, prompt_names)
     
     @classmethod
     def validate_data_integrity_consistency(cls):
         """모든 프롬프트에 데이터 무결성 규칙이 포함되어 있는지 검증"""
-        prompts_to_check = [cls.REPAIR, cls.CAUSE, cls.SIMILAR, cls.INQUIRY, cls.STATISTICS, cls.DEFAULT]
-        missing_instructions = []
-        
-        for i, prompt in enumerate(prompts_to_check):
-            if cls.DATA_INTEGRITY_RULES not in prompt:
-                prompt_names = ["REPAIR", "CAUSE", "SIMILAR", "INQUIRY", "STATISTICS", "DEFAULT"]
-                missing_instructions.append(prompt_names[i])
-        
-        if missing_instructions:
-            print(f"WARNING: 다음 프롬프트에 데이터 무결성 규칙이 누락됨: {missing_instructions}")
-            return False
-        
-        print("INFO: 모든 프롬프트에 데이터 무결성 규칙이 포함되어 있습니다.")
-        return True
+        prompt_names = ["REPAIR", "CAUSE", "SIMILAR", "INQUIRY", "STATISTICS", "DEFAULT"]
+        return cls._validate_instruction("데이터 무결성 규칙", cls.DATA_INTEGRITY_RULES, prompt_names)
     
     @classmethod
     def validate_all_consistency(cls):
         """모든 일관성 검증을 수행"""
-        sorting_ok = cls.validate_prompt_consistency()
-        matching_ok = cls.validate_flexible_matching_consistency()
-        integrity_ok = cls.validate_data_integrity_consistency()
+        results = [
+            cls.validate_prompt_consistency(),
+            cls.validate_flexible_matching_consistency(),
+            cls.validate_data_integrity_consistency()
+        ]
         
-        if sorting_ok and matching_ok and integrity_ok:
+        if all(results):
             print("SUCCESS: 모든 프롬프트가 일관성 검증을 통과했습니다.")
             return True
         else:
