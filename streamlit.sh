@@ -18,4 +18,8 @@ pip install openai
 pip install requests
 pip install pandas
 pip install openpyxl
+pip install urllib3
+pip install plotly
+pip install seaborn
+pip install chardet
 python -m streamlit run src/app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true
