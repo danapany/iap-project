@@ -415,11 +415,11 @@ def show_question_analysis(monitoring_manager, logs_data, chart_manager):
             st.plotly_chart(fig_response, use_container_width=True)
 
 def show_detailed_logs(monitoring_manager, logs_data):
-    """상세 로그 화면"""
+    """상세 로그 화면 - 답변유무와 오류메시지 포함"""
     st.header("📋 상세 로그")
     
     # 필터 옵션
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         ip_filter = st.text_input("IP 주소 필터", placeholder="예: 192.168.1.1")
@@ -427,11 +427,17 @@ def show_detailed_logs(monitoring_manager, logs_data):
     with col2:
         query_type_filter = st.selectbox(
             "질문 유형 필터",
-            ["전체", "repair", "cause", "similar", "inquiry", "default"]
+            ["전체", "repair", "cause", "similar", "inquiry", "statistics", "default"]
         )
     
     with col3:
         search_keyword = st.text_input("질문 내용 검색", placeholder="키워드 입력")
+    
+    with col4:
+        success_filter = st.selectbox(
+            "답변 상태 필터",
+            ["전체", "성공", "실패"]
+        )
     
     # 로그 필터링
     filtered_logs = logs_data
@@ -445,7 +451,60 @@ def show_detailed_logs(monitoring_manager, logs_data):
     if search_keyword:
         filtered_logs = [log for log in filtered_logs if search_keyword.lower() in log['question'].lower()]
     
-    st.info(f"총 {len(filtered_logs)}개의 로그가 조회되었습니다.")
+    if success_filter != "전체":
+        if success_filter == "성공":
+            filtered_logs = [log for log in filtered_logs if log.get('success') == True]
+        else:  # "실패"
+            filtered_logs = [log for log in filtered_logs if log.get('success') == False]
+    
+    # 통계 정보 표시
+    total_logs = len(filtered_logs)
+    successful_logs = sum(1 for log in filtered_logs if log.get('success') == True)
+    failed_logs = total_logs - successful_logs
+    success_rate = (successful_logs / total_logs * 100) if total_logs > 0 else 0
+    
+    # 상단 메트릭 카드
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("총 로그 수", f"{total_logs:,}건")
+    
+    with col2:
+        st.metric(
+            "성공한 답변", 
+            f"{successful_logs:,}건",
+            delta=f"{success_rate:.1f}%"
+        )
+    
+    with col3:
+        st.metric(
+            "실패한 답변", 
+            f"{failed_logs:,}건",
+            delta=f"{100-success_rate:.1f}%"
+        )
+    
+    with col4:
+        avg_response_time = sum(log.get('response_time', 0) for log in filtered_logs if log.get('response_time')) / len([log for log in filtered_logs if log.get('response_time')]) if filtered_logs else 0
+        st.metric("평균 응답시간", f"{avg_response_time:.2f}초")
+    
+    st.info(f"총 {len(filtered_logs)}개의 로그가 조회되었습니다. (성공률: {success_rate:.1f}%)")
+    
+    # 실패 원인 분석 (실패 로그가 있는 경우)
+    if failed_logs > 0:
+        with st.expander(f"❌ 실패 원인 분석 ({failed_logs}건)", expanded=False):
+            failure_reasons = {}
+            for log in filtered_logs:
+                if not log.get('success') and log.get('error_message'):
+                    reason = log['error_message']
+                    failure_reasons[reason] = failure_reasons.get(reason, 0) + 1
+            
+            if failure_reasons:
+                st.write("**실패 원인별 통계:**")
+                for reason, count in sorted(failure_reasons.items(), key=lambda x: x[1], reverse=True):
+                    percentage = count / failed_logs * 100
+                    st.write(f"• {reason}: {count}건 ({percentage:.1f}%)")
+            else:
+                st.write("실패 원인 정보가 없습니다.")
     
     # 페이지네이션
     page_size = 50
@@ -461,31 +520,201 @@ def show_detailed_logs(monitoring_manager, logs_data):
     
     # 로그 테이블
     if page_logs:
-        df_logs = pd.DataFrame([
-            {
+        # 데이터프레임 생성
+        df_logs_data = []
+        for log in page_logs:
+            # 답변 상태 이모지
+            if log.get('success') == True:
+                answer_status = "✅ 성공"
+            elif log.get('success') == False:
+                answer_status = "❌ 실패"
+            else:
+                answer_status = "❓ 미확인"
+            
+            # 질문 내용 줄이기
+            question_preview = log['question'][:80] + ('...' if len(log['question']) > 80 else '')
+            
+            # 오류 메시지 처리
+            error_msg = log.get('error_message', '') or ''
+            error_preview = error_msg[:50] + ('...' if len(error_msg) > 50 else '') if error_msg else '-'
+            
+            df_logs_data.append({
                 '시간': log['timestamp'],
                 'IP 주소': log['ip_address'],
                 '질문 유형': log.get('query_type', 'unknown'),
-                '질문 내용': log['question'][:100] + ('...' if len(log['question']) > 100 else ''),
-                '응답 시간(초)': log.get('response_time', 0),
-                '문서 수': log.get('document_count', 0)
-            }
-            for log in page_logs
-        ])
+                '질문 내용': question_preview,
+                '답변유무': answer_status,
+                '오류메시지': error_preview,
+                '응답시간(초)': round(log.get('response_time', 0), 2) if log.get('response_time') else 0,
+                '문서 수': log.get('document_count', 0) or 0
+            })
         
-        st.dataframe(df_logs, use_container_width=True)
+        df_logs = pd.DataFrame(df_logs_data)
         
-        # 로그 다운로드
-        if st.button("📥 로그 다운로드 (CSV)"):
-            csv = df_logs.to_csv(index=False, encoding='utf-8-sig')
-            st.download_button(
-                label="다운로드",
-                data=csv,
-                file_name=f"monitoring_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv"
+        # 테이블 스타일링을 위한 함수
+        def style_dataframe(df):
+            def color_answer_status(val):
+                if '성공' in val:
+                    return 'background-color: #d4edda; color: #155724'
+                elif '실패' in val:
+                    return 'background-color: #f8d7da; color: #721c24'
+                else:
+                    return 'background-color: #fff3cd; color: #856404'
+            
+            return df.style.applymap(color_answer_status, subset=['답변유무'])
+        
+        # 스타일이 적용된 테이블 표시
+        st.dataframe(
+            style_dataframe(df_logs),
+            use_container_width=True,
+            height=600
+        )
+        
+        # 상세 정보 확장 섹션
+        with st.expander("📄 로그 상세 정보 보기"):
+            selected_log_idx = st.selectbox(
+                "상세히 볼 로그 선택 (현재 페이지 기준)",
+                range(len(page_logs)),
+                format_func=lambda i: f"{i+1}. {page_logs[i]['timestamp']} - {page_logs[i]['question'][:50]}..."
             )
+            
+            if selected_log_idx is not None and selected_log_idx < len(page_logs):
+                selected_log = page_logs[selected_log_idx]
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.write("**기본 정보**")
+                    st.write(f"**시간**: {selected_log['timestamp']}")
+                    st.write(f"**IP 주소**: {selected_log['ip_address']}")
+                    st.write(f"**User Agent**: {selected_log.get('user_agent', 'N/A')}")
+                    st.write(f"**질문 유형**: {selected_log.get('query_type', 'unknown')}")
+                    
+                    # 답변 상태 상세 정보
+                    success_status = selected_log.get('success')
+                    if success_status == True:
+                        st.success("✅ **답변 상태**: 성공")
+                    elif success_status == False:
+                        st.error("❌ **답변 상태**: 실패")
+                    else:
+                        st.warning("❓ **답변 상태**: 미확인")
+                
+                with col2:
+                    st.write("**성능 정보**")
+                    st.write(f"**응답 시간**: {selected_log.get('response_time', 0):.2f}초")
+                    st.write(f"**검색된 문서 수**: {selected_log.get('document_count', 0)}개")
+                    
+                    # 오류 메시지 상세 표시
+                    if selected_log.get('error_message'):
+                        st.write("**오류 메시지**:")
+                        st.code(selected_log['error_message'])
+                    else:
+                        st.write("**오류 메시지**: 없음")
+                
+                # 질문 내용 전체 표시
+                st.write("**질문 내용 (전체)**:")
+                st.text_area(
+                    "질문",
+                    value=selected_log['question'],
+                    height=100,
+                    disabled=True,
+                    key=f"question_{selected_log_idx}"
+                )
+                
+                # 응답 내용 표시 (있는 경우)
+                if selected_log.get('response_content'):
+                    st.write("**응답 내용 (일부)**:")
+                    response_preview = selected_log['response_content'][:500] + ('...' if len(selected_log['response_content']) > 500 else '')
+                    st.text_area(
+                        "응답",
+                        value=response_preview,
+                        height=150,
+                        disabled=True,
+                        key=f"response_{selected_log_idx}"
+                    )
+        
+        # 로그 다운로드 옵션
+        st.markdown("---")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("📥 현재 페이지 로그 다운로드 (CSV)"):
+                csv = df_logs.to_csv(index=False, encoding='utf-8-sig')
+                st.download_button(
+                    label="CSV 다운로드",
+                    data=csv,
+                    file_name=f"monitoring_logs_page_{page if total_pages > 1 else 1}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv"
+                )
+        
+        with col2:
+            if st.button("📥 전체 필터링된 로그 다운로드 (CSV)"):
+                # 전체 필터링된 로그로 데이터프레임 생성
+                all_filtered_data = []
+                for log in filtered_logs:
+                    answer_status = "성공" if log.get('success') == True else "실패" if log.get('success') == False else "미확인"
+                    error_msg = log.get('error_message', '') or ''
+                    
+                    all_filtered_data.append({
+                        '시간': log['timestamp'],
+                        'IP 주소': log['ip_address'],
+                        'User Agent': log.get('user_agent', ''),
+                        '질문 유형': log.get('query_type', 'unknown'),
+                        '질문 내용': log['question'],
+                        '답변유무': answer_status,
+                        '오류메시지': error_msg,
+                        '응답시간(초)': log.get('response_time', 0),
+                        '문서 수': log.get('document_count', 0),
+                        '응답내용': log.get('response_content', '')
+                    })
+                
+                df_all = pd.DataFrame(all_filtered_data)
+                csv_all = df_all.to_csv(index=False, encoding='utf-8-sig')
+                st.download_button(
+                    label="전체 CSV 다운로드",
+                    data=csv_all,
+                    file_name=f"monitoring_logs_all_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv"
+                )
+        
+        with col3:
+            if st.button("📊 실패 로그만 다운로드 (CSV)"):
+                failed_logs_data = [log for log in filtered_logs if log.get('success') == False]
+                if failed_logs_data:
+                    failed_df_data = []
+                    for log in failed_logs_data:
+                        failed_df_data.append({
+                            '시간': log['timestamp'],
+                            'IP 주소': log['ip_address'],
+                            '질문 유형': log.get('query_type', 'unknown'),
+                            '질문 내용': log['question'],
+                            '오류메시지': log.get('error_message', ''),
+                            '응답시간(초)': log.get('response_time', 0),
+                            '문서 수': log.get('document_count', 0)
+                        })
+                    
+                    df_failed = pd.DataFrame(failed_df_data)
+                    csv_failed = df_failed.to_csv(index=False, encoding='utf-8-sig')
+                    st.download_button(
+                        label="실패 로그 CSV 다운로드",
+                        data=csv_failed,
+                        file_name=f"monitoring_failed_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv"
+                    )
+                else:
+                    st.info("실패한 로그가 없습니다.")
+        
     else:
         st.warning("조회된 로그가 없습니다.")
+        
+        # 조회 조건 요약 표시
+        st.info(
+            f"**적용된 필터**: "
+            f"IP: {ip_filter if ip_filter else '전체'}, "
+            f"유형: {query_type_filter}, "
+            f"키워드: {search_keyword if search_keyword else '없음'}, "
+            f"답변상태: {success_filter}"
+        )
 
 if __name__ == "__main__":
     main()

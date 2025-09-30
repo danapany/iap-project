@@ -224,15 +224,6 @@ def main():
         query_processor.debug_mode = DEBUG_MODE
         query_processor.search_manager.debug_mode = DEBUG_MODE
         
-        if DEBUG_MODE:
-            st.info(f"""
-            🚀 5가지 개선사항 활성화
-            🔍 새 쿼리 타입: INQUIRY, STATISTICS
-            📊 완전 고정 크기 차트 (800x600px)
-            📏 질문 길이: {current_length}자 / {MAX_QUERY_LENGTH}자
-            🔍 로깅 시스템 활성화
-            """)
-        
         try:
             query_processor.process_query(user_query)
         except Exception as e:

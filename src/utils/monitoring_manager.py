@@ -16,6 +16,19 @@ class MonitoringManager:
         self.db_path = db_path
         self.ensure_db_directory()
         self.init_database()
+        
+        # 답변 실패 패턴 정의
+        self.failure_patterns = [
+            r"해당.*조건.*문서.*찾을 수 없습니다",
+            r"검색된 문서가 없어서 답변을 제공할 수 없습니다",
+            r"관련 정보를 찾을 수 없습니다",
+            r"문서를 찾을 수 없습니다",
+            r"답변을 생성할 수 없습니다",
+            r"죄송합니다.*오류가 발생했습니다",
+            r"처리 중 오류가 발생했습니다",
+            r"연결에 실패했습니다",
+            r"서비스를 이용할 수 없습니다"
+        ]
     
     def ensure_db_directory(self):
         """데이터베이스 디렉토리 생성"""
@@ -40,9 +53,16 @@ class MonitoringManager:
                     document_count INTEGER,
                     success BOOLEAN,
                     error_message TEXT,
+                    response_content TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
+            
+            # 기존 테이블에 response_content 컬럼이 없다면 추가
+            cursor.execute("PRAGMA table_info(user_logs)")
+            columns = [column[1] for column in cursor.fetchall()]
+            if 'response_content' not in columns:
+                cursor.execute('ALTER TABLE user_logs ADD COLUMN response_content TEXT')
             
             # IP 통계 테이블
             cursor.execute('''
@@ -75,13 +95,190 @@ class MonitoringManager:
             
             conn.commit()
     
+    def _determine_response_success(self, response_content: str = None, error_message: str = None, document_count: int = None) -> tuple:
+            """답변 성공/실패 여부와 오류 메시지 판단 (RAG 기반 답변 여부 포함)"""
+            
+            # 1. 명시적 오류가 있는 경우
+            if error_message:
+                truncated_error = (error_message[:50] + '...') if len(error_message) > 50 else error_message
+                return False, truncated_error
+            
+            # 2. 응답 내용이 없는 경우
+            if not response_content or response_content.strip() == "":
+                return False, "응답 내용 없음"
+            
+            # 3. 응답 내용에서 실패 패턴 검사
+            if response_content:
+                for pattern in self.failure_patterns:
+                    if re.search(pattern, response_content, re.IGNORECASE):
+                        return False, "적절한 답변 생성 실패"
+            
+            # 4. 문서 수가 0인 경우 (검색 실패)
+            if document_count is not None and document_count == 0:
+                return False, "관련 문서 검색 실패"
+            
+            # 5. 응답이 너무 짧은 경우 (10자 미만)
+            if response_content and len(response_content.strip()) < 10:
+                return False, "응답 길이 부족"
+            
+            # 6. **새로 추가: RAG 기반 답변인지 판단**
+            if response_content and not self._is_rag_based_response(response_content, document_count):
+                return False, "RAG 데이터 기반 답변 아님"
+            
+            # 모든 조건을 통과하면 성공
+            return True, None
+
+    def _is_rag_based_response(self, response_content: str, document_count: int = None) -> bool:
+        """RAG 원천 데이터 기반 답변인지 판단"""
+        
+        if not response_content:
+            return False
+        
+        response_lower = response_content.lower()
+        
+        # 1. 문서 수가 매우 적은 경우 (2개 미만)
+        if document_count is not None and document_count < 2:
+            return False
+        
+        # 2. RAG 기반 답변의 특징적 마커들 확인
+        rag_markers = [
+            '[REPAIR_BOX_START]', '[CAUSE_BOX_START]', 
+            'case1', 'case2', 'case3',
+            '장애 id', 'incident_id', 'service_name',
+            '복구방법:', '장애원인:', '서비스명:',
+            '발생일시:', '장애시간:', '담당부서:',
+            '참조장애정보', '장애등급:'
+        ]
+        
+        rag_marker_count = sum(1 for marker in rag_markers if marker in response_lower)
+        
+        # 3. RAG 기반 답변에 자주 나타나는 패턴들
+        rag_patterns = [
+            r'장애\s*id\s*:\s*inm\d+',  # INM으로 시작하는 장애 ID
+            r'서비스명\s*:\s*\w+',       # 서비스명: 패턴
+            r'발생일[시자]\s*:\s*\d{4}', # 발생일시: 년도 패턴
+            r'장애시간\s*:\s*\d+분',     # 장애시간: 숫자분 패턴
+            r'복구방법\s*:\s*',          # 복구방법: 패턴
+            r'장애원인\s*:\s*',          # 장애원인: 패턴
+            r'\d+등급',                 # X등급 패턴
+            r'incident_repair',         # incident_repair 필드 언급
+            r'error_date',              # error_date 필드 언급
+        ]
+        
+        rag_pattern_count = sum(1 for pattern in rag_patterns if re.search(pattern, response_lower))
+        
+        # 4. 일반적인 답변 패턴들 (RAG가 아닌 일반 지식 기반)
+        general_patterns = [
+            r'일반적으로\s+',
+            r'보통\s+',
+            r'대부분\s+',
+            r'흔히\s+',
+            r'주로\s+',
+            r'다음과\s+같은\s+방법',
+            r'다음\s+단계',
+            r'기본적인\s+',
+            r'일반적인\s+',
+            r'표준적인\s+',
+            r'권장사항',
+            r'best\s+practice',
+            r'모범\s+사례',
+            r'다음과\s+같이\s+접근',
+        ]
+        
+        general_pattern_count = sum(1 for pattern in general_patterns if re.search(pattern, response_lower))
+        
+        # 5. RAG 답변에서 흔히 사용되지 않는 일반적 표현들
+        non_rag_keywords = [
+            '일반적으로', '보통', '대부분', '흔히', '주로',
+            '기본적으로', '표준적으로', '권장사항', '모범사례',
+            '다음과 같은 방법', '다음 단계', '기본적인 점검',
+            '시스템 관리', '네트워크 관리', '서버 관리'
+        ]
+        
+        non_rag_keyword_count = sum(1 for keyword in non_rag_keywords if keyword in response_lower)
+        
+        # 6. 특정 질문 유형별 RAG 기반 판단
+        statistics_indicators = ['건수', '통계', '현황', '분포', '년도별', '월별']
+        statistics_count = sum(1 for indicator in statistics_indicators if indicator in response_lower)
+        
+        # 7. 판단 로직
+        # RAG 마커나 패턴이 충분히 있으면 RAG 기반으로 판단
+        if rag_marker_count >= 3 or rag_pattern_count >= 2:
+            return True
+        
+        # 통계 관련 답변이고 통계 지표가 있으면 RAG 기반으로 판단
+        if statistics_count >= 2 and ('차트' in response_lower or '표' in response_lower):
+            return True
+        
+        # 일반적 표현이 많고 RAG 특징이 적으면 일반 답변으로 판단
+        if general_pattern_count >= 2 or non_rag_keyword_count >= 3:
+            if rag_marker_count == 0 and rag_pattern_count == 0:
+                return False
+        
+        # RAG 마커가 하나라도 있으면 RAG 기반으로 판단
+        if rag_marker_count > 0 or rag_pattern_count > 0:
+            return True
+        
+        # 응답이 길고 구체적이면서 문서가 충분히 있으면 RAG 기반으로 판단
+        if len(response_content) > 200 and document_count and document_count >= 3:
+            return True
+        
+        # 기본적으로 일반 답변으로 판단
+        return False
+
+    def _classify_failure_reason(self, response_content: str, document_count: int) -> str:
+        """실패 원인을 더 구체적으로 분류"""
+        
+        if not response_content or response_content.strip() == "":
+            return "응답 내용 없음"
+        
+        if document_count == 0:
+            return "관련 문서 검색 실패"
+        
+        if len(response_content.strip()) < 10:
+            return "응답 길이 부족"
+        
+        response_lower = response_content.lower()
+        
+        # 실패 패턴별 세분화
+        if re.search(r"해당.*조건.*문서.*찾을 수 없습니다", response_content, re.IGNORECASE):
+            return "조건 맞는 문서 없음"
+        
+        if re.search(r"검색된 문서가 없어서", response_content, re.IGNORECASE):
+            return "검색 결과 없음"
+        
+        if re.search(r"오류가 발생했습니다", response_content, re.IGNORECASE):
+            return "시스템 오류 발생"
+        
+        if re.search(r"답변을 생성할 수 없습니다", response_content, re.IGNORECASE):
+            return "답변 생성 실패"
+        
+        # RAG 기반이 아닌 일반 답변인 경우
+        if not self._is_rag_based_response(response_content, document_count):
+            return "RAG 기반 답변 아님"
+        
+        return "적절한 답변 생성 실패"
+
     def log_user_activity(self, ip_address: str, question: str, query_type: str = None, 
                          user_agent: str = None, response_time: float = None,
-                         document_count: int = None, success: bool = True, 
-                         error_message: str = None):
-        """사용자 활동 로그 기록"""
+                         document_count: int = None, success: bool = None, 
+                         error_message: str = None, response_content: str = None):
+        """사용자 활동 로그 기록 (향상된 버전)"""
         try:
             timestamp = datetime.now().isoformat()
+            
+            # success가 명시되지 않은 경우 자동 판단
+            if success is None:
+                success, auto_error_message = self._determine_response_success(
+                    response_content, error_message, document_count
+                )
+                # 자동 판단된 오류 메시지가 있고 기존 error_message가 없으면 사용
+                if auto_error_message and not error_message:
+                    error_message = auto_error_message
+            
+            # 오류 메시지 길이 제한 (50자)
+            if error_message and len(error_message) > 50:
+                error_message = error_message[:50] + "..."
             
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -90,10 +287,11 @@ class MonitoringManager:
                 cursor.execute('''
                     INSERT INTO user_logs 
                     (timestamp, ip_address, user_agent, question, query_type, 
-                     response_time, document_count, success, error_message)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     response_time, document_count, success, error_message, response_content)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (timestamp, ip_address, user_agent, question, query_type,
-                      response_time, document_count, success, error_message))
+                      response_time, document_count, success, error_message, 
+                      response_content[:1000] if response_content else None))  # 응답 내용도 길이 제한
                 
                 # IP 통계 업데이트
                 self._update_ip_stats(cursor, ip_address, response_time, success)
@@ -191,7 +389,7 @@ class MonitoringManager:
             ''', (today, 1, 1, response_time or 0.0, json.dumps(query_types)))
     
     def get_logs_in_range(self, start_date, end_date) -> List[Dict[str, Any]]:
-        """지정된 기간의 로그 조회"""
+        """지정된 기간의 로그 조회 (답변유무와 오류메시지 포함)"""
         start_str = start_date.isoformat()
         end_str = (end_date + timedelta(days=1)).isoformat()
         
@@ -199,7 +397,7 @@ class MonitoringManager:
             cursor = conn.cursor()
             cursor.execute('''
                 SELECT timestamp, ip_address, user_agent, question, query_type,
-                       response_time, document_count, success, error_message
+                       response_time, document_count, success, error_message, response_content
                 FROM user_logs 
                 WHERE timestamp >= ? AND timestamp < ?
                 ORDER BY timestamp DESC
@@ -217,11 +415,13 @@ class MonitoringManager:
                     'response_time': row[5],
                     'document_count': row[6],
                     'success': row[7],
-                    'error_message': row[8]
+                    'error_message': row[8],
+                    'response_content': row[9]
                 }
                 for row in rows
             ]
-    
+
+    # 기존 메서드들은 그대로 유지...
     def get_daily_statistics(self, logs_data: List[Dict]) -> List[Dict]:
         """일별 통계 계산"""
         daily_counts = defaultdict(int)
@@ -329,7 +529,9 @@ class MonitoringManager:
             'query_types': set(),
             'success_rate': 0.0,
             'avg_response_time': 0.0,
-            'response_times': []
+            'response_times': [],
+            'successful_queries': 0,
+            'failed_queries': 0
         })
         
         for log in logs_data:
@@ -338,6 +540,12 @@ class MonitoringManager:
             
             ip_stats[ip]['count'] += 1
             ip_stats[ip]['query_types'].add(log.get('query_type', 'unknown'))
+            
+            # 성공/실패 통계
+            if log.get('success'):
+                ip_stats[ip]['successful_queries'] += 1
+            else:
+                ip_stats[ip]['failed_queries'] += 1
             
             if log.get('response_time'):
                 ip_stats[ip]['response_times'].append(log['response_time'])
@@ -353,6 +561,8 @@ class MonitoringManager:
             stats['query_types'] = list(stats['query_types'])
             if stats['response_times']:
                 stats['avg_response_time'] = sum(stats['response_times']) / len(stats['response_times'])
+            if stats['count'] > 0:
+                stats['success_rate'] = stats['successful_queries'] / stats['count'] * 100
         
         return dict(ip_stats)
     
@@ -402,6 +612,11 @@ class MonitoringManager:
                 suspicion_score += 50
                 reasons.append(f"과도한 요청 ({stats['count']}회)")
             
+            # 높은 실패율
+            if stats['success_rate'] < 30:  # 성공률 30% 미만
+                suspicion_score += 30
+                reasons.append(f"높은 실패율 ({stats['success_rate']:.1f}%)")
+            
             # 짧은 시간 내 다수 요청
             if len(stats['response_times']) > 50:
                 avg_interval = 86400 / len(stats['response_times'])  # 하루 기준
@@ -418,7 +633,8 @@ class MonitoringManager:
                 suspicious_ips[ip] = {
                     'score': suspicion_score,
                     'reason': ', '.join(reasons),
-                    'count': stats['count']
+                    'count': stats['count'],
+                    'success_rate': stats['success_rate']
                 }
         
         return suspicious_ips
@@ -442,7 +658,7 @@ class MonitoringManager:
             '이', '그', '저', '것', '수', '등', '및', '또한', '그리고', '하지만', '그러나',
             '때문에', '으로', '에서', '에게', '에', '을', '를', '이', '가', '은', '는',
             '의', '와', '과', '도', '만', '에서', '부터', '까지', '대해', '대한', '위해',
-            '알려줘', '알려주세요', '보여줘', '보여주세요', '해줘', '해주세요', '뭐야', '뭐에요'
+            '알려줘', '알려주세요', '보여줘', '보여주세요', '해줘', '해주세요', '뭐야', '뭐예요'
         }
         
         for log in logs_data:
@@ -507,6 +723,28 @@ class MonitoringManager:
                 time_ranges['매우 느림 (30초 이상)'] += 1
         
         return time_ranges
+    
+    def get_success_rate_statistics(self, logs_data: List[Dict]) -> Dict[str, Any]:
+        """답변 성공률 통계"""
+        total_queries = len(logs_data)
+        successful_queries = sum(1 for log in logs_data if log.get('success'))
+        failed_queries = total_queries - successful_queries
+        
+        success_rate = (successful_queries / total_queries * 100) if total_queries > 0 else 0
+        
+        # 실패 원인별 통계
+        failure_reasons = Counter()
+        for log in logs_data:
+            if not log.get('success') and log.get('error_message'):
+                failure_reasons[log['error_message']] += 1
+        
+        return {
+            'total_queries': total_queries,
+            'successful_queries': successful_queries,
+            'failed_queries': failed_queries,
+            'success_rate': success_rate,
+            'failure_reasons': dict(failure_reasons.most_common(10))
+        }
     
     def calculate_daily_average(self, logs_data: List[Dict]) -> float:
         """일평균 질문 수 계산"""

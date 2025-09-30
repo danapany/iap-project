@@ -217,28 +217,64 @@ class SearchManagerLocal:
         return patterns
 
     def extract_query_keywords(self, query):
-        """질문에서 핵심 키워드 추출"""
+        """질문에서 핵심 키워드 추출 - 통계 동의어 처리 강화"""
         keywords = {'service_keywords': [], 'symptom_keywords': [], 'action_keywords': [], 'time_keywords': []}
         
+        # 쿼리 정규화
+        normalized_query = self._normalize_statistics_query(query)
+        
+        # 확장된 서비스 패턴
         service_patterns = [
-            r'\b(관리자|admin)\s*(웹|web|페이지|page)', r'\b(API|api)\s*(링크|link|서비스)',
-            r'\b(ERP|erp)\b', r'\b(마이페이지|mypage)', r'\b(보험|insurance)', r'\b(커뮤니티|community)',
-            r'\b(블록체인|blockchain)', r'\b(OTP|otp|일회용비밀번호)\b', r'\b(SMS|sms|문자|단문)\b',
-            r'\b(VPN|vpn|가상사설망)\b', r'\b(DNS|dns|도메인)\b', r'\b(SSL|ssl|https|보안)\b'
+            r'\b(관리자|admin)\s*(웹|web|페이지|page)', 
+            r'\b(API|api)\s*(링크|link|서비스)',
+            r'\b(ERP|erp)\b', 
+            r'\b(마이페이지|mypage)', 
+            r'\b(보험|insurance)', 
+            r'\b(커뮤니티|community)',
+            r'\b(블록체인|blockchain)', 
+            r'\b(OTP|otp|일회용비밀번호)\b', 
+            r'\b(SMS|sms|문자|단문)\b',
+            r'\b(VPN|vpn|가상사설망)\b', 
+            r'\b(DNS|dns|도메인)\b', 
+            r'\b(SSL|ssl|https|보안)\b',
+            # 추가된 패턴들
+            r'\b([A-Z]{2,10})\s*(?:서비스|시스템)?\s*(?:건수|통계|현황|몇|개수)',
+            r'(?:건수|통계|현황|몇|개수)\s*.*?\b([A-Z]{2,10})\b',
         ]
         
+        # 확장된 증상 패턴 (통계 쿼리 맥락에서)
         symptom_patterns = [
-            r'\b(로그인|login)\s*(불가|실패|안됨|오류)', r'\b(접속|연결)\s*(불가|실패|안됨|오류)',
-            r'\b(가입|회원가입)\s*(불가|실패|안됨)', r'\b(결제|구매|주문)\s*(불가|실패|오류)',
-            r'\b(응답|response)\s*(지연|느림|없음)', r'\b(페이지|page)\s*(로딩|loading)\s*(불가|실패)',
-            r'\b(문자|SMS)\s*(발송|전송)\s*(불가|실패|안됨)', r'\b(발송|전송|송신)\s*(불가|실패|안됨|오류)',
-            r'\b(OTP|otp|일회용비밀번호)\s*(불가|실패|안됨|오류|지연)', r'\b(인증|2차인증|이중인증)\s*(불가|실패|안됨|오류)'
+            r'\b(로그인|login)\s*(불가|실패|안됨|오류)', 
+            r'\b(접속|연결)\s*(불가|실패|안됨|오류)',
+            r'\b(가입|회원가입)\s*(불가|실패|안됨)', 
+            r'\b(결제|구매|주문)\s*(불가|실패|오류)',
+            r'\b(응답|response)\s*(지연|늦림|없음)', 
+            r'\b(페이지|page)\s*(로딩|loading)\s*(불가|실패)',
+            r'\b(문자|SMS)\s*(발송|전송)\s*(불가|실패|안됨)', 
+            r'\b(발송|전송|송신)\s*(불가|실패|안됨|오류)',
+            r'\b(OTP|otp|일회용비밀번호)\s*(불가|실패|안됨|오류|지연)', 
+            r'\b(인증|2차인증|이중인증)\s*(불가|실패|안됨|오류)',
+            # 통계 관련 패턴 추가
+            r'\b(장애|오류|에러|문제)\s*(?:건수|통계|현황|몇|개수)',
+            r'(?:건수|통계|현황|몇|개수)\s*.*?\b(장애|오류|에러|문제)\b',
         ]
         
         for patterns, key in [(service_patterns, 'service_keywords'), (symptom_patterns, 'symptom_keywords')]:
             for pattern in patterns:
-                if matches := re.findall(pattern, query, re.IGNORECASE):
+                if matches := re.findall(pattern, normalized_query, re.IGNORECASE):
                     keywords[key].extend([m if isinstance(m, str) else ' '.join(m) for m in matches])
+        
+        # 시간 키워드 추출 (통계 쿼리에서 중요)
+        time_patterns = [
+            r'\b(202[0-9]|201[0-9])년?\b',
+            r'\b(\d{1,2})월\b',
+            r'\b(야간|주간|밤|낮|새벽|심야|오전|오후)\b',
+            r'\b(월요일|화요일|수요일|목요일|금요일|토요일|일요일|평일|주말)\b',
+        ]
+        
+        for pattern in time_patterns:
+            if matches := re.findall(pattern, normalized_query, re.IGNORECASE):
+                keywords['time_keywords'].extend(matches)
         
         return keywords
     
@@ -514,17 +550,21 @@ class SearchManagerLocal:
         return jaccard_score * 0.3 + inclusion_score * 0.7
     
     def extract_service_name_from_query(self, query):
-        """개선된 RAG 데이터 기반 서비스명 추출"""
+        """개선된 RAG 데이터 기반 서비스명 추출 - 통계 쿼리 동의어 처리 강화"""
+        # 1. 일반 용어 서비스 우선 체크
         is_common, common_service = self.is_common_term_service(query)
         if is_common:
             return common_service
         
+        # 2. 쿼리 정규화 - 통계 관련 동의어 처리
+        normalized_query = self._normalize_statistics_query(query)
+        
         rag_service_names = self.get_service_names_from_rag()
         if not rag_service_names:
-            return self._extract_service_name_legacy(query)
+            return self._extract_service_name_legacy(normalized_query)
         
-        query_lower = query.lower()
-        query_tokens = self._extract_service_tokens(query)
+        query_lower = normalized_query.lower()
+        query_tokens = self._extract_service_tokens(normalized_query)
         if not query_tokens:
             return None
         
@@ -534,17 +574,20 @@ class SearchManagerLocal:
             if not service_tokens:
                 continue
             
+            # 정확한 매칭
             if service_name.lower() in query_lower:
                 candidates.append((service_name, 1.0, 'exact_match'))
                 continue
             
-            normalized_query = self._normalize_service_name(query)
+            # 정규화된 매칭
+            normalized_query_clean = self._normalize_service_name(normalized_query)
             normalized_service = self._normalize_service_name(service_name)
             
-            if normalized_service in normalized_query or normalized_query in normalized_service:
+            if normalized_service in normalized_query_clean or normalized_query_clean in normalized_service:
                 candidates.append((service_name, 0.9, 'normalized_inclusion'))
                 continue
             
+            # 토큰 유사도 매칭
             similarity = self._calculate_service_similarity(query_tokens, service_tokens)
             if similarity >= 0.5:
                 candidates.append((service_name, similarity, 'token_similarity'))
@@ -947,3 +990,39 @@ class SearchManagerLocal:
                     if (service_name := match.strip()) and len(service_name) >= 2:
                         return service_name
         return None
+
+    def _normalize_statistics_query(self, query):
+        """통계 쿼리의 동의어들을 정규화"""
+        if not query:
+            return query
+        
+        # 통계 관련 동의어 정규화
+        statistics_synonyms = {
+            '장애건수': '건수',
+            '장애 건수': '건수',
+            '발생건수': '건수',
+            '몇건이야': '몇건',
+            '몇건이니': '몇건', 
+            '몇건인가': '몇건',
+            '몇건이나': '몇건',
+            '알려줘': '',  # 제거하여 서비스명 추출에 방해되지 않도록
+            '보여줘': '',
+            '말해줘': '',
+            '확인해줘': '',
+            '발생했어': '발생',
+            '발생했나': '발생',
+            '있어': '있음',
+            '있나': '있음',
+            '얼마나': '몇',
+            '어느정도': '몇',
+            '어떻게': '몇',
+        }
+        
+        normalized = query
+        for old_term, new_term in statistics_synonyms.items():
+            normalized = normalized.replace(old_term, new_term)
+        
+        # 연속된 공백 정리
+        normalized = re.sub(r'\s+', ' ', normalized).strip()
+        
+        return normalized    

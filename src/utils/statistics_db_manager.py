@@ -1,4 +1,4 @@
-# utils/statistics_db_manager.py - 원인유형 통계 지원 추가
+# utils/statistics_db_manager.py - 원인유형 통계 지원 및 정규화된 데이터 형식 지원
 import sqlite3
 import os
 from datetime import datetime
@@ -158,8 +158,42 @@ class StatisticsDBManager:
         
         return None
     
+    def _normalize_year_query(self, year_input: str) -> str:
+        """연도 쿼리 정규화: '2025년' → '2025'"""
+        if not year_input:
+            return year_input
+        return re.sub(r'년$', '', year_input.strip())
+    
+    def _normalize_month_query(self, month_input: str) -> str:
+        """월 쿼리 정규화: '9월' → '9'"""
+        if not month_input:
+            return month_input
+        return re.sub(r'월$', '', month_input.strip())
+    
+    def _normalize_week_query(self, week_input: str) -> str:
+        """요일 쿼리 정규화: '금요일' → '금'"""
+        if not week_input:
+            return week_input
+        
+        week_mapping = {
+            '월요일': '월', '화요일': '화', '수요일': '수', '목요일': '목',
+            '금요일': '금', '토요일': '토', '일요일': '일'
+        }
+        
+        if week_input in week_mapping:
+            return week_mapping[week_input]
+        
+        # '요일' 제거
+        return re.sub(r'요일$', '', week_input.strip())
+    
+    def _normalize_grade_query(self, grade_input: str) -> str:
+        """장애등급 쿼리 정규화: '4등급' → '4'"""
+        if not grade_input:
+            return grade_input
+        return re.sub(r'등급$', '', grade_input.strip())
+    
     def parse_statistics_query(self, query: str) -> Dict[str, Any]:
-        """자연어 쿼리에서 통계 조건 추출 - 원인유형 지원 추가"""
+        """자연어 쿼리에서 통계 조건 추출 - 독립적 조건 추출로 수정"""
         conditions = {
             'year': None,
             'months': [],
@@ -168,7 +202,7 @@ class StatisticsDBManager:
             'week': None,
             'incident_grade': None,
             'owner_depart': None,
-            'cause_type': None,  # 원인유형 추가
+            'cause_type': None,
             'group_by': [],
             'is_error_time_query': False
         }
@@ -181,186 +215,176 @@ class StatisticsDBManager:
             print(f"📊 PARSING QUERY: '{query}'")
             print(f"{'='*60}")
         
-        # 1. 연도 추출 (가장 먼저)
+        # 1. 쿼리 정규화 - 동의어 통합
+        normalized_query = self._normalize_query_synonyms(query_lower)
+        if self.debug_mode and normalized_query != query_lower:
+            print(f"🔄 Normalized query: '{normalized_query}'")
+        
+        # 2. 연도 추출 (기존 패턴 유지)
         year_patterns = [
             r'\b(202[0-9]|201[0-9])년\b',
-            r'\b(202[0-9]|201[0-9])년도\b',
+            r'\b(202[0-9]|201[0-9])년도\b', 
+            r'\b(202[0-9]|201[0-9])\s*년\b',
+            r'\b(202[0-9]|201[0-9])\b(?=.*(?:장애|건수|통계|현황|몇|개수))',
         ]
         
         for pattern in year_patterns:
-            if year_match := re.search(pattern, query):
-                conditions['year'] = year_match.group(1) + '년'
+            if year_match := re.search(pattern, normalized_query):
+                conditions['year'] = self._normalize_year_query(year_match.group(1))
                 if self.debug_mode:
                     print(f"✓ Extracted year: {conditions['year']}")
                 break
         
-        # 2. 월 범위 추출
-        month_range_patterns = [
-            r'(\d+)\s*~\s*(\d+)월',
-            r'(\d+)월\s*~\s*(\d+)월',
-            r'(\d+)\s*-\s*(\d+)월',
-            r'(\d+)월\s*-\s*(\d+)월'
-        ]
-        
-        for pattern in month_range_patterns:
-            if match := re.search(pattern, query):
-                start, end = int(match.group(1)), int(match.group(2))
-                if 1 <= start <= 12 and 1 <= end <= 12 and start <= end:
-                    conditions['months'] = [f"{m}월" for m in range(start, end + 1)]
-                    if self.debug_mode:
-                        print(f"✓ Extracted month range: {conditions['months']}")
-                    break
-        
-        # 개별 월 추출
-        if not conditions['months']:
-            month_matches = re.findall(r'(\d{1,2})월', query)
-            if month_matches:
-                conditions['months'] = [f"{int(m)}월" for m in month_matches if 1 <= int(m) <= 12]
-                if self.debug_mode:
-                    print(f"✓ Extracted months: {conditions['months']}")
-        
-        # 3. 장애등급 추출
+        # 3. 장애등급 추출 (패턴 개선, 하지만 독립적으로 처리)
         grade_patterns = [
-            r'(\d)등급\s+장애',
-            r'장애\s+(\d)등급',
-            r'장애등급\s+(\d)',
-            r'\b([1-4])등급\b(?!.*년)',
+            r'(\d)등급\s*장애',           # "2등급 장애"
+            r'장애\s*(\d)등급',           # "장애 2등급"  
+            r'장애등급\s*(\d)',           # "장애등급 2"
+            r'\b([1-4])등급\b(?!\s*월)',  # "2등급" (하지만 "2등급월" 제외)
+            r'등급\s*([1-4])',           # "등급 2"
+            r'([1-4])\s*등급(?=.*(?:장애|건수|통계))',  # "2 등급" + 장애 관련 키워드
         ]
         
         for pattern in grade_patterns:
-            if grade_match := re.search(pattern, query):
+            if grade_match := re.search(pattern, normalized_query):
                 grade_num = grade_match.group(1)
                 if grade_num in ['1', '2', '3', '4']:
+                    # 연도와 혼동 방지 (2020년 등)
                     match_pos = grade_match.start()
-                    if match_pos < 4 or not query[match_pos-4:match_pos].replace('년', '').isdigit():
-                        conditions['incident_grade'] = f"{grade_num}등급"
+                    before_text = normalized_query[max(0, match_pos-4):match_pos]
+                    if not re.search(r'20\d{2}', before_text):  # 연도가 아닌 경우만
+                        conditions['incident_grade'] = grade_num
                         if self.debug_mode:
                             print(f"✓ Extracted incident_grade: {conditions['incident_grade']}")
                         break
         
-        # 4. **원인유형 추출 (새로 추가)**
+        # 4. 월 범위 추출 (더 정확한 패턴 사용)
+        month_range_patterns = [
+            r'(\d+)\s*~\s*(\d+)월',      # "1~6월"
+            r'(\d+)월\s*~\s*(\d+)월',    # "1월~6월"
+            r'(\d+)\s*-\s*(\d+)월',      # "1-6월" 
+            r'(\d+)월\s*-\s*(\d+)월',    # "1월-6월"
+            r'(\d+)\s*부터\s*(\d+)월',    # "1부터 6월"
+            r'(\d+)월\s*부터\s*(\d+)월',  # "1월부터 6월"
+        ]
+        
+        for pattern in month_range_patterns:
+            if match := re.search(pattern, normalized_query):
+                start, end = int(match.group(1)), int(match.group(2))
+                if 1 <= start <= 12 and 1 <= end <= 12 and start <= end:
+                    conditions['months'] = [str(m) for m in range(start, end + 1)]
+                    if self.debug_mode:
+                        print(f"✓ Extracted month range: {conditions['months']}")
+                    break
+        
+        # 개별 월 추출 (핵심 수정: "월"이 명시적으로 있는 경우만)
+        if not conditions['months']:
+            # 🔥 "월"이 반드시 있어야 하고, 등급과 구분되도록 패턴 개선
+            month_pattern = r'(?<!등급\s)(\d{1,2})월(?!\s*등급)'  # "등급 2월" 또는 "2월 등급" 제외
+            month_matches = re.findall(month_pattern, normalized_query)
+            if month_matches:
+                valid_months = [str(int(m)) for m in month_matches if 1 <= int(m) <= 12]
+                if valid_months:
+                    conditions['months'] = valid_months
+                    if self.debug_mode:
+                        print(f"✓ Extracted months: {conditions['months']}")
+        
+        # 5. 원인유형 추출 (기존 로직 유지)
         conditions['cause_type'] = self._match_cause_type(original_query)
         if conditions['cause_type'] and self.debug_mode:
             print(f"✓ Extracted cause_type: {conditions['cause_type']}")
         
-        # 5. 요일 추출
-        week_full_map = {
-            '월요일': '월', '화요일': '화', '수요일': '수', '목요일': '목',
-            '금요일': '금', '토요일': '토', '일요일': '일'
+        # 6. 요일 추출 (더 정확한 패턴)
+        week_patterns = {
+            '월': [r'\b월요일\b', r'\b월요\b'],  # 명시적 요일만
+            '화': [r'\b화요일\b', r'\b화요\b'],
+            '수': [r'\b수요일\b', r'\b수요\b'], 
+            '목': [r'\b목요일\b', r'\b목요\b'],
+            '금': [r'\b금요일\b', r'\b금요\b'],
+            '토': [r'\b토요일\b', r'\b토요\b'],
+            '일': [r'\b일요일\b', r'\b일요\b']
         }
         
-        for day_full, day_short in week_full_map.items():
-            if day_full in query:
-                conditions['week'] = day_short
+        for day_val, day_patterns in week_patterns.items():
+            if any(re.search(pattern, normalized_query) for pattern in day_patterns):
+                conditions['week'] = day_val
                 if self.debug_mode:
-                    print(f"✓ Extracted week (full): {conditions['week']}")
+                    print(f"✓ Extracted week: {conditions['week']}")
                 break
         
-        if not conditions['week']:
-            week_short_map = {'월': '월', '화': '화', '수': '수', '목': '목', '금': '금', '토': '토', '일': '일'}
-            for day_kr, day_val in week_short_map.items():
-                if f'{day_kr}요' in query:
-                    conditions['week'] = day_val
-                    if self.debug_mode:
-                        print(f"✓ Extracted week (short): {conditions['week']}")
-                    break
-        
-        if '평일' in query:
+        # 평일/주말 처리
+        if re.search(r'\b평일\b', normalized_query):
             conditions['week'] = '평일'
-        elif '주말' in query:
+        elif re.search(r'\b주말\b', normalized_query):
             conditions['week'] = '주말'
         
-        # 6. 시간대 추출
+        # 7. 시간대 추출 (기존 로직 유지)
         daynight_patterns = {
-            '야간': ['야간', '밤', '새벽', '심야'],
-            '주간': ['주간', '낮', '오전', '오후']
+            '야간': [r'\b야간\b', r'\b밤\b', r'\b새벽\b', r'\b심야\b'],
+            '주간': [r'\b주간\b', r'\b낮\b', r'\b오전\b', r'\b오후\b', r'\b업무시간\b']
         }
         
-        for daynight_val, keywords in daynight_patterns.items():
-            if any(keyword in query_lower for keyword in keywords):
+        for daynight_val, patterns in daynight_patterns.items():
+            if any(re.search(pattern, normalized_query) for pattern in patterns):
                 conditions['daynight'] = daynight_val
                 if self.debug_mode:
                     print(f"✓ Extracted daynight: {conditions['daynight']}")
                 break
         
-        # 7. 서비스명 추출
+        # 8. 서비스명 추출 (기존 로직 유지)
         service_patterns = [
             r'([A-Z가-힣][A-Z가-힣0-9\s]{1,20}(?:시스템|서비스|포털|앱|APP))',
-            r'\b([A-Z]{2,10})\b(?=.*(장애|건수|통계))',
+            r'\b([A-Z]{2,10})\b(?=.*(장애|건수|통계|현황|몇))',
+            r'(\w+)\s*(?:서비스|시스템).*?(?:장애|건수|통계|현황|몇)',
         ]
         
         for pattern in service_patterns:
             if service_match := re.search(pattern, original_query):
                 service_name = service_match.group(1).strip()
-                if service_name not in ['SELECT', 'FROM', 'WHERE', 'AND', 'OR']:
+                if service_name not in ['SELECT', 'FROM', 'WHERE', 'AND', 'OR', '년', '월', '일']:
                     conditions['service_name'] = service_name
                     if self.debug_mode:
                         print(f"✓ Extracted service_name: {service_name}")
                     break
         
-        # 8. 장애시간 쿼리 여부
-        conditions['is_error_time_query'] = any(k in query_lower for k in 
-            ['장애시간', '장애 시간', 'error_time', '시간 합계', '시간 합산', '분', '시간별'])
+        # 9. 장애시간 쿼리 여부
+        error_time_keywords = [
+            '장애시간', '장애 시간', 'error_time', '시간 합계', '시간 합산', '분', 
+            '총 시간', '누적 시간', '전체 시간', '합계 시간'
+        ]
+        conditions['is_error_time_query'] = any(k in normalized_query for k in error_time_keywords)
         
-        if self.debug_mode and conditions['is_error_time_query']:
-            print(f"✓ This is an error_time query")
-        
-        # 9. 그룹화 기준 추출 - 원인유형 키워드 추가
+        # 10. 그룹화 기준 추출
         groupby_keywords = {
-            'year': ['연도별', '년도별', '년별', '연별'],
-            'month': ['월별'],
-            'incident_grade': ['등급별', '장애등급별', 'grade별', '장애 등급별'],
-            'week': ['요일별', '주간별'],
+            'year': ['연도별', '년도별', '년별', '연별', '해별'],
+            'month': ['월별', '매월', '월간'],
+            'incident_grade': ['등급별', '장애등급별', 'grade별'],
+            'week': ['요일별', '주간별', '일별'],
             'daynight': ['시간대별', '주야별'],
             'owner_depart': ['부서별', '팀별', '조직별'],
             'service_name': ['서비스별', '시스템별'],
-            'cause_type': ['원인별', '원인유형별', '원인타입별', 'cause별']  # 추가
+            'cause_type': ['원인별', '원인유형별', '원인타입별']
         }
         
         for group_field, keywords in groupby_keywords.items():
-            if any(keyword in query for keyword in keywords):
+            if any(keyword in normalized_query for keyword in keywords):
                 if group_field not in conditions['group_by']:
                     conditions['group_by'].append(group_field)
                     if self.debug_mode:
-                        matched_keywords = [k for k in keywords if k in query]
+                        matched_keywords = [k for k in keywords if k in normalized_query]
                         print(f"✓ Added '{group_field}' to group_by (keyword: {matched_keywords})")
         
-        # 10. 기본 그룹화 추론
+        # 11. 기본 그룹화 추론
         if not conditions['group_by']:
             has_specific_year = conditions['year'] is not None
             has_specific_month = len(conditions['months']) > 0
             has_specific_grade = conditions['incident_grade'] is not None
-            has_specific_week = conditions['week'] is not None and conditions['week'] not in ['평일', '주말']
-            has_specific_daynight = conditions['daynight'] is not None
-            has_specific_cause = conditions['cause_type'] is not None
             
-            if has_specific_year and has_specific_month:
-                conditions['group_by'] = []
-                if self.debug_mode:
-                    print("→ Inference: Specific year+month → no grouping")
-            elif has_specific_year and not has_specific_month and not has_specific_cause:
-                if any(k in query for k in ['추이', '변화', '분포']):
-                    conditions['group_by'] = ['month']
-                    if self.debug_mode:
-                        print("→ Inference: Year with trend keyword → group by month")
-                else:
-                    conditions['group_by'] = []
-                    if self.debug_mode:
-                        print("→ Inference: Specific year only → no grouping")
-            elif has_specific_grade and not has_specific_year:
-                conditions['group_by'] = ['year']
-                if self.debug_mode:
-                    print("→ Inference: Specific grade only → group by year")
-            elif has_specific_cause and not has_specific_year:
-                # 원인유형이 지정되고 연도가 없으면 연도별로 그룹화
-                conditions['group_by'] = ['year']
-                if self.debug_mode:
-                    print("→ Inference: Specific cause_type only → group by year")
-            elif not any([has_specific_year, has_specific_month, has_specific_grade, 
-                         has_specific_week, has_specific_daynight, has_specific_cause]):
-                conditions['group_by'] = ['year']
-                if self.debug_mode:
-                    print("→ Inference: No specific conditions → group by year")
+            # 특정 조건이 있으면서 그룹화 키워드가 없는 경우 기본 그룹화 추론
+            if has_specific_grade and not has_specific_year and not has_specific_month:
+                conditions['group_by'] = ['year']  # 등급이 지정되면 연도별로
+            elif not any([has_specific_year, has_specific_month, has_specific_grade]):
+                conditions['group_by'] = ['year']  # 아무 조건 없으면 연도별로
         
         if self.debug_mode:
             print(f"\n📋 FINAL PARSED CONDITIONS:")
@@ -370,7 +394,7 @@ class StatisticsDBManager:
             print(f"  Week: {conditions['week']}")
             print(f"  Daynight: {conditions['daynight']}")
             print(f"  Service: {conditions['service_name']}")
-            print(f"  Cause Type: {conditions['cause_type']}")  # 추가
+            print(f"  Cause Type: {conditions['cause_type']}")
             print(f"  Group By: {conditions['group_by']}")
             print(f"  Is Error Time Query: {conditions['is_error_time_query']}")
             print(f"{'='*60}\n")
@@ -378,7 +402,7 @@ class StatisticsDBManager:
         return conditions
     
     def build_sql_query(self, conditions: Dict[str, Any]) -> tuple:
-        """조건에 따른 SQL 쿼리 생성 - 원인유형 지원 추가"""
+        """조건에 따른 SQL 쿼리 생성 - 정규화된 데이터 형식 지원"""
         # SELECT 절
         if conditions['is_error_time_query']:
             select_fields = ['SUM(error_time) as total_value']
@@ -391,7 +415,7 @@ class StatisticsDBManager:
         group_fields = []
         for field in conditions['group_by']:
             if field in ['year', 'month', 'daynight', 'week', 'owner_depart', 
-                        'service_name', 'incident_grade', 'cause_type']:  # cause_type 추가
+                        'service_name', 'incident_grade', 'cause_type']:
                 group_fields.append(field)
                 select_fields.insert(0, field)
         
@@ -399,14 +423,14 @@ class StatisticsDBManager:
         where_clauses = []
         params = []
         
-        # 연도 조건
+        # 연도 조건 (정규화된 형태로 비교)
         if conditions['year']:
             where_clauses.append("year = ?")
             params.append(conditions['year'])
             if self.debug_mode:
                 print(f"WHERE: year = '{conditions['year']}'")
         
-        # 월 조건
+        # 월 조건 (정규화된 형태로 비교)
         if conditions['months']:
             if len(conditions['months']) == 1:
                 where_clauses.append("month = ?")
@@ -420,21 +444,21 @@ class StatisticsDBManager:
                 if self.debug_mode:
                     print(f"WHERE: month IN {conditions['months']}")
         
-        # 장애등급 조건
+        # 장애등급 조건 (정규화된 형태로 비교)
         if conditions['incident_grade']:
             where_clauses.append("incident_grade = ?")
             params.append(conditions['incident_grade'])
             if self.debug_mode:
                 print(f"WHERE: incident_grade = '{conditions['incident_grade']}'")
         
-        # **원인유형 조건 (새로 추가)**
+        # 원인유형 조건
         if conditions['cause_type']:
             where_clauses.append("cause_type LIKE ?")
             params.append(f"%{conditions['cause_type']}%")
             if self.debug_mode:
                 print(f"WHERE: cause_type LIKE '%{conditions['cause_type']}%'")
         
-        # 요일 조건
+        # 요일 조건 (정규화된 형태로 비교)
         if conditions['week']:
             if conditions['week'] == '평일':
                 where_clauses.append("week IN ('월', '화', '수', '목', '금')")
@@ -479,16 +503,16 @@ class StatisticsDBManager:
         
         if group_fields:
             query += f" GROUP BY {', '.join(group_fields)}"
-            # 정렬
+            # 정렬 (정규화된 데이터 고려)
             if 'year' in group_fields:
-                query += " ORDER BY year"
+                query += " ORDER BY CAST(year AS INTEGER)"
             elif 'month' in group_fields:
-                query += " ORDER BY CAST(REPLACE(month, '월', '') AS INTEGER)"
+                query += " ORDER BY CAST(month AS INTEGER)"
             elif 'incident_grade' in group_fields:
-                query += " ORDER BY CAST(REPLACE(incident_grade, '등급', '') AS INTEGER)"
+                query += " ORDER BY CAST(incident_grade AS INTEGER)"
             elif 'week' in group_fields:
                 query += " ORDER BY CASE week WHEN '월' THEN 1 WHEN '화' THEN 2 WHEN '수' THEN 3 WHEN '목' THEN 4 WHEN '금' THEN 5 WHEN '토' THEN 6 WHEN '일' THEN 7 END"
-            elif 'cause_type' in group_fields:  # 원인유형 정렬 추가
+            elif 'cause_type' in group_fields:
                 query += " ORDER BY total_value DESC"
             else:
                 query += f" ORDER BY {', '.join(group_fields)}"
@@ -540,7 +564,7 @@ class StatisticsDBManager:
             'department_stats': {},
             'service_stats': {},
             'grade_stats': {},
-            'cause_type_stats': {},  # 원인유형 통계 추가
+            'cause_type_stats': {},
             'debug_info': {
                 'parsed_conditions': conditions,
                 'sql_query': sql_query,
@@ -578,7 +602,6 @@ class StatisticsDBManager:
             if 'incident_grade' in row and row['incident_grade']:
                 statistics['grade_stats'][row['incident_grade']] = value
             
-            # **원인유형 통계 집계 (새로 추가)**
             if 'cause_type' in row and row['cause_type']:
                 statistics['cause_type_stats'][row['cause_type']] = value
         
@@ -604,7 +627,7 @@ class StatisticsDBManager:
                 print(f"Monthly Stats: {statistics['monthly_stats']}")
             if statistics['grade_stats']:
                 print(f"Grade Stats: {statistics['grade_stats']}")
-            if statistics['cause_type_stats']:  # 원인유형 통계 출력 추가
+            if statistics['cause_type_stats']:
                 print(f"Cause Type Stats: {statistics['cause_type_stats']}")
             if statistics['time_stats']['daynight']:
                 print(f"Daynight Stats: {statistics['time_stats']['daynight']}")
@@ -615,7 +638,7 @@ class StatisticsDBManager:
         return statistics
     
     def get_incident_details(self, conditions: Dict[str, Any], limit: int = 100) -> List[Dict[str, Any]]:
-        """조건에 맞는 장애 상세 내역 조회 - 원인유형 지원 추가"""
+        """조건에 맞는 장애 상세 내역 조회 - 정규화된 데이터 형식 지원"""
         where_clauses = []
         params = []
         
@@ -636,7 +659,6 @@ class StatisticsDBManager:
             where_clauses.append("incident_grade = ?")
             params.append(conditions['incident_grade'])
         
-        # **원인유형 조건 추가**
         if conditions.get('cause_type'):
             where_clauses.append("cause_type LIKE ?")
             params.append(f"%{conditions['cause_type']}%")
@@ -672,3 +694,85 @@ class StatisticsDBManager:
             print(f"Params: {params}\n")
         
         return self._execute_query(query, tuple(params))
+    
+    def _normalize_query_synonyms(self, query: str) -> str:
+        """쿼리의 동의어들을 표준 형태로 정규화"""
+        # 동의어 매핑 사전 - 더 포괄적으로 확장
+        synonym_mappings = {
+            # 건수 관련 동의어
+            '장애건수': '건수',
+            '장애 건수': '건수', 
+            '발생건수': '건수',
+            '발생 건수': '건수',
+            '장애 개수': '건수',
+            '장애개수': '건수',
+            
+            # 질문 표현 정규화
+            '몇건이야': '몇건',
+            '몇건이니': '몇건',
+            '몇건인가': '몇건',
+            '몇건인지': '몇건',
+            '몇건이나': '몇건',
+            '몇개야': '몇건',
+            '몇개인가': '몇건',
+            '몇개인지': '몇건',
+            '몇개나': '몇건',
+            
+            # 발생 관련 동의어
+            '발생했어': '발생',
+            '발생했나': '발생',
+            '발생했는지': '발생',
+            '발생한지': '발생',
+            '생겼어': '발생',
+            '생긴': '발생',
+            '난': '발생',
+            '일어난': '발생',
+            '있어': '발생',
+            '있나': '발생',
+            '있는지': '발생',
+            '있었어': '발생',
+            
+            # 요청 표현 정규화
+            '알려줘': '알려주세요',
+            '보여줘': '알려주세요',
+            '말해줘': '알려주세요',
+            '확인해줘': '알려주세요',
+            '체크해줘': '알려주세요',
+            
+            # 정도 표현 정규화
+            '얼마나': '몇',
+            '어느정도': '몇',
+            '어떻게': '몇',
+            '어느': '몇',
+            '어떤': '몇',
+            
+            # 수량 표현 정규화
+            '몇번': '몇건',
+            '몇차례': '몇건',
+            '몇회': '몇건',
+            '수량': '건수',
+            '숫자': '건수',
+            '개수': '건수',
+            
+            # 총합 표현 정규화
+            '총': '전체',
+            '총합': '전체',
+            '모든': '전체',
+            '모두': '전체',
+            '누적': '전체',
+            
+            # 상황/현황 표현 정규화
+            '상황': '현황',
+            '현재': '현황',
+            '지금까지': '현황',
+            '정도': '현황',
+            '수준': '현황',
+            '범위': '현황',
+            '규모': '현황',
+        }
+        
+        normalized = query
+        for old_term, new_term in synonym_mappings.items():
+            normalized = normalized.replace(old_term, new_term)
+        
+        return normalized

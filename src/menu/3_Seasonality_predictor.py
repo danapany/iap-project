@@ -681,8 +681,8 @@ sns.heatmap(
     cmap='YlOrRd', 
     ax=ax_heatmap,
     cbar_kws={'label': '오류 발생 수'},
-    linewidths=0.1,
-    linecolor='white'
+    linewidths=0.8,
+    linecolor='gray'
 )
 ax_heatmap.set_title(f"{title_suffix} - 월별/일별 오류 발생 히트맵", fontsize=16, pad=20)
 ax_heatmap.set_xlabel("일", fontsize=12)
