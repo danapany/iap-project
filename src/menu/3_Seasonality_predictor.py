@@ -10,7 +10,7 @@ import urllib.request
 from datetime import datetime, timedelta
 
 # -----------------------------
-# 📐 페이지 레이아웃 설정
+# 🔧 페이지 레이아웃 설정
 # -----------------------------
 st.set_page_config(
     page_title="서비스별 오류 시즌성 분석기",
@@ -234,10 +234,10 @@ def get_moving_average_info(window):
     }
 
 # -----------------------------
-# 🔥 1. 데이터 업로드 / 로드
+# 📥 1. 데이터 업로드 / 로드
 # -----------------------------
 st.title("📊 서비스별 오류 시즌성 분석기")
-st.write("서비스별 오류 발생 데이터를 분석해 현재 월/일 기준 시즌얼리티 정보를 제공합니다.")
+st.write("서비스별 오류 발생 데이터를 분석해 현재 월/일 기준 시즈널리티 정보를 제공합니다.")
 
 # 업로드 대신 정해진 경로의 파일을 자동 로드
 csv_path = "./data/csv/seasonality.csv"
@@ -265,7 +265,104 @@ weekday_map = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "�
 df["week"] = df["weekday"].map(weekday_map)
 
 # -----------------------------
-# 📈 3. 메트릭 카드 표시
+# 📅 년도 선택 기능 추가
+# -----------------------------
+# 데이터에서 사용 가능한 년도 추출
+available_years = sorted(df['year'].unique(), reverse=True)  # 최신년도부터 정렬
+default_year = available_years[0]  # 가장 최근 년도를 기본값으로
+
+# st.subheader("📅 분석 기간 설정")
+col_year1, col_year2 = st.columns([1, 3])
+
+with col_year1:
+    selected_year = st.selectbox(
+        "년도 선택",
+        options=available_years,
+        index=0,  # 첫 번째 항목(최신년도)을 기본값으로
+        help="년도를 선택하세요"
+    )
+
+with col_year2:
+    st.write(f"**선택된 년도: {selected_year}년**")
+    year_data_count = len(df[df['year'] == selected_year])
+    st.write(f"해당 년도 총 장애 건수: **{year_data_count:,}건**")
+
+# 선택된 년도로 데이터 필터링
+df_filtered_year = df[df['year'] == selected_year].copy()
+
+if df_filtered_year.empty:
+    st.error(f"⚠️ {selected_year}년에 해당하는 데이터가 없습니다.")
+    st.stop()
+
+# -----------------------------
+# 📊 3. 년도별 월별 장애건수 차트 (최상단 추가)
+# -----------------------------
+st.subheader(f"📈 {selected_year}년 월별 장애 발생 현황")
+
+# 월별 집계
+monthly_total = df_filtered_year.groupby('month').size().reset_index(name='count')
+
+# 1-12월 전체 범위로 확장 (없는 월은 0으로)
+full_months_df = pd.DataFrame({'month': range(1, 13)})
+monthly_total_full = pd.merge(full_months_df, monthly_total, on='month', how='left').fillna(0)
+monthly_total_full['count'] = monthly_total_full['count'].astype(int)
+
+# 차트 생성
+fig_monthly, ax_monthly = plt.subplots(figsize=(12, 6))
+bars_monthly = ax_monthly.bar(monthly_total_full['month'], monthly_total_full['count'], 
+                             color='skyblue', alpha=0.8, edgecolor='darkblue', linewidth=1)
+
+# 현재 월 강조 (선택된 년도가 올해인 경우)
+today = datetime.today()
+if selected_year == today.year:
+    current_month = today.month
+    if current_month <= 12:
+        current_month_idx = current_month - 1
+        if current_month_idx < len(bars_monthly):
+            bars_monthly[current_month_idx].set_color('orange')
+            bars_monthly[current_month_idx].set_alpha(1.0)
+
+# 차트 꾸미기
+ax_monthly.set_title(f"{selected_year}년 월별 장애 발생 건수", fontsize=16, pad=20, fontweight='bold')
+ax_monthly.set_xlabel("월", fontsize=12)
+ax_monthly.set_ylabel("장애 건수", fontsize=12)
+ax_monthly.set_xticks(range(1, 13))
+ax_monthly.grid(True, alpha=0.3, axis='y')
+
+# 데이터 레이블 추가
+for i, bar in enumerate(bars_monthly):
+    height = bar.get_height()
+    if height > 0:
+        ax_monthly.text(bar.get_x() + bar.get_width()/2., height + max(monthly_total_full['count']) * 0.01,
+                       f'{int(height)}', ha='center', va='bottom', fontsize=10)
+
+plt.tight_layout()
+st.pyplot(fig_monthly)
+
+# 월별 요약 통계
+col_stat1, col_stat2, col_stat3 = st.columns(3)
+with col_stat1:
+    peak_month = monthly_total_full.loc[monthly_total_full['count'].idxmax(), 'month']
+    peak_count = monthly_total_full['count'].max()
+    st.metric("🔥 최고 장애 월", f"{peak_month}월", f"{peak_count}건")
+
+with col_stat2:
+    avg_monthly = monthly_total_full['count'].mean()
+    st.metric("📊 월평균 장애", f"{avg_monthly:.1f}건")
+
+with col_stat3:
+    total_yearly = monthly_total_full['count'].sum()
+    st.metric("📈 연간 총 장애", f"{total_yearly}건")
+
+# -----------------------------
+# 구분선 추가
+# -----------------------------
+st.markdown("---")
+st.markdown("## 📊 전체 기간 시즌성 분석")
+st.write("아래부터는 전체 기간의 데이터를 기반으로 한 시즌성 분석입니다.")
+
+# -----------------------------
+# 📈 4. 메트릭 카드 표시
 # -----------------------------
 today = datetime.today()
 current_month = today.month
@@ -308,11 +405,10 @@ with col4:
     )
 
 # -----------------------------
-# 📊 4. 집계 처리
+# 📊 5. 집계 처리
 # -----------------------------
 monthly_counts = df.groupby(["service", "month"]).size().reset_index(name="count")
 day_counts = df.groupby(["service", "month_day"]).size().reset_index(name="count")
-
 
 # -----------------------------
 # 📅 6. 현재 기준 예측 (기존)
@@ -609,55 +705,8 @@ elif summer_months > winter_months * 1.2:
 for insight in insights:
     st.write(insight)
 
-# 사용법 안내
-with st.expander("🎯 분석 활용 가이드"):
-    st.write("""
-    **이 분석을 활용하는 방법:**
-    
-    1. **메트릭 대시보드**: 전체적인 현황을 한눈에 파악
-    2. **히트맵**: 월-일별 패턴을 시각적으로 분석해 특정 시기의 위험도 예측
-    3. **트렌드 라인**: 이동평균을 통해 장기적인 추세 파악
-    4. **현재 기준 예측**: 오늘과 이번 달의 위험 서비스 미리 파악
-    5. **시각화 차트**: 각 서비스별 상세한 패턴 분석
-    
-    **이동평균 해석:**
-    - **월별 트렌드**: 3개월 이동평균으로 계절성 및 장기 추세 파악
-    - **일별 트렌드**: 7일 이동평균으로 주간 패턴 및 단기 추세 파악
-    - 이동평균은 데이터의 노이즈를 제거하고 전반적인 경향을 보여줍니다
-    
-    **주의사항:**
-    - 과거 데이터 기반 예측이므로 새로운 변수(시스템 변경, 외부 요인 등)는 고려되지 않음
-    - 트렌드 라인은 평활화된 데이터이므로 급격한 변화는 감지하기 어려움
-    """)
-
-# 이동평균 계산 방법 설명
-with st.expander("🔢 이동평균 계산 방법"):
-    st.write("""
-    **이동평균 계산 상세:**
-    
-    **월별 데이터 (3개월 이동평균):**
-    - 1-3월 평균 → 2월 위치에 표시 (예: (2+0+0)÷3 = 0.67)
-    - 2-4월 평균 → 3월 위치에 표시
-    - 3-5월 평균 → 4월 위치에 표시
-    - ...
-    - 10-12월 평균 → 11월 위치에 표시
-    
-    **일별 데이터 (7일 이동평균):**
-    - 1-7일 평균 → 4일 위치에 표시
-    - 2-8일 평균 → 5일 위치에 표시
-    - 3-9일 평균 → 6일 위치에 표시
-    - ...
-    - 25-31일 평균 → 28일 위치에 표시
-    
-    **이동평균의 효과:**
-    - 단기적인 변동을 제거하여 장기 추세를 명확히 파악
-    - 노이즈가 많은 데이터에서 패턴을 찾는데 유용
-    - 중앙값 기준으로 정렬하여 정확한 시점 표현
-    """)
-
-
-    # -----------------------------
-# 🔥 5. 히트맵 시각화
+# -----------------------------
+# 📥 12. 히트맵 시각화
 # -----------------------------
 st.subheader("🔥 월-일별 오류 발생 히트맵")
 
@@ -698,4 +747,55 @@ with st.expander("📖 히트맵 해석 가이드"):
     - **가로축(일)**: 1일부터 31일까지
     - **세로축(월)**: 1월부터 12월까지
     - **패턴 분석**: 특정 시기에 집중되는 오류 패턴을 한눈에 파악 가능
+    """)
+
+# 사용법 안내
+with st.expander("🎯 분석 활용 가이드"):
+    st.write("""
+    **이 분석을 활용하는 방법:**
+    
+    1. **메트릭 대시보드**: 전체적인 현황을 한눈에 파악
+    2. **히트맵**: 월-일별 패턴을 시각적으로 분석해 특정 시기의 위험도 예측
+    3. **트렌드 라인**: 이동평균을 통해 장기적인 추세 파악
+    4. **현재 기준 예측**: 오늘과 이번 달의 위험 서비스 미리 파악
+    5. **시각화 차트**: 각 서비스별 상세한 패턴 분석
+    
+    **이동평균 해석:**
+    - **월별 트렌드**: 3개월 이동평균으로 계절성 및 장기 추세 파악
+    - **일별 트렌드**: 7일 이동평균으로 주간 패턴 및 단기 추세 파악
+    - 이동평균은 데이터의 노이즈를 제거하고 전반적인 경향을 보여줍니다
+    
+    **주의사항:**
+    - 과거 데이터 기반 예측이므로 새로운 변수(시스템 변경, 외부 요인 등)는 고려되지 않음
+    - 트렌드 라인은 평활화된 데이터이므로 급격한 변화는 감지하기 어려움
+    """)
+
+# 이동평균 계산 방법 설명
+with st.expander("🔢 이동평균 계산 방법"):
+    st.write(f"""
+    **이동평균 계산 상세:**
+    
+    **월별 데이터 (3개월 이동평균):**
+    - 1-3월 평균 → 2월 위치에 표시 (예: (2+0+0)÷3 = 0.67)
+    - 2-4월 평균 → 3월 위치에 표시
+    - 3-5월 평균 → 4월 위치에 표시
+    - ...
+    - 10-12월 평균 → 11월 위치에 표시
+    
+    **일별 데이터 (7일 이동평균):**
+    - 1-7일 평균 → 4일 위치에 표시
+    - 2-8일 평균 → 5일 위치에 표시
+    - 3-9일 평균 → 6일 위치에 표시
+    - ...
+    - 25-31일 평균 → 28일 위치에 표시
+    
+    **이동평균의 효과:**
+    - 단기적인 변동을 제거하여 장기 추세를 명확히 파악
+    - 노이즈가 많은 데이터에서 패턴을 찾는데 유용
+    - 중앙값 기준으로 정렬하여 정확한 시점 표현
+    
+    **전체 데이터 특성:**
+    - 총 데이터 건수: {len(df):,}건
+    - 분석 기간: {df['year'].min()}년 ~ {df['year'].max()}년
+    - 서비스 수: {len(df['service'].unique())}개
     """)
