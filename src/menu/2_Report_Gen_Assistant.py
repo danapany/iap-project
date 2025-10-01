@@ -31,7 +31,17 @@ STORAGE_CONN_STR = os.getenv("STORAGE_CONN_STR")
 STORAGE_ACCOUNT_NAME = os.getenv("STORAGE_ACCOUNT_NAME")
 EML_CONTAINER_NAME = os.getenv("EML_CONTAINER_NAME")
 WORD_CONTAINER_NAME = os.getenv("WORD_CONTAINER_NAME")
-EML_DB_NAME = os.getenv("EML_DB_NAME")
+DB_BASE_PATH = os.getenv("DB_BASE_PATH")
+
+# 데이터베이스 파일 경로 구성
+if DB_BASE_PATH:
+    # DB_BASE_PATH가 있으면 해당 경로에 eml_reports.db 파일 생성
+    EML_DB_PATH = os.path.join(DB_BASE_PATH, "eml_reports.db")
+    # 디렉토리가 없으면 생성
+    os.makedirs(DB_BASE_PATH, exist_ok=True)
+else:
+    # DB_BASE_PATH가 없으면 현재 디렉토리에 생성
+    EML_DB_PATH = "eml_reports.db"
 
 # OpenAI 설정
 openai_endpoint = os.getenv("OPENAI_ENDPOINT")
@@ -43,7 +53,8 @@ chat_model = os.getenv("CHAT_MODEL3")
 required_env_vars = {
     "STORAGE_CONN_STR": STORAGE_CONN_STR,
     "STORAGE_ACCOUNT_NAME": STORAGE_ACCOUNT_NAME,
-    "EML_CONTAINER_NAME": EML_CONTAINER_NAME
+    "EML_CONTAINER_NAME": EML_CONTAINER_NAME,
+    "DB_BASE_PATH": DB_BASE_PATH
 }
 
 # 한국 시간대 설정
@@ -100,7 +111,7 @@ def test_azure_connection():
 def init_database():
     """데이터베이스 초기화 및 테이블 생성"""
     try:
-        conn = sqlite3.connect(EML_DB_NAME)
+        conn = sqlite3.connect(EML_DB_PATH)
         cursor = conn.cursor()
         
         # 테이블 생성 SQL
@@ -124,14 +135,14 @@ def init_database():
         
         conn.commit()
         conn.close()
-        return True, "데이터베이스 초기화 성공"
+        return True, f"데이터베이스 초기화 성공 (경로: {EML_DB_PATH})"
     except Exception as e:
         return False, f"데이터베이스 초기화 실패: {str(e)}"
 
 def insert_eml_data(parsed_data, original_filename, blob_name, file_size):
     """EML 데이터를 데이터베이스에 삽입"""
     try:
-        conn = sqlite3.connect(EML_DB_NAME)
+        conn = sqlite3.connect(EML_DB_PATH)
         cursor = conn.cursor()
         
         # 첨부파일 리스트를 문자열로 변환
@@ -167,7 +178,7 @@ def insert_eml_data(parsed_data, original_filename, blob_name, file_size):
 def get_eml_record(record_id):
     """특정 ID의 EML 레코드 조회"""
     try:
-        conn = sqlite3.connect(EML_DB_NAME)
+        conn = sqlite3.connect(EML_DB_PATH)
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -190,7 +201,7 @@ def get_eml_record(record_id):
 def get_eml_records():
     """EML 레코드 조회"""
     try:
-        conn = sqlite3.connect(EML_DB_NAME)
+        conn = sqlite3.connect(EML_DB_PATH)
         cursor = conn.cursor()
         cursor.execute('''
             SELECT id, original_filename, subject, body_text
@@ -502,7 +513,7 @@ def extract_precise_data(body_text: str) -> dict:
 
 예시:
 - "ㅇ 대상서비스 : KOS-오더(KOS-Internet)" → 시스템명: "KOS-오더(KOS-Internet)"
-- "상황반장 kt ds AX사업개발본부 BA컨설팅담당 ICT컨설팅팀 윤의영 책임" → 상황반장: "ktds AX사업개발본부 BA컨설팅담당 ICT컨설팅팀 윤의영 책임"
+- "상황반장 kt ds AX사업개발본부 BA컨설팅담당 ICT컨설팅팀 윤영의 책임" → 상황반장: "ktds AX사업개발본부 BA컨설팅담당 ICT컨설팅팀 윤영의 책임"
 - "복구반장 ktds ICT사업본부 ICIS Tr 추진담당 유선오더통합팀 여재윤 책임" → 
   복구반장_소속: "ktds ICT사업본부 ICIS Tr 추진담당 유선오더통합팀"
   복구반장: "여재윤 책임"
@@ -712,7 +723,7 @@ def extract_duration_patterns(body_text: str) -> str:
             
             # 4. 기타 시간 표현
             r'(\d+)분\s*간',                         # 6분간
-            r'총\s*(\d+)분',                         # 총 6분
+            r'이\s*(\d+)분',                         # 이 6분
         ]
         
         for pattern in patterns:
@@ -809,7 +820,7 @@ def fill_action_progress_table(table, action_list):
         # 행이 부족하면 추가
         if current_rows < needed_rows + start_row:
             rows_to_add = needed_rows + start_row - current_rows
-            st.session_state.template_logs.append(f"📝 조치 경과 표에 {rows_to_add}개 행 추가")
+            st.session_state.template_logs.append(f"🔍 조치 경과 표에 {rows_to_add}개 행 추가")
             
             for _ in range(rows_to_add):
                 # 새 행 추가 (첫 번째 행의 셀 수만큼)
@@ -1209,7 +1220,7 @@ elif st.session_state.stage == 'processing':
                         
                         # 템플릿 처리 로그 표시
                         if hasattr(st.session_state, 'template_logs') and st.session_state.template_logs:
-                            with st.expander("📝 템플릿 처리 로그 보기"):
+                            with st.expander("🔍 템플릿 처리 로그 보기"):
                                 for log in st.session_state.template_logs:
                                     st.write(log)
                         
