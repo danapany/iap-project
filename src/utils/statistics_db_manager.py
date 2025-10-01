@@ -4,6 +4,15 @@ import os
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import re
+from dotenv import load_dotenv
+
+# 환경변수 로드
+load_dotenv()
+
+def get_incident_db_path():
+    """환경변수에서 인시던트 DB 경로 가져오기"""
+    base_path = os.getenv('DB_BASE_PATH', 'data/db')
+    return os.path.join(base_path, 'incident_data.db')
 
 class StatisticsDBManager:
     """SQLite DB 기반 통계 조회 관리자"""
@@ -94,7 +103,11 @@ class StatisticsDBManager:
         '인퍼테이스 정의 오류', '용량부족'
     ]
     
-    def __init__(self, db_path: str = "data/db/incident_data.db"):
+    def __init__(self, db_path: str = None):
+        # db_path가 제공되지 않으면 환경변수에서 가져오기
+        if db_path is None:
+            db_path = get_incident_db_path()
+        
         self.db_path = db_path
         self._ensure_db_exists()
         self.debug_mode = True

@@ -6,13 +6,24 @@ import logging
 from pathlib import Path
 import tempfile
 import os
+from dotenv import load_dotenv
 from utils.reprompting_db_manager import RepromptingDBManager
+
+# 환경변수 로드
+load_dotenv()
+
+def get_reprompting_db_path():
+    """환경변수에서 재프롬프팅 DB 경로 가져오기"""
+    base_path = os.getenv('DB_BASE_PATH', 'data/db')
+    return os.path.join(base_path, 'reprompting_questions.db')
 
 class ExcelUploadManagerReprompting:
     """질문 재프롬프팅 처리 엑셀 업로드 관리 클래스"""
     
     def __init__(self):
-        self.db_manager = RepromptingDBManager()
+        # 환경변수 기반 DB 경로 사용
+        db_path = get_reprompting_db_path()
+        self.db_manager = RepromptingDBManager(db_path=db_path)
         self.allowed_extensions = ['.xlsx', '.xls']
         self.max_file_size = 10 * 1024 * 1024  # 10MB
         

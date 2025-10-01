@@ -7,12 +7,25 @@ from collections import defaultdict, Counter
 from typing import List, Dict, Any, Optional
 import re
 from pathlib import Path
+from dotenv import load_dotenv
+
+# 환경변수 로드
+load_dotenv()
+
+def get_monitoring_db_path():
+    """환경변수에서 모니터링 DB 경로 가져오기"""
+    base_path = os.getenv('DB_BASE_PATH', 'data/db')
+    return os.path.join(base_path, 'monitoring.db')
 
 class MonitoringManager:
     """사용자 활동 모니터링 관리 클래스"""
     
-    def __init__(self, db_path: str = "data/db/monitoring.db"):
+    def __init__(self, db_path: str = None):
         """모니터링 매니저 초기화"""
+        # db_path가 제공되지 않으면 환경변수에서 가져오기
+        if db_path is None:
+            db_path = get_monitoring_db_path()
+        
         self.db_path = db_path
         self.ensure_db_directory()
         self.init_database()
@@ -121,7 +134,7 @@ class MonitoringManager:
             if response_content and len(response_content.strip()) < 10:
                 return False, "응답 길이 부족"
             
-            # 6. **새로 추가: RAG 기반 답변인지 판단**
+            # 6. RAG 기반 답변인지 판단
             if response_content and not self._is_rag_based_response(response_content, document_count):
                 return False, "RAG 데이터 기반 답변 아님"
             
@@ -421,7 +434,7 @@ class MonitoringManager:
                 for row in rows
             ]
 
-    # 기존 메서드들은 그대로 유지...
+    # 기존 메서드들 유지
     def get_daily_statistics(self, logs_data: List[Dict]) -> List[Dict]:
         """일별 통계 계산"""
         daily_counts = defaultdict(int)

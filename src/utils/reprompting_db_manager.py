@@ -4,11 +4,25 @@ import logging
 from datetime import datetime
 from pathlib import Path
 import difflib
+import os
+from dotenv import load_dotenv
+
+# 환경변수 로드
+load_dotenv()
+
+def get_reprompting_db_path():
+    """환경변수에서 재프롬프팅 DB 경로 가져오기"""
+    base_path = os.getenv('DB_BASE_PATH', 'data/db')
+    return os.path.join(base_path, 'reprompting_questions.db')
 
 class RepromptingDBManager:
     """질문 재프롬프팅 데이터베이스 관리 클래스"""
     
-    def __init__(self, db_path="data/db/reprompting_questions.db"):
+    def __init__(self, db_path=None):
+        # db_path가 제공되지 않으면 환경변수에서 가져오기
+        if db_path is None:
+            db_path = get_reprompting_db_path()
+        
         self.db_path = db_path
         self.init_database()
     

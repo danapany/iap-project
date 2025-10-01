@@ -6,6 +6,10 @@ from datetime import datetime
 import chardet
 import io
 import re
+from dotenv import load_dotenv
+
+# 환경변수 로드
+load_dotenv()
 
 # 페이지 설정
 st.set_page_config(
@@ -14,9 +18,14 @@ st.set_page_config(
     layout="wide"
 )
 
-# 데이터베이스 경로 설정
-DB_DIR = "data/db"
-DB_PATH = os.path.join(DB_DIR, "incident_data.db")
+# 데이터베이스 경로 설정 (환경변수 지원)
+def get_db_path():
+    """환경변수에서 DB 경로 가져오기"""
+    base_path = os.getenv('DB_BASE_PATH', 'data/db')
+    return os.path.join(base_path, 'incident_data.db')
+
+DB_PATH = get_db_path()
+DB_DIR = os.path.dirname(DB_PATH)
 
 # 데이터베이스 디렉토리 생성
 os.makedirs(DB_DIR, exist_ok=True)
@@ -285,6 +294,8 @@ def delete_incident(incident_id):
 # 메인 애플리케이션
 def main():
     st.title("🔧 인시던트 데이터 관리 시스템")
+    
+
     
     # 데이터베이스 초기화
     init_database()

@@ -1,16 +1,14 @@
-# utils/logging_middleware.py - 실제 클라이언트 IP 추출 개선 버전
+# utils/logging_middleware.py - 중복 로깅 완전 해결 버전
 import streamlit as st
 import time
 import functools
 import re
-import socket
-import requests
 from datetime import datetime
 from typing import Any, Callable, Optional
 from utils.monitoring_manager import MonitoringManager
 
 class LoggingMiddleware:
-    """사용자 활동 로깅 미들웨어 - 실제 클라이언트 IP 추출 개선 버전"""
+    """사용자 활동 로깅 미들웨어 - 중복 로깅 방지 개선 버전"""
     
     def __init__(self):
         self.monitoring_manager = MonitoringManager()
@@ -29,154 +27,18 @@ class LoggingMiddleware:
         ]
     
     def get_client_ip(self) -> str:
-        """실제 클라이언트 IP 주소 추출 - 개선된 버전"""
+        """클라이언트 IP 주소 추출"""
         try:
-            # 1. 세션 상태에서 미리 설정된 IP 확인
             if hasattr(st, 'session_state') and 'client_ip' in st.session_state:
-                cached_ip = st.session_state.client_ip
-                if cached_ip and cached_ip not in ["127.0.0.1", "localhost", "unknown"]:
-                    return cached_ip
-            
-            # 2. Streamlit 요청 헤더에서 실제 IP 추출 시도
-            real_ip = self._extract_real_ip_from_headers()
-            if real_ip and real_ip not in ["127.0.0.1", "localhost"]:
-                # 세션에 캐시
-                if hasattr(st, 'session_state'):
-                    st.session_state.client_ip = real_ip
-                return real_ip
-            
-            # 3. 외부 IP 조회 서비스 사용 (운영환경용)
-            external_ip = self._get_external_ip()
-            if external_ip and external_ip not in ["127.0.0.1", "localhost"]:
-                # 세션에 캐시
-                if hasattr(st, 'session_state'):
-                    st.session_state.client_ip = external_ip
-                return external_ip
-            
-            # 4. 로컬 네트워크 IP 추출 (개발환경용)
-            local_ip = self._get_local_network_ip()
-            if local_ip and local_ip != "127.0.0.1":
-                return local_ip
-            
-            # 5. 모든 방법이 실패하면 기본값 반환
+                return st.session_state.client_ip
             return "127.0.0.1"
-            
-        except Exception as e:
-            print(f"IP 추출 중 오류 발생: {str(e)}")
+        except:
             return "unknown"
-    
-    def _extract_real_ip_from_headers(self) -> Optional[str]:
-        """HTTP 헤더에서 실제 IP 추출"""
-        try:
-            # Streamlit의 요청 컨텍스트에서 헤더 정보 추출 시도
-            # 주의: Streamlit에서는 직접적인 요청 헤더 접근이 제한적임
-            
-            # 환경변수나 쿠키를 통해 전달된 IP 정보 확인
-            import os
-            
-            # 일반적인 프록시 헤더들
-            header_names = [
-                'HTTP_X_FORWARDED_FOR',
-                'HTTP_X_REAL_IP',
-                'HTTP_X_FORWARDED',
-                'HTTP_CF_CONNECTING_IP',  # Cloudflare
-                'HTTP_CLIENT_IP',
-                'HTTP_X_CLUSTER_CLIENT_IP',
-                'REMOTE_ADDR'
-            ]
-            
-            for header_name in header_names:
-                if header_value := os.environ.get(header_name):
-                    # X-Forwarded-For는 여러 IP가 콤마로 구분될 수 있음
-                    if ',' in header_value:
-                        # 첫 번째 IP가 원래 클라이언트 IP
-                        ip = header_value.split(',')[0].strip()
-                    else:
-                        ip = header_value.strip()
-                    
-                    if self._is_valid_ip(ip) and not self._is_private_ip(ip):
-                        print(f"헤더에서 IP 추출 성공: {header_name} = {ip}")
-                        return ip
-            
-            return None
-            
-        except Exception as e:
-            print(f"헤더에서 IP 추출 실패: {str(e)}")
-            return None
-    
-    def _get_external_ip(self) -> Optional[str]:
-        """외부 IP 조회 서비스를 통한 IP 추출 (운영환경용)"""
-        try:
-            # 여러 IP 조회 서비스 시도 (타임아웃 짧게 설정)
-            services = [
-                'https://api.ipify.org?format=text',
-                'https://ifconfig.me/ip',
-                'https://icanhazip.com',
-                'https://ident.me',
-                'https://ipecho.net/plain'
-            ]
-            
-            for service in services:
-                try:
-                    response = requests.get(service, timeout=3)
-                    if response.status_code == 200:
-                        ip = response.text.strip()
-                        if self._is_valid_ip(ip):
-                            print(f"외부 서비스에서 IP 조회 성공: {service} = {ip}")
-                            return ip
-                except:
-                    continue
-            
-            return None
-            
-        except Exception as e:
-            print(f"외부 IP 조회 실패: {str(e)}")
-            return None
-    
-    def _get_local_network_ip(self) -> Optional[str]:
-        """로컬 네트워크 IP 추출 (개발환경용)"""
-        try:
-            # 소켓을 통한 로컬 IP 추출
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                # 구글 DNS에 연결 시도 (실제 데이터 전송하지 않음)
-                s.connect(('8.8.8.8', 80))
-                local_ip = s.getsockname()[0]
-                
-                if local_ip and local_ip != "127.0.0.1":
-                    print(f"로컬 네트워크 IP 추출: {local_ip}")
-                    return local_ip
-            
-            return None
-            
-        except Exception as e:
-            print(f"로컬 IP 추출 실패: {str(e)}")
-            return None
-    
-    def _is_valid_ip(self, ip: str) -> bool:
-        """IP 주소 유효성 검증"""
-        try:
-            import ipaddress
-            ipaddress.ip_address(ip)
-            return True
-        except ValueError:
-            return False
-    
-    def _is_private_ip(self, ip: str) -> bool:
-        """사설 IP 주소인지 확인"""
-        try:
-            import ipaddress
-            ip_obj = ipaddress.ip_address(ip)
-            return ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local
-        except ValueError:
-            return False
     
     def get_user_agent(self) -> str:
         """사용자 에이전트 정보 추출"""
         try:
-            import os
-            # 환경변수에서 User-Agent 추출 시도
-            user_agent = os.environ.get('HTTP_USER_AGENT', 'Streamlit/ChatBot-Enhanced')
-            return user_agent
+            return "Streamlit/ChatBot-Enhanced"
         except:
             return "unknown"
     
@@ -339,7 +201,7 @@ class LoggingMiddleware:
                   response_time: float = None, document_count: int = None,
                   success: bool = None, error_message: str = None,
                   response_content: str = None, source: str = "middleware"):
-        """향상된 쿼리 로그 기록 - 실제 IP 추출 개선"""
+        """향상된 쿼리 로그 기록 - 중복 방지"""
         try:
             # 디버그 로그 추가
             print(f"[{source.upper()}] 로깅 시작: {question[:30]}...")
@@ -349,10 +211,7 @@ class LoggingMiddleware:
                 print(f"[{source.upper()}] 이미 로깅된 쿼리 - 중복 로깅 방지")
                 return
             
-            # 개선된 IP 추출
             ip_address = self.get_client_ip()
-            print(f"[{source.upper()}] 추출된 IP 주소: {ip_address}")
-            
             user_agent = self.get_user_agent()
             
             # success가 지정되지 않은 경우 자동 분석
@@ -381,42 +240,31 @@ class LoggingMiddleware:
             if hasattr(st.session_state, 'current_query_logged'):
                 st.session_state.current_query_logged = True
                 
-            print(f"[{source.upper()}] 로깅 완료 - IP: {ip_address}, Success: {success}")
+            print(f"[{source.upper()}] 로깅 완료 - Success: {success}")
             
         except Exception as e:
             # 로깅 실패해도 메인 기능에는 영향을 주지 않음
             print(f"[{source.upper()}] 로깅 실패: {str(e)}")
 
-# IP 주소 강제 설정 유틸리티 (개발/테스트용)
-def set_client_ip(ip_address: str):
-    """클라이언트 IP 주소 강제 설정 (개발/테스트용)"""
-    if hasattr(st, 'session_state'):
-        st.session_state.client_ip = ip_address
-        print(f"IP 주소 강제 설정: {ip_address}")
-
-# IP 주소 초기화 (운영환경에서 자동 감지 위해)
-def reset_client_ip():
-    """클라이언트 IP 주소 초기화 (자동 감지하도록)"""
-    if hasattr(st, 'session_state') and 'client_ip' in st.session_state:
-        del st.session_state.client_ip
-        print("IP 주소 초기화 완료 - 자동 감지 모드로 전환")
-
-# 기존 함수들은 그대로 유지 (하위 호환성)
+# 중복 로깅 방지 데코레이터 - 완전히 비활성화 버전
 def log_user_activity_disabled(query_type: str = None):
     """비활성화된 로깅 데코레이터 - 중복 방지용"""
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> Any:
             print(f"[DECORATOR-DISABLED] 데코레이터 로깅이 비활성화됨 - 함수만 실행")
+            # 로깅 없이 원본 함수만 실행
             return func(*args, **kwargs)
         return wrapper
     return decorator
 
+# 조건부 로깅 데코레이터
 def log_user_activity_conditional(query_type: str = None, enable_logging: bool = True):
     """조건부 사용자 활동 로깅 데코레이터"""
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> Any:
+            # 로깅이 비활성화된 경우 원본 함수만 실행
             if not enable_logging:
                 print(f"[DECORATOR-CONDITIONAL] 로깅 비활성화 - 함수만 실행")
                 return func(*args, **kwargs)
@@ -431,33 +279,41 @@ def log_user_activity_conditional(query_type: str = None, enable_logging: bool =
             error_message = None
             
             try:
+                # 중복 로깅 방지 체크
                 if hasattr(st.session_state, 'current_query_logged') and st.session_state.current_query_logged:
                     print(f"[DECORATOR-CONDITIONAL] 이미 로깅됨 - 중복 방지")
                     return func(*args, **kwargs)
                 
+                # 함수 실행
                 result = func(*args, **kwargs)
+                
+                # 성공적으로 실행됨
                 response_time = time.time() - start_time
+                
+                # 함수 매개변수에서 질문 추출
                 question = kwargs.get('query', '') or (args[1] if len(args) > 1 else '')
                 
+                # 결과에서 정보 추출
                 if isinstance(result, (list, tuple)):
                     if len(result) >= 2:
-                        if isinstance(result[0], str):
+                        if isinstance(result[0], str):  # (response_text, documents) 형태
                             response_content = result[0]
                             if isinstance(result[1], (list, tuple)):
                                 document_count = len(result[1])
-                        elif isinstance(result[1], (list, tuple)):
+                        elif isinstance(result[1], (list, tuple)):  # (something, documents) 형태
                             document_count = len(result[1])
                 elif isinstance(result, str):
                     response_content = result
                 elif hasattr(result, '__len__'):
                     document_count = len(result)
                 
+                # 응답 품질 자동 분석
                 if response_content:
                     success, auto_error = middleware._analyze_response_quality(response_content, document_count)
                     if auto_error:
                         error_message = auto_error
                 else:
-                    success = True
+                    success = True  # 응답이 없어도 오류가 발생하지 않았으면 일단 성공으로 간주
                 
                 middleware.log_query(
                     question=str(question),
@@ -473,6 +329,7 @@ def log_user_activity_conditional(query_type: str = None, enable_logging: bool =
                 return result
                 
             except Exception as e:
+                # 실패 로그 기록
                 response_time = time.time() - start_time
                 question = kwargs.get('query', '') or (args[1] if len(args) > 1 else '')
                 error_message = str(e)[:50] + ("..." if len(str(e)) > 50 else "")
@@ -488,68 +345,18 @@ def log_user_activity_conditional(query_type: str = None, enable_logging: bool =
                     source="decorator"
                 )
                 
-                raise
+                raise  # 원래 예외를 다시 발생시킴
         
         return wrapper
     return decorator
 
+# 기존 데코레이터 (하위 호환성을 위해 유지하되 비활성화)
 def log_user_activity(query_type: str = None):
     """기존 로깅 데코레이터 - 중복 방지를 위해 비활성화"""
     print(f"[DECORATOR-LEGACY] 기존 로깅 데코레이터 호출 - 중복 방지를 위해 비활성화")
     return log_user_activity_disabled(query_type)
 
-def apply_logging_to_query_processor(query_processor):
-    """쿼리 프로세서에 로깅 기능 추가 - 개선된 IP 추출 포함"""
-    print("=" * 60)
-    print("[APPLY_LOGGING] apply_logging_to_query_processor 호출됨")
-    print("[APPLY_LOGGING] 개선된 IP 추출 로직이 적용됩니다")
-    print("=" * 60)
-    
-    query_processor._decorator_logging_enabled = False
-    query_processor._manual_logging_enabled = True
-    query_processor._logging_source = "manual_only"
-    query_processor._enhanced_ip_extraction = True  # 개선된 IP 추출 플래그
-    
-    print("[APPLY_LOGGING] 설정 완료 - 수동 로깅만 활성화 (개선된 IP 추출)")
-    return query_processor
-
-# 실시간 IP 추출 테스트 함수
-def test_ip_extraction():
-    """IP 추출 로직 테스트"""
-    middleware = LoggingMiddleware()
-    detected_ip = middleware.get_client_ip()
-    
-    print("=" * 50)
-    print("IP 추출 테스트 결과")
-    print("=" * 50)
-    print(f"감지된 IP 주소: {detected_ip}")
-    
-    if detected_ip == "127.0.0.1":
-        print("⚠️  로컬호스트 IP가 감지되었습니다.")
-        print("운영환경에서는 프록시 설정을 확인해주세요.")
-    elif detected_ip == "unknown":
-        print("❌ IP 추출에 실패했습니다.")
-    else:
-        print("✅ 실제 IP 주소가 성공적으로 추출되었습니다.")
-    
-    print("=" * 50)
-    return detected_ip
-
-# 채팅 상호작용 직접 로깅 (개선된 IP 추출 포함)
-def log_chat_interaction(question: str, response: str, query_type: str = None, 
-                        document_count: int = 0, response_time: float = None):
-    """채팅 상호작용 직접 로깅 - 개선된 IP 추출"""
-    middleware = LoggingMiddleware()
-    middleware.log_query(
-        question=question,
-        query_type=query_type,
-        response_time=response_time,
-        document_count=document_count,
-        response_content=response,
-        source="chat_interaction"
-    )
-
-# 기타 기존 함수들도 그대로 유지
+# 페이지 방문 로깅
 def log_page_visit(page_name: str):
     """페이지 방문 로깅"""
     middleware = LoggingMiddleware()
@@ -561,6 +368,89 @@ def log_page_visit(page_name: str):
         source="page_visit"
     )
 
+# 채팅 상호작용 직접 로깅
+def log_chat_interaction(question: str, response: str, query_type: str = None, 
+                        document_count: int = 0, response_time: float = None):
+    """채팅 상호작용 직접 로깅"""
+    middleware = LoggingMiddleware()
+    middleware.log_query(
+        question=question,
+        query_type=query_type,
+        response_time=response_time,
+        document_count=document_count,
+        response_content=response,
+        source="chat_interaction"
+    )
+
+# IP 주소 설정 유틸리티 (개발용)
+def set_client_ip(ip_address: str):
+    """클라이언트 IP 주소 설정 (개발/테스트용)"""
+    st.session_state.client_ip = ip_address
+
+# 중복 로깅 방지를 위한 핵심 함수들
+def apply_logging_to_query_processor(query_processor):
+    """쿼리 프로세서에 로깅 기능 추가 - 중복 방지 버전"""
+    print("=" * 60)
+    print("[APPLY_LOGGING] apply_logging_to_query_processor 호출됨")
+    print("[APPLY_LOGGING] 중복 로깅 방지를 위해 데코레이터 로깅을 비활성화합니다")
+    print("=" * 60)
+    
+    # 중복 로깅 방지를 위해 데코레이터 적용하지 않음
+    query_processor._decorator_logging_enabled = False
+    query_processor._manual_logging_enabled = True
+    query_processor._logging_source = "manual_only"
+    
+    print("[APPLY_LOGGING] 설정 완료 - 수동 로깅만 활성화")
+    return query_processor
+
+def apply_logging_to_query_processor_force_decorator(query_processor):
+    """강제로 데코레이터 로깅 적용 (테스트용)"""
+    print("[APPLY_LOGGING_FORCE] 강제 데코레이터 로깅 적용")
+    
+    # 이미 로깅이 적용된 경우 중복 적용 방지
+    if hasattr(query_processor, '_logging_applied'):
+        print("[APPLY_LOGGING_FORCE] 이미 적용된 로깅 감지 - 중복 방지")
+        return query_processor
+    
+    original_process_query = query_processor.process_query
+    
+    @log_user_activity_conditional(query_type="chatbot", enable_logging=True)
+    def logged_process_query(query, query_type=None):
+        return original_process_query(query, query_type)
+    
+    query_processor.process_query = logged_process_query
+    query_processor._logging_applied = True
+    query_processor._decorator_logging_enabled = True
+    query_processor._manual_logging_enabled = False
+    query_processor._logging_source = "decorator_only"
+    
+    print("[APPLY_LOGGING_FORCE] 데코레이터 로깅 적용 완료")
+    return query_processor
+
+def apply_logging_to_query_processor_safe(query_processor):
+    """안전한 로깅 적용 - 기존 설정 확인 후 적용"""
+    print("[APPLY_LOGGING_SAFE] 안전한 로깅 적용 시작")
+    
+    # 기존 설정 확인
+    decorator_enabled = getattr(query_processor, '_decorator_logging_enabled', None)
+    manual_enabled = getattr(query_processor, '_manual_logging_enabled', None)
+    
+    print(f"[APPLY_LOGGING_SAFE] 기존 설정 - Decorator: {decorator_enabled}, Manual: {manual_enabled}")
+    
+    # 아무 설정도 없는 경우 수동 로깅만 활성화
+    if decorator_enabled is None and manual_enabled is None:
+        print("[APPLY_LOGGING_SAFE] 초기 설정 - 수동 로깅만 활성화")
+        query_processor._decorator_logging_enabled = False
+        query_processor._manual_logging_enabled = True
+        query_processor._logging_source = "safe_manual"
+    
+    # 이미 설정이 있는 경우 유지
+    else:
+        print("[APPLY_LOGGING_SAFE] 기존 설정 유지")
+    
+    return query_processor
+
+# 실시간 모니터링을 위한 헬퍼 함수들
 def get_recent_activity_summary(hours: int = 1):
     """최근 활동 요약 정보 반환"""
     try:
@@ -572,6 +462,7 @@ def get_recent_activity_summary(hours: int = 1):
         
         logs = monitoring_manager.get_logs_in_range(start_time.date(), end_time.date())
         
+        # 최근 시간 필터링
         recent_logs = [
             log for log in logs 
             if datetime.fromisoformat(log['timestamp']) >= start_time
@@ -615,6 +506,7 @@ def get_failure_analysis(hours: int = 24):
         
         logs = monitoring_manager.get_logs_in_range(start_time.date(), end_time.date())
         
+        # 최근 시간 및 실패 로그만 필터링
         failed_logs = [
             log for log in logs 
             if datetime.fromisoformat(log['timestamp']) >= start_time and not log.get('success')
@@ -623,6 +515,7 @@ def get_failure_analysis(hours: int = 24):
         if not failed_logs:
             return {'total_failures': 0, 'failure_reasons': {}}
         
+        # 실패 원인별 집계
         failure_reasons = {}
         for log in failed_logs:
             reason = log.get('error_message', '알 수 없는 오류')
@@ -636,8 +529,9 @@ def get_failure_analysis(hours: int = 24):
         print(f"실패 분석 조회 실패: {str(e)}")
         return None
 
+# 중복 로깅 디버깅을 위한 유틸리티
 def debug_logging_status(query_processor):
-    """로깅 상태 디버깅 - 개선된 IP 추출 포함"""
+    """로깅 상태 디버깅"""
     print("=" * 50)
     print("[DEBUG_LOGGING_STATUS] 로깅 상태 확인")
     print("=" * 50)
@@ -646,22 +540,16 @@ def debug_logging_status(query_processor):
     manual_enabled = getattr(query_processor, '_manual_logging_enabled', 'UNKNOWN')
     logging_applied = getattr(query_processor, '_logging_applied', 'UNKNOWN')
     logging_source = getattr(query_processor, '_logging_source', 'UNKNOWN')
-    enhanced_ip = getattr(query_processor, '_enhanced_ip_extraction', 'UNKNOWN')
     
     print(f"Decorator Logging Enabled: {decorator_enabled}")
     print(f"Manual Logging Enabled: {manual_enabled}")
     print(f"Logging Applied: {logging_applied}")
     print(f"Logging Source: {logging_source}")
-    print(f"Enhanced IP Extraction: {enhanced_ip}")
     
     # 세션 상태 확인
     if hasattr(st.session_state, 'current_query_logged'):
         print(f"Session Current Query Logged: {st.session_state.current_query_logged}")
     else:
         print("Session Current Query Logged: NOT_SET")
-    
-    # IP 추출 테스트
-    print("\n--- IP 추출 테스트 ---")
-    test_ip_extraction()
     
     print("=" * 50)
