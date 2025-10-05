@@ -15,6 +15,11 @@ base_pages = [
     #st.Page("menu/3_Process_Chatbot.py", title="[부가] 장애프로세스 안내챗봇", icon="👨‍⚕️"),
     #st.Page("menu/4_Process Description.py", title="[부가] 장애프로세스 쉬운설명", icon="📌"),
     #st.Page("menu/5_Process_FAQ.py", title="[부가] 장애프로세스 FAQ", icon="❓"),
+    st.Page("menu/90_Chatbot_Incident_data_mng.py", title="[관리자] 챗봇 - 인시던트 데이터관리(통계용)", icon="⚙️"),    
+    st.Page("menu/90_Chatbot_Rag_Datapreprocess.py", title="[관리자] 챗봇 - 학습데이터 전처리기", icon="⚙️"),
+    st.Page("menu/90_Chatbot_UserQuestion_Changer.py", title="[관리자] 챗봇 - 개별 프롬프팅설정", icon="⚙️"),
+    st.Page("menu/90_Admin_monitoring.py", title="[관리자] 챗봇 - 질문정보 모니터링", icon="⚙️"),
+    st.Page("menu/90_Chatbot_Serpapi_Usage.py", title="[관리자] 챗봇 - SerpApi 사용량 모니터링", icon="⚙️"),    
 ]
 
 # 관리자용 페이지 목록

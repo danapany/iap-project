@@ -15,7 +15,6 @@ def setup_korean_font():
         os.makedirs(fonts_dir, exist_ok=True)
         font_file_path = os.path.join(fonts_dir, "NanumGothic.ttf")
         
-        # 폰트 다운로드
         if not os.path.exists(font_file_path):
             try:
                 urllib.request.urlretrieve(
@@ -26,7 +25,6 @@ def setup_korean_font():
             except Exception as e:
                 print(f"폰트 다운로드 실패: {e}")
         
-        # 다운로드된 폰트 설정
         if os.path.exists(font_file_path):
             try:
                 fm.fontManager.addfont(font_file_path)
@@ -38,14 +36,12 @@ def setup_korean_font():
             except Exception as e:
                 print(f"다운로드된 폰트 설정 실패: {e}")
         
-        # 시스템 폰트 경로
         font_paths = {
             'Windows': ["C:/Windows/Fonts/malgun.ttf", "C:/Windows/Fonts/gulim.ttc", "C:/Windows/Fonts/batang.ttc"],
             'Darwin': ["/System/Library/Fonts/AppleGothic.ttf", "/Library/Fonts/AppleGothic.ttf"],
             'Linux': ["/usr/share/fonts/truetype/nanum/NanumGothic.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_file_path]
         }.get(platform.system(), [font_file_path])
         
-        # 시스템 폰트 시도
         for font_path in font_paths:
             if os.path.exists(font_path):
                 try:
@@ -59,7 +55,6 @@ def setup_korean_font():
                 except:
                     continue
         
-        # 폰트 검색
         korean_fonts = [f.name for f in fm.fontManager.ttflist 
                        if any(k in f.name.lower() for k in ['nanum', 'malgun', 'gothic', 'batang', 'gulim'])]
         if korean_fonts:
@@ -68,7 +63,6 @@ def setup_korean_font():
             print(f"검색된 한글 폰트 설정 완료: {korean_fonts[0]}")
             return korean_fonts[0]
         
-        # Fallback 폰트
         for font in ['DejaVu Sans', 'Arial Unicode MS', 'Lucida Grande']:
             try:
                 plt.rcParams['font.family'] = font
@@ -78,7 +72,6 @@ def setup_korean_font():
             except:
                 continue
         
-        # 기본 폰트
         plt.rcParams['font.family'] = 'DejaVu Sans'
         plt.rcParams['axes.unicode_minus'] = False
         print("기본 폰트 설정 적용: DejaVu Sans")
@@ -104,7 +97,6 @@ class ChartManager:
         self._test_korean_font()
         
     def _test_korean_font(self):
-        """한글 폰트 정상 작동 테스트"""
         try:
             fig, ax = plt.subplots(figsize=(1, 1))
             ax.text(0.5, 0.5, '한글테스트', fontsize=10, ha='center')
@@ -118,45 +110,37 @@ class ChartManager:
         """차트 생성 - 항상 성공하는 차트 생성 (한글 폰트 보장)"""
         print(f"DEBUG: Creating chart - type: {chart_type}, data: {chart_data}")
         
-        # 폰트 재설정 확인
         if not plt.rcParams.get('font.family') or plt.rcParams.get('font.family') == ['sans-serif']:
             self.font_name = setup_korean_font()
         
-        # 데이터 검증
         if not chart_data or len(chart_data) == 0:
             print("DEBUG: No data provided for chart")
             return self._create_no_data_chart(title)
         
-        # 데이터가 딕셔너리가 아닌 경우 처리
         if not isinstance(chart_data, dict):
             print(f"DEBUG: Invalid data type: {type(chart_data)}")
             return self._create_no_data_chart(title)
         
-        # 빈 값 제거
         chart_data = {k: v for k, v in chart_data.items() if v is not None and v > 0}
         if not chart_data:
             print("DEBUG: All data values are empty or zero")
             return self._create_no_data_chart(title)
         
         try:
-            # 차트 타입별 메서드 매핑 - bar 타입 명시적 추가!
             chart_methods = {
                 'no_data': self._create_no_data_chart,
-                'bar': self._create_bar_chart,  # 명시적 추가!
+                'bar': self._create_bar_chart,
                 'line': self._create_line_chart,
                 'pie': self._create_pie_chart,
                 'horizontal_bar': self._create_horizontal_bar_chart
             }
             
-            # 차트 타입 정규화
             chart_type = str(chart_type).lower().strip()
             print(f"DEBUG: Normalized chart_type: '{chart_type}'")
             
-            # 메서드 선택
             method = chart_methods.get(chart_type, self._create_bar_chart)
             print(f"DEBUG: Selected method: {method.__name__}")
             
-            # 차트 생성
             if chart_type == 'no_data':
                 return method(title)
             else:
@@ -166,16 +150,13 @@ class ChartManager:
             print(f"DEBUG: Chart creation failed: {e}")
             import traceback
             print(f"DEBUG: Traceback: {traceback.format_exc()}")
-            # Fallback to bar chart
             return self._create_bar_chart(chart_data, title)
     
     def _get_chart_unit(self, title, values):
-        """차트 단위 결정"""
         is_time = '시간' in title or any(v > 100 for v in values if isinstance(v, (int, float)))
         return '분' if is_time else '건'
     
     def _style_axis(self, ax, title, xlabel, ylabel, categories):
-        """축 스타일 적용"""
         ax.set_title(title, fontsize=18, fontweight='bold', pad=25, color='#2c3e50')
         ax.set_xlabel(xlabel, fontsize=13, fontweight='bold', color='#34495e')
         ax.set_ylabel(ylabel, fontsize=13, fontweight='bold', color='#34495e')
@@ -187,7 +168,6 @@ class ChartManager:
         ax.set_axisbelow(True)
     
     def _create_bar_chart(self, data, title):
-        """기본 세로 막대차트 생성"""
         try:
             print(f"DEBUG: _create_bar_chart called with data: {data}")
             fig, ax = plt.subplots(figsize=self.default_figsize, dpi=self.dpi)
@@ -196,7 +176,6 @@ class ChartManager:
             values = list(data.values())
             print(f"DEBUG: Categories: {categories}, Values: {values}")
             
-            # 값 검증
             if not values or all(v == 0 for v in values):
                 plt.close(fig)
                 return self._create_no_data_chart(title)
@@ -209,7 +188,7 @@ class ChartManager:
             
             for bar in bars:
                 height = bar.get_height()
-                if height > 0:  # 0보다 큰 값만 표시
+                if height > 0:
                     ax.text(bar.get_x() + bar.get_width()/2., height + max_value*0.01,
                            f'{int(height)}{unit}', ha='center', va='bottom', 
                            fontweight='bold', fontsize=10, color='#2c3e50')
@@ -231,7 +210,6 @@ class ChartManager:
             return self._create_simple_chart(data, title)
     
     def _create_line_chart(self, data, title):
-        """선 그래프 생성"""
         try:
             fig, ax = plt.subplots(figsize=self.default_figsize, dpi=self.dpi)
             categories, values = list(data.keys()), list(data.values())
@@ -258,7 +236,6 @@ class ChartManager:
             return self._create_bar_chart(data, title)
     
     def _create_horizontal_bar_chart(self, data, title):
-        """가로 막대차트 생성 - 수정됨"""
         try:
             print(f"DEBUG: _create_horizontal_bar_chart called with data: {data}")
             limited_data = dict(list(data.items())[:10])
@@ -279,7 +256,7 @@ class ChartManager:
             max_value = max(values) if values else 1
             
             for bar, value in zip(bars, values):
-                if value > 0:  # 0보다 큰 값만 표시
+                if value > 0:
                     ax.text(bar.get_width() + max_value*0.01, bar.get_y() + bar.get_height()/2.,
                            f'{int(value)}{unit}', ha='left', va='center', 
                            fontweight='bold', fontsize=10, color='#2c3e50')
@@ -293,7 +270,6 @@ class ChartManager:
             ax.grid(True, alpha=0.3, axis='x', linestyle='--', linewidth=0.5)
             ax.set_axisbelow(True)
             
-            # X축 범위 설정
             if max_value > 0:
                 ax.set_xlim(0, max_value * 1.15)
             
@@ -308,7 +284,6 @@ class ChartManager:
             return self._create_bar_chart(data, title)
     
     def _create_pie_chart(self, data, title):
-        """원형 그래프 생성 - 수정됨"""
         try:
             print(f"DEBUG: _create_pie_chart called with data: {data}")
             
@@ -341,10 +316,9 @@ class ChartManager:
             
             colors = self.colors[:len(new_labels)]
             
-            # autopct 함수 정의
             def make_autopct(values):
                 def my_autopct(pct):
-                    return f'{pct:.1f}%' if pct > 3 else ''  # 3% 이하는 표시 안함
+                    return f'{pct:.1f}%' if pct > 3 else ''
                 return my_autopct
             
             wedges, texts, autotexts = ax.pie(new_sizes, labels=new_labels, colors=colors,
@@ -372,7 +346,6 @@ class ChartManager:
             return self._create_bar_chart(data, title)
     
     def _create_no_data_chart(self, title):
-        """데이터가 없을 때의 기본 차트"""
         try:
             fig, ax = plt.subplots(figsize=self.default_figsize, dpi=self.dpi)
             ax.text(0.5, 0.5, '조건에 맞는 데이터가 없습니다', 
@@ -389,7 +362,6 @@ class ChartManager:
             return None
     
     def _create_simple_chart(self, data, title):
-        """최후의 수단 - 가장 단순한 차트"""
         try:
             fig, ax = plt.subplots(figsize=(8, 6))
             
@@ -458,7 +430,7 @@ class ChartManager:
                 col1, col2, col3 = st.columns(3)
                 unit = '분' if is_time_chart else '건'
                 with col1:
-                    st.metric(f"이 {value_column.split('(')[0]}", f"{total:,}{unit}")
+                    st.metric(f"총 {value_column.split('(')[0]}", f"{total:,}{unit}")
                 with col2:
                     st.metric("평균", f"{df[value_column].mean():.1f}{unit}")
                 with col3:

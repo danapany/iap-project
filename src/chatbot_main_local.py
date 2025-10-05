@@ -6,6 +6,15 @@ from utils.ui_components_local import UIComponentsLocal
 from utils.query_processor_local import QueryProcessorLocal
 from utils.logging_middleware import apply_logging_to_query_processor, set_client_ip
 
+# 엑셀 다운로드를 위한 추가 import
+try:
+    import pandas as pd
+    import openpyxl
+    EXCEL_AVAILABLE = True
+except ImportError:
+    EXCEL_AVAILABLE = False
+    st.warning("엑셀 다운로드 기능을 위해 pandas와 openpyxl 라이브러리가 필요합니다.")
+
 # 검색 품질 설정
 DEFAULT_QUALITY_LEVEL = "고급"
 DEFAULT_SEARCH_THRESHOLD = 0.25
@@ -14,14 +23,12 @@ DEFAULT_MAX_RESULTS = 20
 DEFAULT_SEMANTIC_THRESHOLD = 0.3
 DEFAULT_HYBRID_THRESHOLD = 0.4
 MAX_QUERY_LENGTH = 300
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 def validate_query_length(query):
-    """질문 길이 검증"""
     return len(query) <= MAX_QUERY_LENGTH, len(query)
 
 def show_query_length_error(current_length):
-    """질문 길이 초과 안내"""
     error_msg = f"""
     ⚠️ **질문을 조금 더 간단히 입력해 주세요**
     
@@ -35,7 +42,6 @@ def show_query_length_error(current_length):
     st.session_state.messages.append({"role": "assistant", "content": error_msg})
 
 def get_quality_config(level):
-    """품질 설정 팩토리 함수"""
     configs = {
         'high': {
             'search_threshold': DEFAULT_SEARCH_THRESHOLD,
@@ -43,39 +49,25 @@ def get_quality_config(level):
             'semantic_threshold': DEFAULT_SEMANTIC_THRESHOLD,
             'hybrid_threshold': DEFAULT_HYBRID_THRESHOLD,
             'max_results': DEFAULT_MAX_RESULTS,
-            'quality_level': 'high',
-            'description': f'최고 정확성 (검색점수 {int(DEFAULT_SEARCH_THRESHOLD*100)}점, Reranker {DEFAULT_RERANKER_THRESHOLD}점 이상)'
+            'quality_level': 'high'
         },
         'medium': {
-            'search_threshold': 0.20,
-            'reranker_threshold': 2.0,
-            'semantic_threshold': 0.25,
-            'hybrid_threshold': 0.35,
-            'max_results': 15,
-            'quality_level': 'medium',
-            'description': '정확성과 포괄성 균형 (검색점수 20점, Reranker 2.0점 이상)'
+            'search_threshold': 0.20, 'reranker_threshold': 2.0, 'semantic_threshold': 0.25,
+            'hybrid_threshold': 0.35, 'max_results': 15, 'quality_level': 'medium'
         },
         'low': {
-            'search_threshold': 0.15,
-            'reranker_threshold': 1.5,
-            'semantic_threshold': 0.2,
-            'hybrid_threshold': 0.25,
-            'max_results': 20,
-            'quality_level': 'low',
-            'description': '최대 포괄성 (검색점수 15점, Reranker 1.5점 이상)'
+            'search_threshold': 0.15, 'reranker_threshold': 1.5, 'semantic_threshold': 0.2,
+            'hybrid_threshold': 0.25, 'max_results': 20, 'quality_level': 'low'
         }
     }
     return configs.get(level, configs['medium'])
 
 def apply_quality_config_to_app_config(app_config, quality_config):
-    """앱 설정에 품질 설정 적용"""
     original_get_dynamic_thresholds = app_config.get_dynamic_thresholds
     
     def get_enhanced_dynamic_thresholds(query_type="default", query_text=""):
         base_thresholds = original_get_dynamic_thresholds(query_type, query_text)
-        
-        improvements = ['negative_keyword_filtering', 'confidence_scoring', 
-                       'enhanced_prompting', 'reflection_prompting']
+        improvements = ['negative_keyword_filtering', 'confidence_scoring', 'enhanced_prompting', 'reflection_prompting']
         
         if query_type in ['repair', 'cause']:
             enhanced_thresholds = {
@@ -85,7 +77,6 @@ def apply_quality_config_to_app_config(app_config, quality_config):
                 'hybrid_threshold': max(quality_config['hybrid_threshold'], 0.4),
                 'max_results': min(quality_config['max_results'], 15),
                 'processing_mode': 'accuracy_first',
-                'description': '정확성 우선 처리',
                 'improvements_applied': improvements
             }
         elif query_type in ['similar', 'default']:
@@ -96,14 +87,12 @@ def apply_quality_config_to_app_config(app_config, quality_config):
                 'hybrid_threshold': min(quality_config['hybrid_threshold'], 0.3),
                 'max_results': max(quality_config['max_results'], 20),
                 'processing_mode': 'coverage_first',
-                'description': '포괄성 우선 처리',
                 'improvements_applied': improvements
             }
         else:
             enhanced_thresholds = quality_config.copy()
             enhanced_thresholds.update({
                 'processing_mode': 'balanced',
-                'description': '균형잡힌 처리',
                 'improvements_applied': improvements
             })
         
@@ -114,84 +103,57 @@ def apply_quality_config_to_app_config(app_config, quality_config):
     return app_config
 
 def main():
-    """메인 애플리케이션"""
-    st.set_page_config(
-        page_title="트러블 체이서 챗봇",
-        page_icon="🚀",
-        layout="wide"
-    )
+    st.set_page_config(page_title="챗봇1", page_icon="🚀", layout="wide")
+    
+    # 엑셀 기능 사용 가능 여부 확인
+    if not EXCEL_AVAILABLE:
+        st.sidebar.warning("📊 엑셀 다운로드 기능이 비활성화되었습니다. pandas와 openpyxl을 설치해주세요.")
     
     st.markdown("""
     <style>
-        .fixed-chart-container {
-            width: 800px !important; height: 650px !important;
-            margin: 0 auto !important; border: 1px solid #e0e0e0;
-            border-radius: 8px; padding: 10px; background-color: #fafafa;
-            overflow: hidden; display: flex; justify-content: center; align-items: center;
-        }
-        .fixed-chart-container > div { width: 800px !important; height: 600px !important; }
-        .stPyplot > div { display: flex !important; justify-content: center !important; }
         .main .block-container {
             max-width: none !important; padding-left: 2rem !important; padding-right: 2rem !important;
         }
-        .chart-section { display: flex; justify-content: center; align-items: center; width: 100%; }
         .stChatMessage, .stChatInput {
             max-width: 1200px; margin: 0 !important; margin-left: 0 !important; margin-right: auto !important;
         }
     </style>
     """, unsafe_allow_html=True)
     
-    st.title("🚀 트러블 체이서 챗봇")
+    st.title("🚀 챗봇1")
     
-    processing_modes = {
-        'repair': '정확성 우선 (LLM 검증+의미적 유사성)',
-        'cause': '정확성 우선 (LLM 검증+의미적 유사성)',
-        'similar': '포괄성 우선 (LLM 검증+의미적 유사성)',
-        'inquiry': '조건별 내역 조회 (LLM 검증+의미적 유사성+특정 조건 기반 장애 검색)',
-        'statistics': '통계 전용 처리 (정확한 집계+월별 범위 정규화+데이터 무결성 보장)',
-        'default': '포괄성 우선 (LLM 검증+의미적 유사성+광범위 검색+차트 지원)'
-    }
-    
-    # 품질 설정 선택
+    # 기존 코드 유지...
     level_map = {"고급": "high", "초급": "low", "중급": "medium"}
     selected_level = level_map.get(next((k for k in level_map if k in DEFAULT_QUALITY_LEVEL), "중급"))
     selected_quality_config = get_quality_config(selected_level)
     
-    if DEBUG_MODE:
-        mode_msg = {"high": "🎯 정확성 우선", "low": "📋 포괄성 우선", "medium": "⚖️ 균형 모드"}
-        st.success(mode_msg.get(selected_level, "⚖️ 균형 모드"))
-    
     st.session_state['quality_config'] = selected_quality_config
     
-    # UI 및 설정 초기화
     ui_components = UIComponentsLocal()
     ui_components.render_main_ui()
-    
+        
     config = AppConfigLocal()
     if not config.validate_config():
         ui_components.show_config_error(config.get_env_status())
         return
     
+    # 나머지 기존 코드는 그대로 유지...
     config = apply_quality_config_to_app_config(config, selected_quality_config)
     
-    # Azure 클라이언트 초기화
     client_manager = AzureClientManager(config)
-    azure_openai_client, search_client, init_success = client_manager.init_clients()
+    azure_openai_client, search_client, embedding_client, init_success = client_manager.init_clients()
     
     if not init_success:
         ui_components.show_connection_error()
         return
     
-    # 세션 상태 초기화
     if 'messages' not in st.session_state:
         st.session_state.messages = []
     
     ui_components.display_chat_messages()
     
-    # 사용자 입력 처리
     user_query = st.chat_input(f"질문을 입력하세요 (최대 {MAX_QUERY_LENGTH}자)")
     
-    # 새 질문 시 이전 상태 초기화
     if user_query and user_query != st.session_state.get('last_query', ''):
         keys_to_remove = [key for key in st.session_state.keys() 
                          if key.startswith(('search_performed_', 'show_search_modal_'))]
@@ -212,8 +174,11 @@ def main():
             st.write(user_query)
         
         query_processor = QueryProcessorLocal(
-            azure_openai_client, search_client, 
-            config.azure_openai_model, config
+            azure_openai_client, 
+            search_client, 
+            config.azure_openai_model, 
+            config,
+            embedding_client=embedding_client
         )
         
         try:

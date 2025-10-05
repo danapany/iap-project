@@ -6,7 +6,7 @@ from config.settings_local import AppConfigLocal
 from utils.filter_manager import DocumentFilterManager, FilterConditions, QueryType
 
 class SearchManagerLocal:
-    """Vector 하이브리드 검색 관리 클래스 - RAG 데이터 무결성 절대 보장"""
+    """Vector 하이브리드 검색 관리 클래스 (메인 검색 매니저) - 4가지 쿼리타입으로 단순화"""
     
     def __init__(self, search_client, embedding_client, config=None):
         self.search_client = search_client
@@ -14,7 +14,7 @@ class SearchManagerLocal:
         self.config = config or AppConfigLocal()
         self.debug_mode = False
         
-        # 통합 필터링 매니저
+        # 통합 필터링 매니저 - filter_manager에서만 통합 관리
         self.filter_manager = DocumentFilterManager(
             debug_mode=self.debug_mode, 
             search_manager=self, 
@@ -30,34 +30,6 @@ class SearchManagerLocal:
         # RRF 파라미터
         self.rrf_k = getattr(config, 'rrf_k', 60)
         
-        # 통계 쿼리 동의어 매핑 추가
-        self.statistics_synonyms = {
-            '몇건이야': '몇건',
-            '몇건이니': '몇건', 
-            '몇건인가': '몇건',
-            '알려줘': '',
-            '보여줘': '',
-            '말해줘': ''
-        }
-        
-        # 텍스트 정규화 매핑 추가
-        self.text_replacements = {
-            'ㄱ': 'ㄱ',
-            'ㄴ': 'ㄴ',
-            'ㄷ': 'ㄷ',
-            'ㄹ': 'ㄹ',
-            'ㅁ': 'ㅁ',
-            'ㅂ': 'ㅂ',
-            'ㅅ': 'ㅅ',
-            'ㅇ': 'ㅇ',
-            'ㅈ': 'ㅈ',
-            'ㅊ': 'ㅊ',
-            'ㅋ': 'ㅋ',
-            'ㅌ': 'ㅌ',
-            'ㅍ': 'ㅍ',
-            'ㅎ': 'ㅎ'
-        }
-        
         # 일반 용어 서비스 정의
         self.COMMON_TERM_SERVICES = {
             'OTP': ['otp', '일회용비밀번호', '원타임패스워드', '2차인증', '이중인증'],           
@@ -69,14 +41,38 @@ class SearchManagerLocal:
             'SSL': ['ssl', 'https', 'Secure Sockets Layer', '보안소켓계층'],
             'URL': ['url', 'link', '링크', 'Uniform Resource Locator']
         }
-
+        
+        # 정규화 매핑 (한 번만 정의)
+        self.text_replacements = {
+            '불가능': '불가', '실패': '불가', '안됨': '불가', '되지않음': '불가', '할수없음': '불가', '불능': '불가', '에러': '불가', '장애': '불가',
+            '접속': '연결', '로그인': '접속', '액세스': '접속', '진입': '접속',
+            '오류': '에러', '장애': '에러', '문제': '에러', '이슈': '에러', '버그': '에러',
+            '지연': '느림', '늦음': '느림', '응답없음': '느림', '타임아웃': '느림',
+            '서비스': '기능', '시스템': '서비스', '플랫폼': '서비스',
+            '가입': '등록', '신청': '등록', '회원가입': '등록', '회원등록': '등록',
+            '결제': '구매', '구매': '결제', '주문': '결제', '거래': '결제', '구입': '결제',
+            '발송': '전송', '송신': '전송', '전달': '전송', '보내기': '전송',
+            'otp': 'OTP', '일회용비밀번호': 'OTP', '원타임패스워드': 'OTP',
+            'api': 'API', 'sms': 'SMS', '문자': 'SMS', '단문': 'SMS',
+            'vpn': 'VPN', '가상사설망': 'VPN', 'dns': 'DNS', '도메인': 'DNS'
+        }
+        
+        # 통계 동의어 매핑
+        self.statistics_synonyms = {
+            '장애건수': '건수', '장애 건수': '건수', '발생건수': '건수',
+            '몇건이야': '몇건', '몇건이니': '몇건', '몇건인가': '몇건', '몇건이나': '몇건',
+            '알려줘': '', '보여줘': '', '말해줘': '', '확인해줘': '',
+            '발생했어': '발생', '발생했나': '발생', '있어': '있음', '있나': '있음',
+            '얼마나': '몇', '어느정도': '몇', '어떻게': '몇'
+        }
+    
     def semantic_search_with_adaptive_filtering(self, query, target_service_name=None, query_type="default", top_k=50):
-        """메인 검색 진입점 - RAG 데이터 무결성 절대 보장"""
+        """벡터 하이브리드 검색의 메인 진입점"""
         try:
             print(f"DEBUG: ========== VECTOR HYBRID SEARCH START ==========")
             print(f"DEBUG: Query: '{query}', Target service: {target_service_name}, Query type: {query_type}")
             
-            # 하이브리드 검색 실행 (무결성 보장 버전만 사용)
+            # 하이브리드 검색 실행
             documents = self._execute_vector_hybrid_search(query, target_service_name, query_type, top_k)
             
             if not documents:
@@ -85,7 +81,7 @@ class SearchManagerLocal:
             
             print(f"DEBUG: Vector hybrid search results: {len(documents)} documents")
             
-            # 통합 필터링 시스템 적용
+            # 통합 필터링 시스템 적용 - filter_manager에서만 관리
             query_type_enum = self._convert_to_query_type_enum(query_type)
             conditions = self.filter_manager.extract_all_conditions(query, query_type_enum)
             
@@ -123,9 +119,19 @@ class SearchManagerLocal:
             traceback.print_exc()
             # fallback to original search
             return self._fallback_to_original_search(query, target_service_name, query_type, top_k//2)
-
+    
+    def _convert_to_query_type_enum(self, query_type_str):
+        """문자열 쿼리 타입을 QueryType enum으로 변환 - 4가지 타입으로 제한"""
+        mapping = {
+            'repair': QueryType.REPAIR,
+            'inquiry': QueryType.INQUIRY, 
+            'statistics': QueryType.STATISTICS,
+            'default': QueryType.DEFAULT
+        }
+        return mapping.get(query_type_str, QueryType.DEFAULT)
+    
     def _execute_vector_hybrid_search(self, query, target_service_name, query_type, top_k):
-        """벡터 하이브리드 검색 실행 - RAG 데이터 무결성 보장"""
+        """벡터 하이브리드 검색 실행"""
         try:
             # 벡터 검색 설정 가져오기
             vector_config = self.config.get_vector_search_config(query_type)
@@ -160,99 +166,9 @@ class SearchManagerLocal:
         except Exception as e:
             print(f"ERROR: Vector hybrid search execution failed: {e}")
             return self._fallback_to_original_search(query, target_service_name, query_type, top_k)
-
-    def _execute_balanced_hybrid_search(self, query, query_vector, target_service_name, vector_config, top_k):
-        """균형잡힌 하이브리드 검색 - RAG 데이터 무결성 보장"""
-        try:
-            enhanced_query = self._build_enhanced_query(query, target_service_name)
-            print(f"DEBUG: Enhanced query for hybrid search: '{enhanced_query}'")
-            
-            vector_queries = [{
-                "vector": query_vector,
-                "k_nearest_neighbors": min(self.config.vector_top_k, 50),
-                "fields": "contentVector"
-            }]
-            
-            results = self._execute_search_with_params(
-                enhanced_query, vector_queries, 
-                "semantic" if vector_config.get('use_semantic_reranker', True) else "simple",
-                top_k, "hybrid"
-            )
-            
-            documents = self._process_search_results(results, "Hybrid")
-            print(f"DEBUG: Balanced hybrid search returned {len(documents)} documents")
-            return documents
-            
-        except Exception as e:
-            print(f"ERROR: Balanced hybrid search failed: {e}")
-            return []
-    
-    def _execute_vector_primary_search(self, query, query_vector, target_service_name, vector_config, top_k):
-        """벡터 검색 우선 모드 - RAG 데이터 무결성 보장"""
-        try:
-            vector_queries = [{
-                "vector": query_vector,
-                "k_nearest_neighbors": min(top_k * 2, 100),
-                "fields": "contentVector"
-            }]
-            
-            basic_query = self._build_basic_query(query, target_service_name)
-            
-            results = self._execute_search_with_params(
-                basic_query if basic_query else "*", vector_queries, "semantic", top_k, "hybrid"
-            )
-            
-            documents = self._process_search_results(results, "Vector Primary")
-            print(f"DEBUG: Vector primary search returned {len(documents)} documents")
-            return documents
-            
-        except Exception as e:
-            print(f"ERROR: Vector primary search failed: {e}")
-            return []
-    
-    def _execute_text_primary_search(self, query, query_vector, target_service_name, vector_config, top_k):
-        """텍스트 검색 우선 모드 - RAG 데이터 무결성 보장"""
-        try:
-            enhanced_query = self._build_enhanced_query(query, target_service_name)
-            
-            vector_queries = [{
-                "vector": query_vector,
-                "k_nearest_neighbors": min(top_k // 2, 25),
-                "fields": "contentVector"
-            }] if query_vector else None
-            
-            results = self._execute_search_with_params(
-                enhanced_query, vector_queries, "simple", top_k, 
-                "any" if vector_queries else "all"
-            )
-            
-            documents = self._process_search_results(results, "Text Primary")
-            print(f"DEBUG: Text primary search returned {len(documents)} documents")
-            return documents
-            
-        except Exception as e:
-            print(f"ERROR: Text primary search failed: {e}")
-            return []
-    
-    def _execute_text_only_search(self, query, target_service_name, query_type, top_k):
-        """텍스트 전용 검색 - RAG 데이터 무결성 보장"""
-        try:
-            enhanced_query = self._build_enhanced_query(query, target_service_name)
-            
-            results = self._execute_search_with_params(
-                enhanced_query, None, "semantic", top_k, "all"
-            )
-            
-            documents = self._process_search_results(results, "Text-only fallback")
-            print(f"DEBUG: Text-only fallback search returned {len(documents)} documents")
-            return documents
-            
-        except Exception as e:
-            print(f"ERROR: Text-only search failed: {e}")
-            return []
     
     def _execute_search_with_params(self, search_text, vector_queries, query_type, top_k, search_mode="hybrid"):
-        """공통 검색 실행 로직 - RAG 데이터 무결성 보장"""
+        """공통 검색 실행 로직"""
         search_params = {
             "search_text": search_text,
             "top": top_k,
@@ -279,8 +195,98 @@ class SearchManagerLocal:
         
         return self.search_client.search(**search_params)
     
+    def _execute_balanced_hybrid_search(self, query, query_vector, target_service_name, vector_config, top_k):
+        """균형잡힌 하이브리드 검색"""
+        try:
+            enhanced_query = self._build_enhanced_query(query, target_service_name)
+            print(f"DEBUG: Enhanced query for hybrid search: '{enhanced_query}'")
+            
+            vector_queries = [{
+                "vector": query_vector,
+                "k_nearest_neighbors": min(self.config.vector_top_k, 50),
+                "fields": "contentVector"
+            }]
+            
+            results = self._execute_search_with_params(
+                enhanced_query, vector_queries, 
+                "semantic" if vector_config.get('use_semantic_reranker', True) else "simple",
+                top_k, "hybrid"
+            )
+            
+            documents = self._process_search_results(results, "Hybrid")
+            print(f"DEBUG: Balanced hybrid search returned {len(documents)} documents")
+            return documents
+            
+        except Exception as e:
+            print(f"ERROR: Balanced hybrid search failed: {e}")
+            return []
+    
+    def _execute_vector_primary_search(self, query, query_vector, target_service_name, vector_config, top_k):
+        """벡터 검색 우선 모드"""
+        try:
+            vector_queries = [{
+                "vector": query_vector,
+                "k_nearest_neighbors": min(top_k * 2, 100),
+                "fields": "contentVector"
+            }]
+            
+            basic_query = self._build_basic_query(query, target_service_name)
+            
+            results = self._execute_search_with_params(
+                basic_query if basic_query else "*", vector_queries, "semantic", top_k, "hybrid"
+            )
+            
+            documents = self._process_search_results(results, "Vector Primary")
+            print(f"DEBUG: Vector primary search returned {len(documents)} documents")
+            return documents
+            
+        except Exception as e:
+            print(f"ERROR: Vector primary search failed: {e}")
+            return []
+    
+    def _execute_text_primary_search(self, query, query_vector, target_service_name, vector_config, top_k):
+        """텍스트 검색 우선 모드 (통계 쿼리 등)"""
+        try:
+            enhanced_query = self._build_enhanced_query(query, target_service_name)
+            
+            vector_queries = [{
+                "vector": query_vector,
+                "k_nearest_neighbors": min(top_k // 2, 25),
+                "fields": "contentVector"
+            }] if query_vector else None
+            
+            results = self._execute_search_with_params(
+                enhanced_query, vector_queries, "simple", top_k, 
+                "any" if vector_queries else "all"
+            )
+            
+            documents = self._process_search_results(results, "Text Primary")
+            print(f"DEBUG: Text primary search returned {len(documents)} documents")
+            return documents
+            
+        except Exception as e:
+            print(f"ERROR: Text primary search failed: {e}")
+            return []
+    
+    def _execute_text_only_search(self, query, target_service_name, query_type, top_k):
+        """텍스트 전용 검색 (벡터 실패시 fallback)"""
+        try:
+            enhanced_query = self._build_enhanced_query(query, target_service_name)
+            
+            results = self._execute_search_with_params(
+                enhanced_query, None, "semantic", top_k, "all"
+            )
+            
+            documents = self._process_search_results(results, "Text-only fallback")
+            print(f"DEBUG: Text-only fallback search returned {len(documents)} documents")
+            return documents
+            
+        except Exception as e:
+            print(f"ERROR: Text-only search failed: {e}")
+            return []
+    
     def _process_search_results(self, results, search_type):
-        """검색 결과 처리 - RAG 데이터 무결성 절대 보장"""
+        """검색 결과 처리 통합 로직"""
         documents = []
         for i, result in enumerate(results):
             if i < 5:  # 디버그용 상위 5개 로그
@@ -293,66 +299,13 @@ class SearchManagerLocal:
         
         return documents
     
-    def _convert_search_result_to_document(self, result):
-        """🚨 RAG 원본 데이터 절대 보존 - 단일 구현 (무결성 보장)"""
-        # 🚨 중요: 원본 필드값을 절대 변경하지 않고 그대로 보존
-        base_fields = [
-            "incident_id", "service_name", "effect", "symptom", "repair_notice",
-            "error_date", "week", "daynight", "root_cause", "incident_repair",
-            "incident_plan", "cause_type", "done_type", "incident_grade",
-            "owner_depart", "year", "month"
-        ]
-        
-        doc = {}
-        
-        # 각 필드를 원본 그대로 보존
-        for field in base_fields:
-            original_value = result.get(field)
-            if original_value is not None:
-                # 원본 값을 그대로 유지 (빈 문자열도 그대로)
-                doc[field] = original_value
-            else:
-                # None인 경우에만 빈 문자열로 설정 (절대 '해당 정보없음' 등 생성하지 않음)
-                doc[field] = ""
-        
-        # error_time은 숫자 변환만 수행 (원본 보존)
-        doc["error_time"] = self._parse_error_time(result.get("error_time", 0))
-        
-        # 검색 관련 메타데이터 추가
-        doc.update({
-            "score": result.get("@search.score") or 0.0,
-            "reranker_score": result.get("@search.reranker_score") or 0.0,
-            "captions": result.get("@search.captions", []),
-            "highlights": result.get("@search.highlights", {}),
-            "_data_integrity_preserved": True,  # 무결성 보장 마커
-            "_original_search_result": True     # 원본 검색 결과 마커
-        })
-        
-        return doc
-
-    def _parse_error_time(self, error_time_raw):
-        """error_time 파싱 - RAG 데이터 무결성 보장"""
-        try:
-            if error_time_raw is None:
-                return 0
-            if isinstance(error_time_raw, str):
-                cleaned = error_time_raw.strip()
-                if not cleaned or cleaned.lower() in ['null', 'none', 'n/a', '']:
-                    return 0
-                return int(float(cleaned))
-            return int(error_time_raw)
-        except (ValueError, TypeError):
-            # 파싱 실패시 0 반환 (원본 데이터 손실 방지)
-            print(f"WARNING: Failed to parse error_time: {error_time_raw}, using 0")
-            return 0
-    
     def _apply_rrf_scoring_and_normalization(self, documents, vector_config):
-        """RRF 스코어링 및 정규화 - 원본 데이터 보존"""
+        """RRF (Reciprocal Rank Fusion) 스코어링 및 정규화"""
         if not documents:
             return documents
         
         try:
-            # 각 문서의 하이브리드 스코어 계산 (원본 필드값은 절대 변경하지 않음)
+            # 각 문서의 하이브리드 스코어 계산
             for i, doc in enumerate(documents):
                 search_score = doc.get('score', 0) or 0
                 reranker_score = doc.get('reranker_score', 0) or 0
@@ -375,15 +328,14 @@ class SearchManagerLocal:
                     (rrf_score * 0.1)  # RRF 보너스
                 )
                 
-                # 스코어 정보 저장 (원본 데이터와 분리)
+                # 스코어 정보 저장
                 score_info = {
                     'hybrid_score': hybrid_score,
                     'rrf_score': rrf_score,
                     'normalized_search_score': normalized_search,
                     'normalized_reranker_score': normalized_reranker,
                     'vector_weight_used': vector_weight,
-                    'text_weight_used': text_weight,
-                    '_scoring_applied': True
+                    'text_weight_used': text_weight
                 }
                 doc.update(score_info)
             
@@ -465,7 +417,7 @@ class SearchManagerLocal:
                 else f'{service_query} AND (*)')
     
     def _build_basic_query(self, query, target_service_name):
-        """기본 검색 쿼리 구성"""
+        """기본 검색 쿼리 구성 (벡터 우선 모드용)"""
         basic_query = query
         
         # 서비스명만 추가
@@ -476,16 +428,35 @@ class SearchManagerLocal:
             basic_query = f'({service_query}) AND ({query})' if query else service_query
         
         return basic_query
-
-    def _convert_to_query_type_enum(self, query_type_str):
-        """문자열 쿼리 타입을 QueryType enum으로 변환"""
-        mapping = {
-            'repair': QueryType.REPAIR,
-            'inquiry': QueryType.INQUIRY, 
-            'statistics': QueryType.STATISTICS,
-            'default': QueryType.DEFAULT
-        }
-        return mapping.get(query_type_str, QueryType.DEFAULT)
+    
+    def _convert_search_result_to_document(self, result):
+        """검색 결과를 문서 형식으로 변환"""
+        base_fields = ["incident_id", "service_name", "effect", "symptom", "repair_notice",
+                      "error_date", "week", "daynight", "root_cause", "incident_repair",
+                      "incident_plan", "cause_type", "done_type", "incident_grade",
+                      "owner_depart", "year", "month"]
+        
+        doc = {field: result.get(field, "") for field in base_fields}
+        doc.update({
+            "error_time": self._parse_error_time(result.get("error_time", 0)),
+            "score": result.get("@search.score") or 0.0,
+            "reranker_score": result.get("@search.reranker_score") or 0.0,
+            "captions": result.get("@search.captions", []),
+            "highlights": result.get("@search.highlights", {})
+        })
+        
+        return doc
+    
+    def _parse_error_time(self, error_time_raw):
+        """error_time 파싱 헬퍼"""
+        try:
+            if error_time_raw is None:
+                return 0
+            if isinstance(error_time_raw, str):
+                return int(float(error_time_raw.strip())) if error_time_raw.strip() else 0
+            return int(error_time_raw)
+        except (ValueError, TypeError):
+            return 0
     
     def _fallback_to_original_search(self, query, target_service_name, query_type, top_k):
         """원래 검색 방식으로 fallback"""
@@ -505,7 +476,7 @@ class SearchManagerLocal:
             return default_value
     
     def extract_incident_grade_from_query(self, query):
-        """쿼리에서 장애등급 정보 추출"""
+        """쿼리에서 장애등급 정보 추출 - filter_manager와 연동"""
         grade_info = {'has_grade_query': False, 'specific_grade': None, 'grade_keywords': []}
         
         if not query:
@@ -934,7 +905,7 @@ class SearchManagerLocal:
         return min(search_score, 1.0)
 
     def _extract_year_month_from_query_unified(self, query):
-        """통합된 연도와 월 조건 추출"""
+        """통합된 연도와 월 조건 추출 - 범위와 개별 월을 동일하게 처리"""
         time_info = {'year': None, 'months': []}
         if not query:
             return time_info
@@ -1121,3 +1092,6 @@ class SearchManagerLocal:
         filtered_docs.sort(key=lambda d: next((v for k, v in grade_order.items() 
                                              if k in d.get('incident_grade', '')), 999))
         return filtered_docs
+
+    # 중복된 필터링 메서드들 제거 - filter_manager에서 통합 관리하므로 삭제
+    # advanced_filter_documents_for_accuracy, simple_filter_documents_for_coverage는 제거
