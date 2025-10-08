@@ -526,41 +526,43 @@ class QueryProcessorLocal:
             
             # 컨텍스트 구성 - 원본 데이터만 사용
             context_parts = [f"""전체 문서 수: {len(processing_documents)}건
-⚠️ 중요: 아래 모든 필드값은 원본 RAG 데이터이므로 절대 변경하거나 요약하지 마세요."""]
+    ⚠️ 중요: 아래 모든 필드값은 원본 RAG 데이터이므로 절대 변경하거나 요약하지 마세요."""]
             
             for i, doc in enumerate(processing_documents[:30]):
-                # 원본 필드값만 사용하여 컨텍스트 구성
+                # 🔧 수정: incident_plan, done_type 필드 추가
                 context_parts.append(f"""문서 {i+1}:
-장애 ID: {doc.get('incident_id', '')}
-서비스명: {doc.get('service_name', '')}
-장애시간: {doc.get('error_time', 0)}분
-장애현상: {doc.get('symptom', '')}
-장애원인: {doc.get('root_cause', '')}
-복구방법: {doc.get('incident_repair', '')}
-발생일자: {doc.get('error_date', '')}
-장애등급: {doc.get('incident_grade', '')}
-담당부서: {doc.get('owner_depart', '')}
-시간대: {doc.get('daynight', '')}
-요일: {doc.get('week', '')}
-""")
+    장애 ID: {doc.get('incident_id', '')}
+    서비스명: {doc.get('service_name', '')}
+    장애시간: {doc.get('error_time', 0)}분
+    장애현상: {doc.get('symptom', '')}
+    장애원인: {doc.get('root_cause', '')}
+    복구방법: {doc.get('incident_repair', '')}
+    개선계획: {doc.get('incident_plan', '')}
+    처리유형: {doc.get('done_type', '')}
+    발생일자: {doc.get('error_date', '')}
+    장애등급: {doc.get('incident_grade', '')}
+    담당부서: {doc.get('owner_depart', '')}
+    시간대: {doc.get('daynight', '')}
+    요일: {doc.get('week', '')}
+    """)
             
             # 데이터 무결성 보장 프롬프트 사용
             integrity_prompt = self._get_data_integrity_prompt(query_type)
             
             user_prompt = f"""{integrity_prompt}
 
-**원본 RAG 데이터 (절대 변경 금지):**
-{chr(10).join(context_parts)}
+    **원본 RAG 데이터 (절대 변경 금지):**
+    {chr(10).join(context_parts)}
 
-**사용자 질문:** {final_query}
+    **사용자 질문:** {final_query}
 
-**응답 지침:**
-1. 위 원본 데이터의 모든 필드값을 정확히 그대로 출력하세요
-2. 절대 요약하거나 변경하지 마세요
-3. '해당 정보없음' 같은 임의의 값을 생성하지 마세요
-4. 빈 필드는 빈 상태로 두거나 원본 그대로 출력하세요
+    **응답 지침:**
+    1. 위 원본 데이터의 모든 필드값을 정확히 그대로 출력하세요
+    2. 절대 요약하거나 변경하지 마세요
+    3. '해당 정보없음' 같은 임의의 값을 생성하지 마세요
+    4. 빈 필드는 빈 상태로 두거나 원본 그대로 출력하세요
 
-답변:"""
+    답변:"""
 
             max_tokens = 2500 if query_type == 'inquiry' else 3000 if query_type == 'repair' else 1500
             response = self.azure_openai_client.chat.completions.create(
