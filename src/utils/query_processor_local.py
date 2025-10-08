@@ -2378,3 +2378,85 @@ class QueryProcessorLocal:
             import traceback
             traceback.print_exc()
             return f"통계 조회 중 오류가 발생했습니다: {str(e)}"
+
+    def _calculate_statistics_with_integrity(self, documents, query):
+        """문서 기반 통계 계산 - 데이터 무결성 보장"""
+        try:
+            # 무결성 보장 통계 계산기를 사용하여 통계 계산
+            stats = self.statistics_calculator.calculate_comprehensive_statistics(query, documents, "statistics")
+            
+            if not stats or stats.get('total_count', 0) == 0:
+                return "조건에 맞는 장애 데이터를 찾을 수 없습니다."
+            
+            # 통계 응답 생성
+            response_lines = []
+            
+            # 기본 통계 정보
+            total_count = stats.get('total_count', 0)
+            is_error_time = stats.get('is_error_time_query', False)
+            value_type = "장애시간(분)" if is_error_time else "발생건수"
+            
+            response_lines.append(f"## 📊 통계 요약")
+            response_lines.append(f"**총 {value_type}: {total_count}**")
+            
+            # 연도별 통계
+            if stats.get('yearly_stats'):
+                response_lines.append(f"\n## 📈 연도별 통계")
+                for year, count in sorted(stats['yearly_stats'].items()):
+                    response_lines.append(f"* **{year}: {count}건**")
+                response_lines.append(f"\n**💡 총 합계: {sum(stats['yearly_stats'].values())}건**")
+            
+            # 월별 통계
+            if stats.get('monthly_stats'):
+                response_lines.append(f"\n## 📈 월별 통계")
+                sorted_months = sorted(stats['monthly_stats'].items(), key=lambda x: int(x[0].replace('월', '')))
+                for month, count in sorted_months:
+                    response_lines.append(f"* **{month}: {count}건**")
+                response_lines.append(f"\n**💡 총 합계: {sum(stats['monthly_stats'].values())}건**")
+            
+            # 등급별 통계
+            if stats.get('grade_stats'):
+                response_lines.append(f"\n## ⚠️ 장애등급별 통계")
+                grade_order = ['1등급', '2등급', '3등급', '4등급']
+                for grade in grade_order:
+                    if grade in stats['grade_stats']:
+                        response_lines.append(f"* **{grade}: {stats['grade_stats'][grade]}건**")
+                response_lines.append(f"\n**💡 총 합계: {sum(stats['grade_stats'].values())}건**")
+            
+            # 서비스별 통계 (상위 10개)
+            if stats.get('service_stats'):
+                response_lines.append(f"\n## 💻 서비스별 통계 (상위 10개)")
+                sorted_services = sorted(stats['service_stats'].items(), key=lambda x: x[1], reverse=True)[:10]
+                for service, count in sorted_services:
+                    response_lines.append(f"* **{service}: {count}건**")
+                response_lines.append(f"\n**💡 상위 10개 합계: {sum(count for _, count in sorted_services)}건**")
+            
+            # 부서별 통계 (상위 10개)
+            if stats.get('department_stats'):
+                response_lines.append(f"\n## 🏢 부서별 통계 (상위 10개)")
+                sorted_departments = sorted(stats['department_stats'].items(), key=lambda x: x[1], reverse=True)[:10]
+                for dept, count in sorted_departments:
+                    response_lines.append(f"* **{dept}: {count}건**")
+                response_lines.append(f"\n**💡 상위 10개 합계: {sum(count for _, count in sorted_departments)}건**")
+            
+            # 시간대별 통계
+            if stats.get('time_stats', {}).get('daynight'):
+                response_lines.append(f"\n## 🕘 시간대별 통계")
+                for time, count in stats['time_stats']['daynight'].items():
+                    response_lines.append(f"* **{time}: {count}건**")
+                response_lines.append(f"\n**💡 총 합계: {sum(stats['time_stats']['daynight'].values())}건**")
+            
+            # 요일별 통계
+            if stats.get('time_stats', {}).get('week'):
+                response_lines.append(f"\n## 📅 요일별 통계")
+                for day, count in stats['time_stats']['week'].items():
+                    response_lines.append(f"* **{day}: {count}건**")
+                response_lines.append(f"\n**💡 총 합계: {sum(stats['time_stats']['week'].values())}건**")
+            
+            return '\n'.join(response_lines)
+            
+        except Exception as e:
+            print(f"ERROR: 문서 기반 통계 계산 실패: {e}")
+            import traceback
+            traceback.print_exc()
+            return f"통계 계산 중 오류가 발생했습니다: {str(e)}"        
