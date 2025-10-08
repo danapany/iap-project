@@ -310,14 +310,14 @@ Case2. (동일한 형식으로 최대 5개까지 제공)
 
 1. 장애 ID: [incident_id]
    * 서비스명: [service_name]
-   * 장애등급: [incident_grade] (등급 조건 포함시 **굵게 강조**)
-   * **발생일자: [error_date] (발생일자 정렬시 **굵게 강조**)**
-   * 발생시간대: [daynight] (시간대 조건 포함시 **굵게 강조**)
-   * 발생요일: [week] (요일 조건 포함시 **굵게 강조**)
-   * 담당부서: [owner_depart] (부서 조건 포함시 **굵게 강조**)
-   * **장애시간: [error_time]분 (장애시간 정렬시 **굵게 강조**)**
-   * **장애현상: [symptom]
-   * **장애원인: [root_cause 요약]
+   * 장애등급: [incident_grade]
+   * 발생일자: [error_date]
+   * 발생시간대: [daynight]
+   * 발생요일: [week] 
+   * 담당부서: [owner_depart] 
+   * 장애시간: [error_time]분
+   * 장애현상: [symptom]
+   * 장애원인: [root_cause 요약]
 
 [조건에 맞는 장애 건에 대해 위 형식으로 표시]
 
