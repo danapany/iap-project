@@ -1220,9 +1220,72 @@ class QueryProcessorLocal:
         return mapping.get(query_type_str, QueryType.DEFAULT)
 
     def _generate_statistics_response_from_db(self, query, documents):
-        """DB 직접 조회를 통한 정확한 통계 응답 생성"""
+        """DB 직접 조회를 통한 정확한 통계 응답 생성 - 서비스명 검증 강화"""
         try:
+            # 서비스명 추출 및 검증
+            extracted_service_name = self.search_manager.extract_service_name_from_query(query)
+            
+            if self.debug_mode:
+                print(f"\n{'='*80}")
+                print(f"📊 STATISTICS GENERATION WITH SERVICE VERIFICATION")
+                print(f"{'='*80}")
+                print(f"Original Query: '{query}'")
+                print(f"Extracted Service Name: '{extracted_service_name}'")
+                print(f"{'='*80}\n")
+            
+            # 통계 조회 전 서비스명 검증
+            if extracted_service_name:
+                # DB에서 해당 서비스명으로 실제 데이터가 있는지 사전 검증
+                verification_result = self._verify_service_name_in_db(extracted_service_name)
+                
+                if self.debug_mode:
+                    print(f"🔍 Service name verification result: {verification_result}")
+                
+                if not verification_result['exists']:
+                    if self.debug_mode:
+                        print(f"⚠️ WARNING: Service '{extracted_service_name}' not found in DB")
+                        print(f"Available similar services: {verification_result['similar_services']}")
+                    
+                    # 유사한 서비스명 제안 또는 전체 조회로 변경
+                    if verification_result['similar_services']:
+                        suggested_service = verification_result['similar_services'][0]
+                        if self.debug_mode:
+                            print(f"💡 Using similar service: '{suggested_service}'")
+                        extracted_service_name = suggested_service
+                    else:
+                        if self.debug_mode:
+                            print(f"❌ No similar services found, proceeding without service filter")
+                        extracted_service_name = None
+            
+            # 통계 조회 실행
             db_statistics = self.statistics_db_manager.get_statistics(query)
+            
+            # 통계 결과 검증 - 서비스명이 있는데 전체 데이터가 나온 경우 감지
+            if extracted_service_name and db_statistics:
+                total_without_service = self._get_total_count_without_service_filter(query)
+                current_total = db_statistics.get('total_value', 0)
+                
+                if self.debug_mode:
+                    print(f"\n🔍 STATISTICS VERIFICATION:")
+                    print(f"Expected service filter: '{extracted_service_name}'")
+                    print(f"Current total: {current_total}")
+                    print(f"Total without service filter: {total_without_service}")
+                
+                # 서비스 필터링이 제대로 되지 않은 경우 감지 (전체 데이터와 동일한 경우)
+                if current_total == total_without_service and total_without_service > 0:
+                    if self.debug_mode:
+                        print(f"🚨 DETECTED: Service filtering may not be working properly!")
+                        print(f"Attempting manual service filtering...")
+                    
+                    # 수동으로 서비스명 조건 추가하여 재조회
+                    modified_query = self._add_explicit_service_condition(query, extracted_service_name)
+                    if self.debug_mode:
+                        print(f"Modified query with explicit service condition: '{modified_query}'")
+                    
+                    db_statistics = self.statistics_db_manager.get_statistics(modified_query)
+                    
+                    if self.debug_mode:
+                        print(f"Re-queried total: {db_statistics.get('total_value', 0)}")
             
             if self.debug_mode and db_statistics.get('debug_info'):
                 debug_info = db_statistics['debug_info']
@@ -1234,7 +1297,7 @@ class QueryProcessorLocal:
                     st.markdown("### 💾 실행된 SQL 쿼리")
                     st.code(debug_info['sql_query'], language='sql')
                     
-                    st.markdown("### 🔢 SQL 파라미터")
+                    st.markdown("### 📢 SQL 파라미터")
                     st.json(list(debug_info['sql_params']))
                     
                     st.markdown("### 📊 쿼리 결과")
@@ -1279,87 +1342,87 @@ class QueryProcessorLocal:
             query_scope = self._determine_query_scope(conditions)
             
             system_prompt = f"""당신은 IT 시스템 장애 통계 전문가입니다.
-사용자의 질문 범위를 정확히 파악하여 **요청된 범위의 데이터만** 답변하세요.
+    사용자의 질문 범위를 정확히 파악하여 **요청된 범위의 데이터만** 답변하세요.
 
-## 🎯 사용자 요청 범위
-{query_scope}
+    ## 🎯 사용자 요청 범위
+    {query_scope}
 
-## 📊 가독성 있는 통계 표시 형식 지침
-사용자가 요청한 통계 유형에 따라 다음 형식을 정확히 따르세요:
+    ## 📊 가독성 있는 통계 표시 형식 지침
+    사용자가 요청한 통계 유형에 따라 다음 형식을 정확히 따르세요:
 
-**연도별 통계:**
-* **2020년: 37건**
-* **2021년: 58건**
-* **2022년: 60건**
-**💡 총 합계: 316건**
+    **연도별 통계:**
+    * **2020년: 37건**
+    * **2021년: 58건**
+    * **2022년: 60건**
+    **💡 총 합계: 316건**
 
-**월별 통계:**
-* **1월: X건**
-* **2월: Y건**
-* **3월: Z건**
-**💡 총 합계: N건**
+    **월별 통계:**
+    * **1월: X건**
+    * **2월: Y건**
+    * **3월: Z건**
+    **💡 총 합계: N건**
 
-**요일별 통계:**
-* **월요일: X건**
-* **화요일: Y건**
-* **수요일: Z건**
-**💡 총 합계: N건**
+    **요일별 통계:**
+    * **월요일: X건**
+    * **화요일: Y건**
+    * **수요일: Z건**
+    **💡 총 합계: N건**
 
-**원인유형별 통계:**
-* **제품결함: X건**
-* **수행 실수: Y건**
-* **환경설정오류: Z건**
-**💡 총 합계: N건**
+    **원인유형별 통계:**
+    * **제품결함: X건**
+    * **수행 실수: Y건**
+    * **환경설정오류: Z건**
+    **💡 총 합계: N건**
 
-**서비스별 통계:**
-* **ERP: X건**
-* **KOS-오더: Y건**
-* **API_Link: Z건**
-**💡 총 합계: N건**
+    **서비스별 통계:**
+    * **ERP: X건**
+    * **KOS-오더: Y건**
+    * **API_Link: Z건**
+    **💡 총 합계: N건**
 
-**부서별 통계:**
-* **재무DX개발팀: X건**
-* **시스템운영팀: Y건**
-* **보안침해대응팀: Z건**
-**💡 총 합계: N건**
+    **부서별 통계:**
+    * **재무DX개발팀: X건**
+    * **시스템운영팀: Y건**
+    * **보안침해대응팀: Z건**
+    **💡 총 합계: N건**
 
-## 절대 규칙
-1. **사용자가 요청한 범위의 데이터만 답변하세요**
-2. 요청하지 않은 연도나 기간의 데이터는 절대 포함하지 마세요
-3. 제공된 통계 수치를 절대 변경하지 마세요
-4. 추가 계산이나 추정을 하지 마세요
-5. **리스트 형태로 통계를 표시하고 총 합계를 명확히 표시하세요**
-6. **근거 문서 내역은 절대 답변에 포함하지 마세요**
+    ## 절대 규칙
+    1. **사용자가 요청한 범위의 데이터만 답변하세요**
+    2. 요청하지 않은 연도나 기간의 데이터는 절대 포함하지 마세요
+    3. 제공된 통계 수치를 절대 변경하지 마세요
+    4. 추가 계산이나 추정을 하지 마세요
+    5. **리스트 형태로 통계를 표시하고 총 합계를 명확히 표시하세요**
+    6. **근거 문서 내역은 절대 답변에 포함하지 마세요**
 
-## 응답 형식
-1. **📊 {query_scope} 통계 요약** (2-3문장)
-2. **📈 상세 통계** (위 형식에 따른 리스트 표시)
+    ## 응답 형식
+    1. **📊 {query_scope} 통계 요약** (2-3문장)
+    2. **📈 상세 통계** (위 형식에 따른 리스트 표시)
 
-답변은 명확하고 구조화된 형식으로 작성하되, 제공된 수치를 정확히 인용하세요.
-근거 문서 내역은 별도로 처리되므로 답변에 포함하지 마세요.
-"""
+    답변은 명확하고 구조화된 형식으로 작성하되, 제공된 수치를 정확히 인용하세요.
+    근거 문서 내역은 별도로 처리되므로 답변에 포함하지 마세요.
+    """
 
             user_prompt = f"""## 사용자 질문
-{query}
+    {query}
 
-## 요청 범위: {query_scope}
+    ## 요청 범위: {query_scope}
 
-## 정확하게 계산된 통계 데이터 ({query_scope} 범위만)
-{statistics_summary}
+    ## 정확하게 계산된 통계 데이터 ({query_scope} 범위만)
+    {statistics_summary}
 
-위 데이터를 바탕으로 **{query_scope} 범위만** 명확하고 친절하게 답변하세요.
-반드시 다음 구조를 따르세요:
+    위 데이터를 바탕으로 **{query_scope} 범위만** 명확하고 친절하게 답변하세요.
+    반드시 다음 구조를 따르세요:
 
-1. **📊 {query_scope} 통계 요약**
-- 핵심 수치와 인사이트 (2-3문장)
+    1. **📊 {query_scope} 통계 요약**
+    - 핵심 수치와 인사이트 (2-3문장)
 
-2. **📈 상세 통계**
-[위에서 지정한 리스트 형식에 따라 표시]
-**💡 총 합계: [전체 합계]**
+    2. **📈 상세 통계**
+    [위에서 지정한 리스트 형식에 따라 표시]
+    **💡 총 합계: [전체 합계]**
 
-⚠️ 중요: 요청하지 않은 연도나 기간의 통계는 절대 포함하지 마세요.
-근거 문서 내역은 답변에 포함하지 마세요.
-"""
+    ⚠️ 중요: 요청하지 않은 연도나 기간의 통계는 절대 포함하지 마세요.
+    근거 문서 내역은 답변에 포함하지 마세요.
+    """
 
             response = self.azure_openai_client.chat.completions.create(
                 model=self.model_name,
@@ -1419,7 +1482,7 @@ class QueryProcessorLocal:
                                 summary_line += f" | {'/'.join(time_info)}"
                             
                             if symptom:
-                                summary_line += f"\n   🔍 *{symptom}*"
+                                summary_line += f"\n   📝 *{symptom}*"
                             
                             st.markdown(summary_line)
                             
@@ -1483,6 +1546,63 @@ class QueryProcessorLocal:
             import traceback
             traceback.print_exc()
             return f"통계 조회 중 오류가 발생했습니다: {str(e)}"
+
+    def _verify_service_name_in_db(self, service_name):
+        """DB에서 서비스명 존재 여부 및 유사 서비스 검증"""
+        try:
+            # 정확한 매치 확인
+            exact_query = f"SELECT DISTINCT service_name FROM incidents WHERE service_name = ? LIMIT 1"
+            exact_result = self.statistics_db_manager._execute_query(exact_query, (service_name,))
+            
+            if exact_result:
+                return {'exists': True, 'exact_match': service_name, 'similar_services': []}
+            
+            # 부분 매치 확인
+            partial_query = f"SELECT DISTINCT service_name FROM incidents WHERE service_name LIKE ? LIMIT 5"
+            partial_result = self.statistics_db_manager._execute_query(partial_query, (f"%{service_name}%",))
+            
+            similar_services = [row['service_name'] for row in partial_result]
+            
+            return {
+                'exists': len(similar_services) > 0,
+                'exact_match': None,
+                'similar_services': similar_services
+            }
+            
+        except Exception as e:
+            print(f"ERROR: Service name verification failed: {e}")
+            return {'exists': False, 'exact_match': None, 'similar_services': []}
+
+    def _get_total_count_without_service_filter(self, query):
+        """서비스 필터 없이 전체 건수 조회 (검증용)"""
+        try:
+            # 서비스명을 제외한 조건으로 쿼리 생성
+            test_conditions = self.statistics_db_manager.parse_statistics_query(query)
+            test_conditions['service_name'] = None  # 서비스명 조건 제거
+            
+            sql_query, params, _ = self.statistics_db_manager.build_sql_query(test_conditions)
+            results = self.statistics_db_manager._execute_query(sql_query, params)
+            
+            if results and not test_conditions['group_by']:
+                return results[0].get('total_value', 0)
+            elif results:
+                return sum(row.get('total_value', 0) for row in results)
+            
+            return 0
+        except:
+            return 0
+
+    def _add_explicit_service_condition(self, query, service_name):
+        """쿼리에 명시적으로 서비스명 조건 추가"""
+        if not service_name:
+            return query
+        
+        # 이미 서비스명이 포함되어 있는지 확인
+        if service_name.lower() in query.lower():
+            return query
+        
+        # 서비스명을 쿼리 앞에 추가
+        return f"{service_name} {query}"
     
     def _filter_statistics_by_conditions(self, db_stats, conditions):
         """조건에 맞는 통계만 필터링"""
@@ -2460,3 +2580,70 @@ class QueryProcessorLocal:
             import traceback
             traceback.print_exc()
             return f"통계 계산 중 오류가 발생했습니다: {str(e)}"        
+
+    def _verify_service_name_in_db(self, service_name):
+        """DB에서 서비스명 존재 여부 및 유사 서비스 검증"""
+        try:
+            # 정확한 매치 확인
+            exact_query = f"SELECT DISTINCT service_name FROM incidents WHERE service_name = ? LIMIT 1"
+            exact_result = self.statistics_db_manager._execute_query(exact_query, (service_name,))
+            
+            if exact_result:
+                return {'exists': True, 'exact_match': service_name, 'similar_services': []}
+            
+            # 부분 매치 확인
+            partial_query = f"SELECT DISTINCT service_name FROM incidents WHERE service_name LIKE ? LIMIT 5"
+            partial_result = self.statistics_db_manager._execute_query(partial_query, (f"%{service_name}%",))
+            
+            similar_services = [row['service_name'] for row in partial_result]
+            
+            return {
+                'exists': len(similar_services) > 0,
+                'exact_match': None,
+                'similar_services': similar_services
+            }
+            
+        except Exception as e:
+            print(f"ERROR: Service name verification failed: {e}")
+            return {'exists': False, 'exact_match': None, 'similar_services': []}
+
+    def _get_total_count_without_service_filter(self, query):
+        """서비스 필터 없이 전체 건수 조회 (검증용)"""
+        try:
+            # 서비스명을 제외한 조건으로 쿼리 생성
+            test_conditions = self.statistics_db_manager.parse_statistics_query(query)
+            test_conditions['service_name'] = None  # 서비스명 조건 제거
+            
+            sql_query, params, _ = self.statistics_db_manager.build_sql_query(test_conditions)
+            results = self.statistics_db_manager._execute_query(sql_query, params)
+            
+            if results and not test_conditions['group_by']:
+                return results[0].get('total_value', 0)
+            elif results:
+                return sum(row.get('total_value', 0) for row in results)
+            
+            return 0
+        except:
+            return 0
+
+    def _add_explicit_service_condition(self, query, service_name):
+        """쿼리에 명시적으로 서비스명 조건 추가 - 안전한 문자열 처리"""
+        if not service_name:
+            return query
+        
+        # service_name이 튜플인 경우 처리
+        if isinstance(service_name, tuple):
+            service_name = service_name[0] if service_name else ""
+        
+        # 문자열로 변환 및 정리
+        service_name = str(service_name).strip()
+        
+        if not service_name:
+            return query
+        
+        # 이미 서비스명이 포함되어 있는지 확인
+        if service_name.lower() in query.lower():
+            return query
+        
+        # 서비스명을 쿼리 앞에 추가
+        return f"{service_name} {query}"

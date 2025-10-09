@@ -123,7 +123,7 @@ class StatisticsDBManager:
         return re.sub(r'등급$', '', grade_input.strip())
     
     def parse_statistics_query(self, query: str) -> Dict[str, Any]:
-        """자연어 쿼리에서 통계 조건 추출 - 독립적 조건 추출로 수정"""
+        """자연어 쿼리에서 통계 조건 추출 - 서비스명 추출 개선"""
         conditions = {
             'year': None, 'months': [], 'service_name': None, 'daynight': None, 'week': None,
             'incident_grade': None, 'owner_depart': None, 'cause_type': None, 'group_by': [],
@@ -195,12 +195,17 @@ class StatisticsDBManager:
                     conditions['months'] = valid_months
                     if self.debug_mode: print(f"✓ Extracted months: {conditions['months']}")
         
-        # 5. 원인유형 추출
+        # 5. 서비스명 추출 - 개선된 패턴
+        conditions['service_name'] = self._extract_service_name_enhanced(original_query)
+        if conditions['service_name'] and self.debug_mode:
+            print(f"✓ Extracted service_name: '{conditions['service_name']}'")
+        
+        # 6. 원인유형 추출
         conditions['cause_type'] = self._match_cause_type(original_query)
         if conditions['cause_type'] and self.debug_mode:
             print(f"✓ Extracted cause_type: {conditions['cause_type']}")
         
-        # 6. 요일 추출
+        # 7. 요일 추출
         week_patterns = {
             '월': [r'\b월요일\b', r'\b월요\b'], '화': [r'\b화요일\b', r'\b화요\b'], '수': [r'\b수요일\b', r'\b수요\b'], 
             '목': [r'\b목요일\b', r'\b목요\b'], '금': [r'\b금요일\b', r'\b금요\b'], '토': [r'\b토요일\b', r'\b토요\b'],
@@ -217,7 +222,7 @@ class StatisticsDBManager:
         if re.search(r'\b평일\b', normalized_query): conditions['week'] = '평일'
         elif re.search(r'\b주말\b', normalized_query): conditions['week'] = '주말'
         
-        # 7. 시간대 추출
+        # 8. 시간대 추출
         daynight_patterns = {
             '야간': [r'\b야간\b', r'\b밤\b', r'\b새벽\b', r'\b심야\b'],
             '주간': [r'\b주간\b', r'\b낮\b', r'\b오전\b', r'\b오후\b', r'\b업무시간\b']
@@ -228,21 +233,6 @@ class StatisticsDBManager:
                 conditions['daynight'] = daynight_val
                 if self.debug_mode: print(f"✓ Extracted daynight: {conditions['daynight']}")
                 break
-        
-        # 8. 서비스명 추출
-        service_patterns = [
-            r'([A-Z가-힣][A-Z가-힣0-9\s]{1,20}(?:시스템|서비스|포털|앱|APP))',
-            r'\b([A-Z]{2,10})\b(?=.*(장애|건수|통계|현황|몇))',
-            r'(\w+)\s*(?:서비스|시스템).*?(?:장애|건수|통계|현황|몇)',
-        ]
-        
-        for pattern in service_patterns:
-            if service_match := re.search(pattern, original_query):
-                service_name = service_match.group(1).strip()
-                if service_name not in ['SELECT', 'FROM', 'WHERE', 'AND', 'OR', '년', '월', '일']:
-                    conditions['service_name'] = service_name
-                    if self.debug_mode: print(f"✓ Extracted service_name: {service_name}")
-                    break
         
         # 9. 장애시간 쿼리 여부
         error_time_keywords = [
@@ -296,7 +286,71 @@ class StatisticsDBManager:
             print(f"{'='*60}\n")
         
         return conditions
-    
+
+    def _extract_service_name_enhanced(self, query: str) -> Optional[str]:
+        """향상된 서비스명 추출 로직 - 튜플 오류 수정"""
+        if not query:
+            return None
+            
+        if self.debug_mode:
+            print(f"\n🔍 Enhanced service name extraction from: '{query}'")
+        
+        # 1단계: 직접적인 서비스명 패턴 (튜플 처리 개선)
+        service_patterns = [
+            # "생체인증플랫폼", "네트워크보안범위관리" 등을 위한 긴 서비스명 패턴
+            r'([가-힣]{4,20}(?:플랫폼|시스템|서비스|포털|앱|APP|관리|센터))\s*(?:년도별|연도별|월별|장애|건수|통계|현황|몇|개수)',
+            
+            # 기존 패턴들
+            r'([A-Z가-힣][A-Z가-힣0-9\s]{1,20}(?:시스템|서비스|포털|앱|APP))\s*(?:년도별|연도별|월별|장애|건수|통계|현황|몇|개수)',
+            r'\b([A-Z]{2,10})\b(?=.*(장애|건수|통계|현황|몇))',
+            r'(\w+)\s*(?:서비스|시스템).*?(?:장애|건수|통계|현황|몇)',
+            
+            # 따옴표나 괄호로 감싸진 서비스명
+            r'["\']([A-Za-z가-힣][A-Za-z0-9가-힣\s]{1,30})["\']',
+            r'\(([A-Za-z가-힣][A-Za-z0-9가-힣\s]{1,30})\)',
+            
+            # 쿼리 맨 앞에 오는 서비스명
+            r'^([A-Za-z가-힣][A-Za-z0-9가-힣\s\-_]{2,20})\s+(?:년도별|연도별|월별|장애|건수|통계|현황|몇|개수)',
+            
+            # 범용 패턴 (마지막 우선순위)
+            r'\b([A-Za-z가-힣][A-Za-z0-9가-힣\-_]{2,}(?:\s+[A-Za-z0-9가-힣\-_]+)*)\b(?=.*(?:장애|건수|통계|현황|몇))'
+        ]
+        
+        for i, pattern in enumerate(service_patterns):
+            try:
+                matches = re.findall(pattern, query, re.IGNORECASE)
+                if matches:
+                    for match in matches:
+                        # 튜플인 경우 첫 번째 요소 사용, 문자열인 경우 그대로 사용
+                        if isinstance(match, tuple):
+                            service_name = match[0].strip() if match[0] else ""
+                        else:
+                            service_name = match.strip()
+                        
+                        # 제외할 키워드들
+                        exclude_keywords = [
+                            'SELECT', 'FROM', 'WHERE', 'AND', 'OR', '년', '월', '일', '등급',
+                            '장애', '건수', '통계', '현황', '몇', '개수', '발생', '알려', '보여',
+                            '연도별', '년도별', '월별', '요일별', '시간대별', '부서별'
+                        ]
+                        
+                        if (len(service_name) >= 2 and 
+                            service_name not in exclude_keywords and
+                            not service_name.isdigit()):
+                            
+                            if self.debug_mode:
+                                print(f"✓ Service name found with pattern {i+1}: '{service_name}'")
+                            return service_name
+            except Exception as e:
+                if self.debug_mode:
+                    print(f"Error in pattern {i+1}: {e}")
+                continue
+        
+        if self.debug_mode:
+            print(f"✗ No service name found in query")
+        
+        return None
+
     def build_sql_query(self, conditions: Dict[str, Any]) -> tuple:
         """조건에 따른 SQL 쿼리 생성 - 정규화된 데이터 형식 지원"""
         # SELECT 절

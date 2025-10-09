@@ -1,6 +1,8 @@
 import streamlit as st
 import re
 import math
+import os
+from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
 from config.settings_local import AppConfigLocal
 from utils.filter_manager import DocumentFilterManager, FilterConditions, QueryType
@@ -26,6 +28,10 @@ class SearchManagerLocal:
         self._cache_loaded = False
         self._effect_patterns_cache = None
         self._effect_cache_loaded = False
+        
+        # 파일 기반 서비스명 캐시 추가
+        self._service_names_file_cache = None
+        self._service_file_cache_loaded = False
         
         # RRF 파라미터
         self.rrf_k = getattr(config, 'rrf_k', 60)
@@ -69,6 +75,108 @@ class SearchManagerLocal:
             'SSL': ['ssl', 'https', 'Secure Sockets Layer', '보안소켓계층'],
             'URL': ['url', 'link', '링크', 'Uniform Resource Locator']
         }
+
+    def _load_service_names_from_file(self):
+        """conf/service_names.txt 파일에서 서비스명 목록 로드"""
+        try:
+            # 프로젝트 루트에서 conf/service_names.txt 경로 찾기
+            current_dir = Path(__file__).parent
+            config_file_paths = [
+                current_dir / "conf" / "service_names.txt",
+                current_dir.parent / "conf" / "service_names.txt", 
+                current_dir.parent.parent / "conf" / "service_names.txt",
+                Path("conf/service_names.txt"),  # 상대 경로
+                Path("./conf/service_names.txt")  # 현재 디렉토리 기준
+            ]
+            
+            for config_path in config_file_paths:
+                if config_path.exists():
+                    print(f"DEBUG: Found service_names.txt at: {config_path}")
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        service_names = []
+                        for line in f:
+                            line = line.strip()
+                            if line and not line.startswith('#'):  # 주석 제외
+                                service_names.append(line)
+                        print(f"DEBUG: Loaded {len(service_names)} service names from file")
+                        return sorted(service_names, key=len, reverse=True)  # 긴 이름부터 매칭
+            
+            print("WARNING: service_names.txt file not found in any expected location")
+            return []
+            
+        except Exception as e:
+            print(f"ERROR: Failed to load service_names.txt: {e}")
+            return []
+    
+    def get_service_names_from_file(self):
+        """파일 기반 서비스명 목록 가져오기 (캐시 활용)"""
+        if not self._service_file_cache_loaded:
+            self._service_names_file_cache = self._load_service_names_from_file()
+            self._service_file_cache_loaded = True
+        return self._service_names_file_cache or []
+    
+    def _find_service_name_in_file(self, query):
+        """conf/service_names.txt에서 서비스명 찾기 - 향상된 로깅"""
+        print(f"DEBUG: [FILE_SERVICE_MATCHING] Starting service name matching in conf/service_names.txt")
+        print(f"DEBUG: [FILE_SERVICE_MATCHING] Target query: '{query}'")
+        
+        file_service_names = self.get_service_names_from_file()
+        if not file_service_names:
+            print(f"DEBUG: [FILE_SERVICE_MATCHING] ❌ No service names loaded from file - skipping file-based matching")
+            return None
+            
+        query_lower = query.lower()
+        query_tokens = self._extract_service_tokens(query)
+        
+        print(f"DEBUG: [FILE_SERVICE_MATCHING] 📁 Searching in {len(file_service_names)} file-based service names")
+        print(f"DEBUG: [FILE_SERVICE_MATCHING] Query tokens: {query_tokens}")
+        
+        candidates = []
+        
+        for i, service_name in enumerate(file_service_names):
+            if i < 10:  # 처음 10개 서비스명만 상세 로그
+                print(f"DEBUG: [FILE_SERVICE_MATCHING] Checking service [{i+1}]: '{service_name}'")
+            
+            # 1. 정확한 매칭 (대소문자 무시)
+            if service_name.lower() == query_lower:
+                print(f"DEBUG: [FILE_SERVICE_MATCHING] ✅ EXACT MATCH found: '{service_name}'")
+                print(f"DEBUG: [FILE_SERVICE_MATCHING] 🎯 Returning exact match result from file")
+                return service_name
+            
+            # 2. 포함 관계 매칭
+            if service_name.lower() in query_lower:
+                candidates.append((service_name, 1.0, 'file_inclusion_service_in_query'))
+                print(f"DEBUG: [FILE_SERVICE_MATCHING] ✅ Service name '{service_name}' found IN query")
+                continue
+                
+            if query_lower in service_name.lower():
+                candidates.append((service_name, 0.9, 'file_inclusion_query_in_service'))
+                print(f"DEBUG: [FILE_SERVICE_MATCHING] ✅ Query found IN service name '{service_name}'")
+                continue
+            
+            # 3. 토큰 기반 유사도 매칭
+            service_tokens = self._extract_service_tokens(service_name)
+            if query_tokens and service_tokens:
+                similarity = self._calculate_service_similarity(query_tokens, service_tokens)
+                if similarity >= 0.6:  # 60% 이상 유사도
+                    candidates.append((service_name, similarity, 'file_token_similarity'))
+                    if i < 5:  # 상위 5개만 상세 로그
+                        print(f"DEBUG: [FILE_SERVICE_MATCHING] ✅ Token similarity {similarity:.2f} for '{service_name}'")
+        
+        if candidates:
+            # 유사도 순으로 정렬하여 가장 높은 것 반환
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            best_match = candidates[0]
+            print(f"DEBUG: [FILE_SERVICE_MATCHING] ✅ BEST MATCH found in file:")
+            print(f"DEBUG: [FILE_SERVICE_MATCHING]    🎯 Service: '{best_match[0]}'")
+            print(f"DEBUG: [FILE_SERVICE_MATCHING]    📊 Score: {best_match[1]:.2f}")
+            print(f"DEBUG: [FILE_SERVICE_MATCHING]    🔍 Method: {best_match[2]}")
+            print(f"DEBUG: [FILE_SERVICE_MATCHING] 🎯 Returning file-based match result")
+            return best_match[0]
+        
+        print(f"DEBUG: [FILE_SERVICE_MATCHING] ❌ No matching service name found in file")
+        print(f"DEBUG: [FILE_SERVICE_MATCHING] 📋 Checked {len(file_service_names)} services from conf/service_names.txt")
+        return None
 
     def semantic_search_with_adaptive_filtering(self, query, target_service_name=None, query_type="default", top_k=50):
         """메인 검색 진입점 - RAG 데이터 무결성 절대 보장"""
@@ -872,33 +980,83 @@ class SearchManagerLocal:
         return jaccard_score * 0.3 + inclusion_score * 0.7
     
     def extract_service_name_from_query(self, query):
-        """개선된 RAG 데이터 기반 서비스명 추출 - 통계 쿼리 동의어 처리 강화"""
-        # 1. 일반 용어 서비스 우선 체크
+        """개선된 서비스명 추출 - 파일 우선, RAG 데이터 후순위 + 통계 쿼리 특화"""
+        if not query:
+            return None
+            
+        print(f"DEBUG: [SERVICE_EXTRACTION] ========== Starting enhanced service name extraction ==========")
+        print(f"DEBUG: [SERVICE_EXTRACTION] Input query: '{query}'")
+        
+        # 1단계: 일반 용어 서비스 우선 체크 (기존 로직 유지)
+        print(f"DEBUG: [SERVICE_EXTRACTION] Step 1: Checking common term services...")
         is_common, common_service = self.is_common_term_service(query)
         if is_common:
+            print(f"DEBUG: [SERVICE_EXTRACTION] ✅ Common term service found: '{common_service}'")
+            print(f"DEBUG: [SERVICE_EXTRACTION] 🎯 Returning common service result")
+            print(f"DEBUG: [SERVICE_EXTRACTION] ========== Service extraction completed ==========")
             return common_service
+        else:
+            print(f"DEBUG: [SERVICE_EXTRACTION] ❌ No common term service match found")
         
-        # 2. 쿼리 정규화 - 통계 관련 동의어 처리
+        # 2단계: 통계 쿼리에 특화된 서비스명 추출
+        print(f"DEBUG: [SERVICE_EXTRACTION] Step 2: Enhanced statistics-specific extraction...")
+        stats_service_name = self._extract_service_name_for_statistics(query)
+        if stats_service_name:
+            print(f"DEBUG: [SERVICE_EXTRACTION] ✅ STATISTICS SERVICE FOUND: '{stats_service_name}'")
+            print(f"DEBUG: [SERVICE_EXTRACTION] 🎯 Returning statistics-specific result")
+            print(f"DEBUG: [SERVICE_EXTRACTION] ========== Service extraction completed ==========")
+            return stats_service_name
+        
+        # 3단계: conf/service_names.txt 파일에서 우선 검색
+        print(f"DEBUG: [SERVICE_EXTRACTION] Step 3: Searching in conf/service_names.txt file...")
+        file_service_name = self._find_service_name_in_file(query)
+        if file_service_name:
+            print(f"DEBUG: [SERVICE_EXTRACTION] ✅ SERVICE FOUND IN FILE: '{file_service_name}'")
+            print(f"DEBUG: [SERVICE_EXTRACTION] 🎯 Returning file-based result")
+            print(f"DEBUG: [SERVICE_EXTRACTION] ========== Service extraction completed ==========")
+            return file_service_name
+        else:
+            print(f"DEBUG: [SERVICE_EXTRACTION] ❌ No match found in conf/service_names.txt")
+        
+        # 4단계: 파일에서 찾지 못한 경우, 기존 RAG 데이터 기반 검색
+        print(f"DEBUG: [SERVICE_EXTRACTION] Step 4: Fallback to RAG data search...")
+        print(f"DEBUG: [SERVICE_EXTRACTION] Service name not found in file, searching in RAG data...")
+        
+        # 쿼리 정규화 - 통계 관련 동의어 처리
         normalized_query = self._normalize_statistics_query(query)
         
         rag_service_names = self.get_service_names_from_rag()
         if not rag_service_names:
-            return self._extract_service_name_legacy(normalized_query)
+            print(f"DEBUG: [SERVICE_EXTRACTION] ❌ No RAG service names available, using legacy extraction")
+            legacy_result = self._extract_service_name_legacy(normalized_query)
+            print(f"DEBUG: [SERVICE_EXTRACTION] Legacy extraction result: {legacy_result}")
+            print(f"DEBUG: [SERVICE_EXTRACTION] ========== Service extraction completed ==========")
+            return legacy_result
         
         query_lower = normalized_query.lower()
         query_tokens = self._extract_service_tokens(normalized_query)
         if not query_tokens:
+            print(f"DEBUG: [SERVICE_EXTRACTION] ❌ No valid query tokens extracted")
+            print(f"DEBUG: [SERVICE_EXTRACTION] ========== Service extraction completed ==========")
             return None
         
+        print(f"DEBUG: [SERVICE_EXTRACTION] 🔍 Searching in {len(rag_service_names)} RAG-based service names")
+        print(f"DEBUG: [SERVICE_EXTRACTION] Query tokens: {query_tokens}")
+        
         candidates = []
-        for service_name in rag_service_names:
+        for i, service_name in enumerate(rag_service_names):
             service_tokens = self._extract_service_tokens(service_name)
             if not service_tokens:
                 continue
             
+            if i < 5:  # 처음 5개만 상세 로그
+                print(f"DEBUG: [SERVICE_EXTRACTION] Checking RAG service [{i+1}]: '{service_name}'")
+            
             # 정확한 매칭
             if service_name.lower() in query_lower:
-                candidates.append((service_name, 1.0, 'exact_match'))
+                candidates.append((service_name, 1.0, 'rag_exact_match'))
+                if i < 5:
+                    print(f"DEBUG: [SERVICE_EXTRACTION] ✅ Exact match found: '{service_name}'")
                 continue
             
             # 정규화된 매칭
@@ -907,19 +1065,144 @@ class SearchManagerLocal:
             
             if (normalized_service in normalized_query_clean or 
                 normalized_query_clean in normalized_service):
-                candidates.append((service_name, 0.9, 'normalized_inclusion'))
+                candidates.append((service_name, 0.9, 'rag_normalized_inclusion'))
+                if i < 5:
+                    print(f"DEBUG: [SERVICE_EXTRACTION] ✅ Normalized match found: '{service_name}'")
                 continue
             
-            # 토큰 유사도 매칭
+            # 토큰 유사도 매칭 (RAG의 경우 더 관대한 기준)
             similarity = self._calculate_service_similarity(query_tokens, service_tokens)
-            if similarity >= 0.5:
-                candidates.append((service_name, similarity, 'token_similarity'))
+            if similarity >= 0.4:  # RAG는 40% 이상
+                candidates.append((service_name, similarity, 'rag_token_similarity'))
+                if i < 5:
+                    print(f"DEBUG: [SERVICE_EXTRACTION] ✅ Token similarity {similarity:.2f}: '{service_name}'")
         
         if not candidates:
+            print(f"DEBUG: [SERVICE_EXTRACTION] ❌ No service name found in RAG data either")
+            print(f"DEBUG: [SERVICE_EXTRACTION] ========== Service extraction completed ==========")
             return None
         
         candidates.sort(key=lambda x: x[1], reverse=True)
-        return candidates[0][0]
+        best_match = candidates[0]
+        print(f"DEBUG: [SERVICE_EXTRACTION] ✅ BEST RAG MATCH found:")
+        print(f"DEBUG: [SERVICE_EXTRACTION]    🎯 Service: '{best_match[0]}'")
+        print(f"DEBUG: [SERVICE_EXTRACTION]    📊 Score: {best_match[1]:.2f}")
+        print(f"DEBUG: [SERVICE_EXTRACTION]    🔍 Method: {best_match[2]}")
+        print(f"DEBUG: [SERVICE_EXTRACTION] 🎯 Returning RAG-based result")
+        print(f"DEBUG: [SERVICE_EXTRACTION] ========== Service extraction completed ==========")
+        return best_match[0]
+
+    def _extract_service_name_for_statistics(self, query):
+        """통계 쿼리에 특화된 서비스명 추출 - 튜플 오류 수정"""
+        if not query:
+            return None
+        
+        print(f"DEBUG: [STATS_SERVICE] Starting statistics-specific service extraction")
+        print(f"DEBUG: [STATS_SERVICE] Query: '{query}'")
+        
+        # 통계 쿼리에 특화된 패턴들
+        stats_service_patterns = [
+            # "생체인증플랫폼 년도별 장애건수" 형태
+            r'^([가-힣]{4,20}(?:플랫폼|시스템|서비스|포털|앱|APP|관리|센터))\s+(?:년도별|연도별|월별|장애|건수|통계|현황)',
+            
+            # "네트워크보안범위관리 서비스 통계" 형태  
+            r'^([가-힣]{4,30})\s+(?:서비스|시스템)?\s*(?:년도별|연도별|월별|장애|건수|통계|현황)',
+            
+            # "ERP 년도별" 형태
+            r'^([A-Z가-힣][A-Za-z0-9가-힣\-_]{1,20})\s+(?:년도별|연도별|월별|장애|건수|통계|현황)',
+            
+            # 중간에 있는 서비스명 "알려줘 생체인증플랫폼 통계"
+            r'(?:알려|보여|확인).*?([가-힣]{4,20}(?:플랫폼|시스템|서비스|포털|앱|관리|센터)).*?(?:년도별|연도별|월별|장애|건수|통계|현황)',
+            
+            # 따옴표나 특수문자로 감싸진 서비스명
+            r'["\']([A-Za-z가-힣][A-Za-z0-9가-힣\s\-_]{2,30})["\'].*?(?:년도별|연도별|월별|장애|건수|통계|현황)',
+            
+            # 서비스명이 쿼리의 핵심인 경우
+            r'\b([A-Za-z가-힣][A-Za-z0-9가-힣\s\-_]{3,20})\b.*?(?:년도별|연도별|월별|장애|건수|통계|현황|몇건|개수)',
+        ]
+        
+        for i, pattern in enumerate(stats_service_patterns):
+            try:
+                matches = re.findall(pattern, query, re.IGNORECASE)
+                if matches:
+                    for match in matches:
+                        # 튜플인 경우 첫 번째 요소 사용, 문자열인 경우 그대로 사용
+                        if isinstance(match, tuple):
+                            service_name = match[0].strip() if match[0] else ""
+                        else:
+                            service_name = match.strip()
+                        
+                        # 제외할 통계 관련 키워드들
+                        exclude_stats_keywords = [
+                            '년도별', '연도별', '월별', '요일별', '시간대별', '부서별', '등급별',
+                            '장애', '건수', '통계', '현황', '몇', '개수', '발생', '알려', '보여',
+                            '확인', '체크', '분석', '조회', '검색', '정보', '데이터', 'SELECT',
+                            'FROM', 'WHERE', 'AND', 'OR', '년', '월', '일'
+                        ]
+                        
+                        if (len(service_name) >= 3 and 
+                            service_name not in exclude_stats_keywords and
+                            not service_name.isdigit() and
+                            not re.match(r'^[0-9]+$', service_name)):
+                            
+                            print(f"DEBUG: [STATS_SERVICE] ✅ Found with pattern {i+1}: '{service_name}'")
+                            return service_name
+            except Exception as e:
+                print(f"DEBUG: [STATS_SERVICE] Error in pattern {i+1}: {e}")
+                continue
+        
+        print(f"DEBUG: [STATS_SERVICE] ❌ No service name found with statistics patterns")
+        return None
+
+    def diagnose_service_name_matching(self, query):
+        """서비스명 매칭 진단 도구 (디버깅용) - 향상된 로깅"""
+        print(f"\n=== [DIAGNOSIS] SERVICE NAME MATCHING DIAGNOSIS ===")
+        print(f"[DIAGNOSIS] Query: '{query}'")
+        
+        # 1. 파일 기반 서비스명 확인
+        file_services = self.get_service_names_from_file()
+        print(f"\n[DIAGNOSIS] 1. File-based services ({len(file_services)}):")
+        if file_services:
+            for i, service in enumerate(file_services[:10]):  # 상위 10개만 표시
+                print(f"   {i+1}. {service}")
+            if len(file_services) > 10:
+                print(f"   ... and {len(file_services) - 10} more")
+        else:
+            print(f"   ❌ No services loaded from conf/service_names.txt")
+        
+        # 2. RAG 기반 서비스명 확인  
+        rag_services = self.get_service_names_from_rag()
+        print(f"\n[DIAGNOSIS] 2. RAG-based services ({len(rag_services)}):")
+        for i, service in enumerate(rag_services[:10]):  # 상위 10개만 표시
+            print(f"   {i+1}. {service}")
+        if len(rag_services) > 10:
+            print(f"   ... and {len(rag_services) - 10} more")
+        
+        # 3. 매칭 결과
+        print(f"\n[DIAGNOSIS] 3. Running actual matching process...")
+        final_result = self.extract_service_name_from_query(query)
+        print(f"\n[DIAGNOSIS] 4. Final matching result: {final_result}")
+        
+        # 4. 결과 요약
+        print(f"\n[DIAGNOSIS] 5. Summary:")
+        print(f"   📁 File services available: {len(file_services) > 0}")
+        print(f"   📊 RAG services available: {len(rag_services) > 0}")
+        print(f"   🎯 Final result: {'SUCCESS' if final_result else 'NO MATCH'}")
+        
+        if final_result:
+            # 어느 소스에서 찾았는지 확인
+            is_in_file = final_result in file_services
+            is_in_rag = final_result in rag_services
+            print(f"   📍 Source: {'FILE' if is_in_file else 'RAG' if is_in_rag else 'COMMON_TERM'}")
+        
+        print(f"=== [DIAGNOSIS] END DIAGNOSIS ===\n")
+        return {
+            'file_services_count': len(file_services),
+            'rag_services_count': len(rag_services),
+            'final_result': final_result,
+            'file_available': len(file_services) > 0,
+            'rag_available': len(rag_services) > 0
+        }
 
     def calculate_hybrid_score(self, search_score, reranker_score):
         """검색 점수와 Reranker 점수를 조합하여 하이브리드 점수 계산"""
@@ -1089,6 +1372,23 @@ class SearchManagerLocal:
         normalized = re.sub(r'\s+', ' ', normalized).strip()
         
         return normalized
+
+    def test_service_name_matching(self):
+        """서비스명 매칭 테스트"""
+        test_queries = [
+            "네트워크보안범위관리 서비스에서 발생한 실명인증 장애 복구방법",
+            "ERP 로그인 불가 문제",
+            "블록체인 지역화폐 접속 장애",
+            "OTP 인증 실패",
+            "API 연동 오류"
+        ]
+        
+        print("=== SERVICE NAME MATCHING TEST ===")
+        for query in test_queries:
+            result = self.extract_service_name_from_query(query)
+            print(f"Query: {query}")
+            print(f"Result: {result}")
+            print("-" * 50)
 
     # 기존 코드와의 호환성을 위한 wrapper 메서드들 - filter_manager로 위임
     def filter_documents_by_time_conditions(self, documents, time_conditions):
