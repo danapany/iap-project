@@ -1,5 +1,5 @@
 class SystemPrompts:
-    """시스템 프롬프트 관리 클래스 - 4가지 타입으로 통합"""
+    """시스템 프롬프트 관리 클래스"""
 
     DATA_INTEGRITY_ABSOLUTE_RULES = """
 ## 🚨 절대 최우선 규칙 - 데이터 무결성 보장 🚨
