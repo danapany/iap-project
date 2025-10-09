@@ -23,7 +23,7 @@ DEFAULT_MAX_RESULTS = 20
 DEFAULT_SEMANTIC_THRESHOLD = 0.3
 DEFAULT_HYBRID_THRESHOLD = 0.4
 MAX_QUERY_LENGTH = 300
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 def validate_query_length(query):
     return len(query) <= MAX_QUERY_LENGTH, len(query)

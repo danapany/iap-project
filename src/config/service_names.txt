@@ -25,6 +25,7 @@ IS만족센터
 ITO운영VDI
 IT-포털
 IT포털
+IT포탈
 KOS-Billing
 KOS-CRM(B2B)
 KOS-CRM(B2C)
