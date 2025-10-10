@@ -465,7 +465,42 @@ class QueryProcessorLocal:
         self.debug_mode = True
         self._decorator_logging_enabled = False
         self._manual_logging_enabled = True
-    
+
+        # 통계 관련 키워드 대폭 확장
+        self.statistics_keywords = {
+            # 기본 통계 키워드
+            'basic_stats': [
+                '건수', '개수', '수량', '숫자', '몇건', '몇개', '얼마나', '어느정도', 
+                '얼마', '어떻게', '어느', '어떤', '몇번', '몇차례', '몇회'
+            ],
+            # 통계 관련 동사
+            'stats_verbs': [
+                '알려줘', '보여줘', '말해줘', '확인해줘', '체크해줘', '조회해줘',
+                '검색해줘', '찾아줘', '가져와줘', '추출해줘', '분석해줘'
+            ],
+            # 통계 명사
+            'stats_nouns': [
+                '통계', '현황', '분포', '집계', '합계', '총합', '누적', '전체',
+                '요약', '개요', '상황', '정도', '수준', '범위', '규모', '실적'
+            ],
+            # 시간/기간 관련
+            'time_keywords': [
+                '연도별', '년도별', '년별', '연별', '해별', '월별', '매월', '월간',
+                '요일별', '주간별', '일별', '시간대별', '주야별', '기간별'
+            ],
+            # 분류 관련
+            'category_keywords': [
+                '등급별', '장애등급별', 'grade별', '부서별', '팀별', '조직별',
+                '서비스별', '시스템별', '원인별', '원인유형별', '유형별', '타입별'
+            ],
+            # 서비스명 패턴 (통계와 함께 나타나는)
+            'service_patterns': [
+                r'\b([A-Z]{2,10})\s+(?:연도별|월별|장애|건수|통계|현황)',
+                r'([가-힣]{2,20}(?:플랫폼|시스템|서비스|포털|앱|관리|센터))\s+(?:연도별|월별|장애|건수|통계)',
+                r'(?:알려|보여|확인).*?([A-Z가-힣][A-Z가-힣0-9\s]{1,20}).*?(?:연도별|월별|장애|건수|통계)'
+            ]
+        }
+
         # 모니터링 매니저 초기화
         if MONITORING_AVAILABLE:
             try:
@@ -1063,14 +1098,21 @@ class QueryProcessorLocal:
 
     @traceable(name="classify_query_type")
     def classify_query_type_with_llm(self, query):
-        """LLM 기반 의미적 쿼리 분류 - 4가지 타입으로 단순화"""
+        """개선된 LLM 기반 의미적 쿼리 분류 - 통계 키워드 인식 강화"""
         if not query:
             return 'default'
         
-        print(f"DEBUG: Starting semantic query classification for: '{query}'")
+        print(f"DEBUG: Starting enhanced semantic query classification for: '{query}'")
+        
+        # 1단계: 사전 키워드 기반 필터링 (강화)
+        pre_classification = self._pre_classify_by_keywords(query)
+        if pre_classification != 'unknown':
+            print(f"DEBUG: Pre-classified as '{pre_classification}' by keyword matching")
+            return pre_classification
         
         with trace(name="llm_semantic_classification", inputs={"query": query}) as trace_context:
             try:
+                # 개선된 분류 프롬프트
                 classification_prompt = f"""다음 사용자 질문을 의미적으로 분석하여 정확히 분류하세요.
 
 **분류 카테고리:**
@@ -1085,13 +1127,21 @@ class QueryProcessorLocal:
 
 3. **statistics**: 통계 데이터, 집계, 건수, 분포 등의 수치 정보 요청
    - 핵심 의도: 숫자나 통계로 현황을 파악하려는 목적 
-   - 예시: "장애건수", "몇건이야", "통계", "분포", "연도별", "월별", "차트", "현황"
+   - **강화된 통계 인식 패턴:**
+     * "몇건이야", "몇개야", "얼마나", "어느정도" → statistics
+     * "건수", "개수", "수량", "통계", "현황", "분포" → statistics  
+     * "연도별", "월별", "등급별", "부서별" + 임의의 단어 → statistics
+     * "[서비스명] + [시간구분] + [건수/통계 관련어]" → statistics
+     * "알려줘", "보여줘" + "건수/통계/현황" → statistics
+     * "ERP 연도별 장애건수", "API 월별 통계", "시스템별 현황" → statistics
+   - 예시: "장애건수", "몇건이야", "통계", "현황", "분포", "차트", "연도별", "월별"
 
 4. **default**: 위 세 카테고리에 해당하지 않는 일반적인 질문
    - 핵심 의도: 위 세 가지가 아닌 기타 문의
 
 **분류 지침:**
 - 질문의 전체적인 맥락과 사용자의 의도를 파악하세요
+- **통계 관련 키워드가 하나라도 포함되면 statistics로 우선 분류하세요**
 - 키워드보다는 질문의 목적과 기대하는 답변 형태를 고려하세요
 - 애매한 경우, 사용자가 원하는 최종 결과물을 생각해보세요
 
@@ -1102,7 +1152,7 @@ class QueryProcessorLocal:
                 response = self.azure_openai_client.chat.completions.create(
                     model=self.model_name,
                     messages=[
-                        {"role": "system", "content": "당신은 IT 질문을 의미적으로 분석하여 정확히 분류하는 전문가입니다. 사용자의 진정한 의도와 목적을 파악하여 분류하세요."},
+                        {"role": "system", "content": "당신은 IT 질문을 의미적으로 분석하여 정확히 분류하는 전문가입니다. 특히 통계 관련 질문을 놓치지 않고 정확히 인식해야 합니다."},
                         {"role": "user", "content": classification_prompt}
                     ],
                     temperature=0.0,
@@ -1112,19 +1162,187 @@ class QueryProcessorLocal:
                 query_type = response.choices[0].message.content.strip().lower()
                 
                 if query_type not in ['repair', 'inquiry', 'statistics', 'default']:
-                    print(f"WARNING: Invalid query type '{query_type}', falling back to default")
-                    query_type = 'default'
+                    print(f"WARNING: Invalid query type '{query_type}', applying fallback classification")
+                    query_type = self._enhanced_fallback_classification(query)
                 
                 print(f"DEBUG: LLM semantic classification result: {query_type}")
                 
-                confidence_score = self._calculate_classification_confidence(query, query_type)
+                confidence_score = self._calculate_enhanced_classification_confidence(query, query_type)
                 print(f"DEBUG: Classification confidence: {confidence_score:.2f}")
+                
+                # 신뢰도가 낮으면 fallback 사용
+                if confidence_score < 0.6:
+                    fallback_type = self._enhanced_fallback_classification(query)
+                    print(f"DEBUG: Low confidence, using fallback: {fallback_type}")
+                    return fallback_type
                 
                 return query_type
                     
             except Exception as e:
                 print(f"ERROR: LLM semantic classification failed: {e}")
-                return self._fallback_classification(query)
+                return self._enhanced_fallback_classification(query)
+
+    def _pre_classify_by_keywords(self, query):
+        """키워드 기반 사전 분류 - 통계 쿼리 우선 감지"""
+        if not query:
+            return 'unknown'
+        
+        query_lower = query.lower()
+        
+        # 1. 강력한 통계 신호 체크
+        strong_stats_patterns = [
+            # "서비스명 + 시간구분 + 건수" 패턴
+            r'\b[A-Z가-힣][A-Z가-힣0-9\s]{1,20}\s+(?:연도별|월별|년도별|년별)\s*(?:장애)?\s*건수',
+            # "몇건, 얼마나" 등의 직접적 질문
+            r'\b(?:몇건|몇개|얼마나|어느정도|몇번|몇차례)\b',
+            # "건수 알려줘" 패턴
+            r'(?:건수|개수|수량|통계|현황|분포)\s*(?:알려|보여|말해|확인|체크|조회)',
+            # "연도별/월별 + 임의단어" 패턴
+            r'\b(?:연도별|년도별|월별|등급별|부서별|서비스별)\s+\w+',
+            # "ERP 연도별" 같은 직접 패턴
+            r'\b[A-Z]{2,10}\s+(?:연도별|월별|년도별|통계|현황|건수)'
+        ]
+        
+        for pattern in strong_stats_patterns:
+            if re.search(pattern, query_lower):
+                print(f"DEBUG: Strong statistics pattern detected: {pattern}")
+                return 'statistics'
+        
+        # 2. 복합 키워드 체크
+        stats_score = 0
+        repair_score = 0
+        inquiry_score = 0
+        
+        # 통계 관련 키워드 점수
+        for category, keywords in self.statistics_keywords.items():
+            for keyword in keywords:
+                if keyword in query_lower:
+                    if category == 'basic_stats':
+                        stats_score += 3
+                    elif category == 'time_keywords':
+                        stats_score += 2
+                    else:
+                        stats_score += 1
+        
+        # 복구 관련 키워드 점수
+        repair_keywords = ['복구방법', '해결방법', '조치방법', '불가', '실패', '원인', '왜', '어떻게']
+        for keyword in repair_keywords:
+            if keyword in query_lower:
+                repair_score += 2
+        
+        # 조회 관련 키워드 점수  
+        inquiry_keywords = ['내역', '목록', '리스트', '조회']
+        for keyword in inquiry_keywords:
+            if keyword in query_lower:
+                inquiry_score += 2
+        
+        print(f"DEBUG: Keyword scores - stats: {stats_score}, repair: {repair_score}, inquiry: {inquiry_score}")
+        
+        # 점수 기반 분류
+        if stats_score >= 3:
+            return 'statistics'
+        elif repair_score >= 3:
+            return 'repair'
+        elif inquiry_score >= 3:
+            return 'inquiry'
+        
+        return 'unknown'
+
+    def _enhanced_fallback_classification(self, query):
+        """강화된 fallback 분류 로직"""
+        if not query:
+            return 'default'
+        
+        query_lower = query.lower()
+        
+        # 1순위: 통계 관련 강력한 신호
+        strong_stats_indicators = [
+            # 기본 수량 질문
+            '몇건', '몇개', '얼마나', '어느정도', '어떻게', '어느', '어떤',
+            # 직접적인 통계 용어
+            '건수', '개수', '수량', '통계', '현황', '분포', '집계',
+            # 시간별 분류
+            '연도별', '년도별', '월별', '등급별', '부서별', '서비스별',
+            # 요청 동사 + 통계 명사 조합
+        ]
+        
+        # 연도별, 월별 등이 포함된 경우 무조건 statistics
+        if any(keyword in query_lower for keyword in ['연도별', '년도별', '월별', '등급별']):
+            return 'statistics'
+        
+        # 수량 질문인 경우 statistics
+        if any(keyword in query_lower for keyword in ['몇건', '몇개', '얼마나', '건수', '개수']):
+            return 'statistics'
+        
+        # 서비스명 + 통계 패턴
+        if re.search(r'\b[A-Z]{2,10}\b.*(?:통계|현황|건수|개수)', query_lower):
+            return 'statistics'
+        
+        # 2순위: 복구 관련
+        if any(word in query_lower for word in ['복구방법', '해결방법', '조치방법', '불가', '실패']):
+            return 'repair'
+            
+        # 3순위: 조회 관련
+        if any(word in query_lower for word in ['내역', '목록', '리스트']):
+            return 'inquiry'
+        
+        # 4순위: 기본값
+        return 'default'
+
+    def _calculate_enhanced_classification_confidence(self, query, predicted_type):
+        """강화된 분류 신뢰도 계산"""
+        try:
+            query_lower = query.lower()
+            
+            # 각 타입별 강력한 신호
+            strong_signals = {
+                'statistics': [
+                    '몇건', '몇개', '얼마나', '건수', '개수', '통계', '현황', '분포',
+                    '연도별', '월별', '등급별', '부서별', '서비스별'
+                ],
+                'repair': ['복구방법', '해결방법', '조치방법', '불가', '실패', '원인', '왜'],
+                'inquiry': ['내역', '목록', '리스트', '조회', '보여줘'],
+                'default': []
+            }
+            
+            predicted_signals = strong_signals.get(predicted_type, [])
+            signal_count = sum(1 for signal in predicted_signals if signal in query_lower)
+            
+            # 충돌하는 신호 체크
+            conflicting_signals = 0
+            for other_type, signals in strong_signals.items():
+                if other_type != predicted_type:
+                    conflicting_signals += sum(1 for signal in signals if signal in query_lower)
+            
+            # 기본 신뢰도
+            confidence = 0.5
+            
+            # 신호 강도에 따른 가점
+            if signal_count > 0:
+                confidence += 0.4 * min(signal_count, 3) / 3
+            
+            # 충돌 신호에 따른 감점
+            if conflicting_signals > 0:
+                confidence -= 0.3 * min(conflicting_signals, 2) / 2
+            
+            # 통계 쿼리의 특별 처리 (우선순위 부여)
+            if predicted_type == 'statistics':
+                # 통계 관련 강력한 패턴이 있으면 신뢰도 증가
+                stats_patterns = [
+                    r'\b[A-Z]{2,10}\s+(?:연도별|월별|통계|현황|건수)',
+                    r'(?:몇건|몇개|얼마나|건수)\b',
+                    r'(?:연도별|월별|등급별)\s+\w+'
+                ]
+                
+                for pattern in stats_patterns:
+                    if re.search(pattern, query_lower):
+                        confidence += 0.2
+                        break
+            
+            return max(0.0, min(1.0, confidence))
+            
+        except Exception:
+            return 0.5
 
     def _calculate_classification_confidence(self, query, predicted_type):
         """분류 결과에 대한 신뢰도 계산"""
@@ -1612,24 +1830,47 @@ class QueryProcessorLocal:
             print(f"모니터링 로그 실패: {str(e)}")
 
     def force_replace_problematic_queries(self, query):
-        """문제 쿼리 치환 로직 단순화"""
+        """문제 쿼리 치환 로직 - 통계 쿼리 패턴 추가"""
         if not query:
             return query
         
+        # 기존 치환 규칙
         simple_replacements = {
             '몇건이야': '몇건',
             '몇건이니': '몇건', 
             '몇건인가': '몇건',
+            '몇개야': '몇개',
+            '몇개인가': '몇개',
             '알려줘': '',
             '보여줘': '',
             '말해줘': ''
         }
         
+        # 통계 쿼리 강화 패턴 추가
+        stats_enhancements = {
+            # "ERP 연도별 장애건수 알려줘" → "ERP 연도별 장애건수"
+            r'([A-Z가-힣][A-Z가-힣0-9\s]{1,20}(?:연도별|월별|등급별)[^가-힣]*(?:장애)?[^가-힣]*건수)\s*(?:알려줘|보여줘|말해줘|확인해줘)': r'\1',
+            # "몇건이야" 패턴들을 "건수"로 통합
+            r'(.*?)\s*(?:몇건이야|몇건이니|몇건인가|몇개야|몇개인가|얼마나|어느정도)\s*$': r'\1 건수',
+        }
+        
         normalized_query = query
+        
+        # 패턴 기반 치환
+        for pattern, replacement in stats_enhancements.items():
+            normalized_query = re.sub(pattern, replacement, normalized_query, flags=re.IGNORECASE)
+        
+        # 단순 치환
         for old, new in simple_replacements.items():
             normalized_query = normalized_query.replace(old, new)
         
-        return normalized_query.strip()
+        # 연속된 공백 정리
+        normalized_query = re.sub(r'\s+', ' ', normalized_query).strip()
+        
+        if normalized_query != query:
+            print(f"DEBUG: Query normalized: '{query}' -> '{normalized_query}'")
+        
+        return normalized_query
 
     def _calculate_statistics_with_integrity(self, documents, query):
         """문서 기반 통계 계산 - 데이터 무결성 보장"""
