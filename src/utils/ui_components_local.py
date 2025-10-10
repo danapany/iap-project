@@ -6,7 +6,17 @@ class UIComponentsLocal:
     
     def __init__(self):
         self.debug_mode = False
-    
+        # ChartManager 초기화 추가
+        self.chart_manager = None
+        try:
+            from utils.chart_utils import ChartManager
+            self.chart_manager = ChartManager()
+            print("ChartManager 초기화 성공")
+        except ImportError as e:
+            print(f"ChartManager import 실패: {e}")
+        except Exception as e:
+            print(f"ChartManager 초기화 실패: {e}")
+
     def _parse_cause_content(self, cause_content):
         """원인 컨텐츠 파싱"""
         cause_pattern = r'원인(\d+):\s*([^\n원]*(?:\n(?!원인\d+:)[^\n]*)*)'
@@ -182,7 +192,7 @@ class UIComponentsLocal:
         return self._remove_box_markers_enhanced(text)
     
     def display_response_with_query_type_awareness(self, response, query_type="default", chart_info=None):
-        """쿼리 타입을 고려한 응답 표시 - INQUIRY 타입에서 복구방법 박스 강화 제거"""
+        """쿼리 타입을 고려한 응답 표시 - statistics에서만 차트 표시"""
         if not response:
             st.write("응답이 없습니다.")
             return
@@ -196,8 +206,7 @@ class UIComponentsLocal:
         
         if self.debug_mode:
             print(f"UI_DEBUG: Query type: {query_type}")
-            print(f"UI_DEBUG: Response contains REPAIR_BOX: {'[REPAIR_BOX_START]' in response_text}")
-            print(f"UI_DEBUG: Response contains CAUSE_BOX: {'[CAUSE_BOX_START]' in response_text}")
+            print(f"UI_DEBUG: Chart manager available: {self.chart_manager is not None}")
         
         # INQUIRY 타입인 경우 강화된 박스 제거
         if query_type.lower() == 'inquiry':
@@ -211,9 +220,8 @@ class UIComponentsLocal:
             
             if self.debug_mode:
                 print(f"UI_DEBUG: 박스 제거 완료. 최종 길이: {len(converted_content)}")
-                print(f"UI_DEBUG: 최종 텍스트에 '복구방법' 포함: {'복구방법' in converted_content}")
         else:
-            # INQUIRY가 아닐 경우에만 박스 변환 적용
+            # INQUIRY가 아닌 경우에만 박스 변환 적용
             if '[REPAIR_BOX_START]' in converted_content:
                 converted_content, has_html = self.convert_repair_box_to_html(converted_content)
                 html_converted = html_converted or has_html
@@ -227,8 +235,10 @@ class UIComponentsLocal:
         else:
             st.write(converted_content)
         
-        # 차트 표시
-        if chart_info and chart_info.get('chart'):
+        # 차트 표시 - statistics 타입에서만 그리고 chart_manager가 있을 때만
+        if (chart_info and chart_info.get('chart') and 
+            query_type.lower() == 'statistics' and 
+            self.chart_manager is not None):
             st.markdown("---")
             try:
                 self.chart_manager.display_chart_with_data(
@@ -236,6 +246,8 @@ class UIComponentsLocal:
                     chart_info['chart_type'], chart_info.get('query', ''))
             except Exception as e:
                 st.error(f"차트 표시 중 오류: {str(e)}")
+        elif chart_info and chart_info.get('chart') and query_type.lower() == 'statistics':
+            st.warning("차트 매니저가 초기화되지 않아 차트를 표시할 수 없습니다.")
         
         # INQUIRY 타입인 경우 엑셀 다운로드 버튼 표시
         if query_type.lower() == 'inquiry':
@@ -248,7 +260,6 @@ class UIComponentsLocal:
             except Exception as e:
                 if self.debug_mode:
                     print(f"UI_DEBUG: 엑셀 다운로드 기능 오류: {str(e)}")
-                    st.error(f"엑셀 다운로드 기능 오류: {str(e)}")
     
     def render_main_ui(self):
         """메인 UI 렌더링"""
