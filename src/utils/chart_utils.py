@@ -7,6 +7,7 @@ import os
 import urllib.request
 import platform
 from datetime import datetime
+import re
 
 def setup_korean_font():
     """한글 폰트 설정 함수 - 개선된 버전"""
@@ -116,9 +117,106 @@ class ChartManager:
         except Exception as e:
             print(f"한글 폰트 테스트 실패: {e}")
             self.font_name = setup_korean_font()
+
+    def _sort_chart_data(self, data, title=""):
+        """차트 데이터 정렬 - 년도는 시간순, 나머지는 값 순서로"""
+        if not data:
+            return data
+        
+        # 년도 데이터인지 확인
+        is_year_data = self._is_year_data(data, title)
+        
+        if is_year_data:
+            # 년도 데이터는 오름차순 정렬 (2022 -> 2023 -> 2024 -> 2025)
+            try:
+                sorted_items = sorted(data.items(), key=lambda x: int(str(x[0]).replace('년', '')))
+                print(f"DEBUG: 년도 데이터 오름차순 정렬 적용: {sorted_items}")
+            except:
+                # 년도 변환 실패시 원본 순서 유지
+                sorted_items = list(data.items())
+        else:
+            # 월 데이터 확인
+            is_month_data = self._is_month_data(data, title)
+            if is_month_data:
+                # 월 데이터는 1월부터 12월 순서로 정렬
+                month_order = {'1월': 1, '2월': 2, '3월': 3, '4월': 4, '5월': 5, '6월': 6,
+                              '7월': 7, '8월': 8, '9월': 9, '10월': 10, '11월': 11, '12월': 12}
+                try:
+                    sorted_items = sorted(data.items(), 
+                                        key=lambda x: month_order.get(x[0], 99))
+                    print(f"DEBUG: 월 데이터 순서 정렬 적용: {sorted_items}")
+                except:
+                    sorted_items = list(data.items())
+            else:
+                # 요일 데이터 확인
+                is_weekday_data = self._is_weekday_data(data, title)
+                if is_weekday_data:
+                    # 요일 데이터는 월요일부터 일요일 순서로 정렬
+                    weekday_order = {'월요일': 1, '화요일': 2, '수요일': 3, '목요일': 4, 
+                                   '금요일': 5, '토요일': 6, '일요일': 7, '평일': 8, '주말': 9}
+                    try:
+                        sorted_items = sorted(data.items(), 
+                                            key=lambda x: weekday_order.get(x[0], 99))
+                        print(f"DEBUG: 요일 데이터 순서 정렬 적용: {sorted_items}")
+                    except:
+                        sorted_items = list(data.items())
+                else:
+                    # 기타 데이터는 값 기준 내림차순 정렬 (큰 값부터)
+                    sorted_items = sorted(data.items(), key=lambda x: x[1], reverse=True)
+                    print(f"DEBUG: 일반 데이터 값 기준 내림차순 정렬 적용: {sorted_items}")
+        
+        return dict(sorted_items)
+
+    def _is_year_data(self, data, title):
+        """년도 데이터인지 확인"""
+        # 제목에 년도 관련 키워드가 있거나
+        if any(keyword in title.lower() for keyword in ['년도', '연도', 'year', '년별']):
+            return True
+        
+        # 데이터 키가 모두 년도 형태인지 확인
+        year_pattern = re.compile(r'^(19|20)\d{2}년?$')
+        keys = list(data.keys())
+        
+        if len(keys) >= 2:  # 최소 2개 이상의 데이터가 있을 때만 판단
+            year_count = sum(1 for key in keys if year_pattern.match(str(key)))
+            return year_count >= len(keys) * 0.7  # 70% 이상이 년도 형태면 년도 데이터로 판단
+        
+        return False
+
+    def _is_month_data(self, data, title):
+        """월 데이터인지 확인"""
+        # 제목에 월 관련 키워드가 있거나
+        if any(keyword in title.lower() for keyword in ['월별', 'month', '월']):
+            return True
+        
+        # 데이터 키가 모두 월 형태인지 확인
+        month_pattern = re.compile(r'^(1[0-2]|[1-9])월?$')
+        keys = list(data.keys())
+        
+        if len(keys) >= 2:
+            month_count = sum(1 for key in keys if month_pattern.match(str(key)))
+            return month_count >= len(keys) * 0.7
+        
+        return False
+
+    def _is_weekday_data(self, data, title):
+        """요일 데이터인지 확인"""
+        # 제목에 요일 관련 키워드가 있거나
+        if any(keyword in title.lower() for keyword in ['요일', 'week', '주간', '평일', '주말']):
+            return True
+        
+        # 데이터 키가 요일 형태인지 확인
+        weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일', '평일', '주말']
+        keys = list(data.keys())
+        
+        if len(keys) >= 2:
+            weekday_count = sum(1 for key in keys if str(key) in weekdays)
+            return weekday_count >= len(keys) * 0.7
+        
+        return False
     
     def create_chart(self, chart_type, chart_data, title="장애 통계", color_palette=None):
-        """차트 생성 - 안정성 강화"""
+        """차트 생성 - 안정성 강화 및 정렬 기능 추가"""
         print(f"DEBUG: Creating chart - type: {chart_type}, data: {chart_data}")
         
         # 폰트 재설정 (안전장치)
@@ -152,7 +250,9 @@ class ChartManager:
             print("DEBUG: No valid data after cleaning")
             return self._create_no_data_chart(title)
         
-        print(f"DEBUG: Clean data: {clean_data}")
+        # 데이터 정렬 적용
+        sorted_data = self._sort_chart_data(clean_data, title)
+        print(f"DEBUG: Sorted data: {sorted_data}")
         
         try:
             # 차트 타입별 처리
@@ -161,20 +261,20 @@ class ChartManager:
             if chart_type == 'no_data':
                 return self._create_no_data_chart(title)
             elif chart_type == 'line':
-                return self._create_line_chart(clean_data, title)
+                return self._create_line_chart(sorted_data, title)
             elif chart_type == 'pie':
-                return self._create_pie_chart(clean_data, title)
+                return self._create_pie_chart(sorted_data, title)
             elif chart_type == 'horizontal_bar':
-                return self._create_horizontal_bar_chart(clean_data, title)
+                return self._create_horizontal_bar_chart(sorted_data, title)
             else:
-                return self._create_bar_chart(clean_data, title)
+                return self._create_bar_chart(sorted_data, title)
                 
         except Exception as e:
             print(f"DEBUG: Chart creation failed: {e}")
             import traceback
             traceback.print_exc()
             # 실패시 기본 차트 시도
-            return self._create_simple_chart(clean_data, title)
+            return self._create_simple_chart(sorted_data, title)
     
     def _get_chart_unit(self, title, values):
         """차트 단위 결정"""
