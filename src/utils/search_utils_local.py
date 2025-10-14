@@ -60,32 +60,59 @@ class SearchManagerLocal:
         }
 
     def _load_service_names_from_file(self):
-        """conf/service_names.txt 파일에서 서비스명 목록 로드"""
+        """config/service_names.txt 파일에서 서비스명 목록 로드"""
         try:
+            # search_utils_local.py는 src/utils/에 위치
+            # service_names.txt는 src/config/에 위치
+            # 따라서 상대 경로: ../config/service_names.txt
             current_dir = Path(__file__).parent
-            config_file_paths = [
-                current_dir / "conf" / "service_names.txt",
-                current_dir.parent / "conf" / "service_names.txt", 
-                current_dir.parent.parent / "conf" / "service_names.txt",
-                Path("conf/service_names.txt"),
-                Path("./conf/service_names.txt")
-            ]
+            config_path = current_dir.parent / "config" / "service_names.txt"
             
-            for config_path in config_file_paths:
-                if config_path.exists():
-                    print(f"DEBUG: Found service_names.txt at: {config_path}")
-                    with open(config_path, 'r', encoding='utf-8') as f:
+            if not config_path.exists() or not config_path.is_file():
+                print(f"WARNING: service_names.txt file not found at: {config_path}")
+                return []
+            
+            print(f"DEBUG: Found service_names.txt at: {config_path}")
+            
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    service_names = []
+                    for line_num, line in enumerate(f, 1):
+                        line = line.strip()
+                        # 빈 줄이나 주석(#으로 시작) 제외
+                        if line and not line.startswith('#'):
+                            service_names.append(line)
+                    
+                    if service_names:
+                        print(f"DEBUG: Successfully loaded {len(service_names)} service names from file")
+                        # 길이순으로 정렬 (긴 것부터) - 매칭 정확도 향상
+                        return sorted(set(service_names), key=len, reverse=True)
+                    else:
+                        print(f"WARNING: service_names.txt is empty: {config_path}")
+                        return []
+                        
+            except UnicodeDecodeError:
+                print(f"ERROR: UTF-8 encoding error, trying EUC-KR encoding")
+                try:
+                    with open(config_path, 'r', encoding='euc-kr') as f:
                         service_names = [line.strip() for line in f 
-                                       if line.strip() and not line.startswith('#')]
-                        print(f"DEBUG: Loaded {len(service_names)} service names from file")
-                        return sorted(service_names, key=len, reverse=True)
-            
-            print("WARNING: service_names.txt file not found")
-            return []
+                                    if line.strip() and not line.startswith('#')]
+                        if service_names:
+                            print(f"DEBUG: Successfully loaded {len(service_names)} service names with EUC-KR encoding")
+                            return sorted(set(service_names), key=len, reverse=True)
+                        return []
+                except Exception as e:
+                    print(f"ERROR: Failed to read with EUC-KR encoding: {e}")
+                    return []
+                    
+            except Exception as e:
+                print(f"ERROR: Failed to read {config_path}: {e}")
+                return []
             
         except Exception as e:
-            print(f"ERROR: Failed to load service_names.txt: {e}")
+            print(f"ERROR: Critical failure in _load_service_names_from_file: {e}")
             return []
+
     
     def get_service_names_from_file(self):
         """파일 기반 서비스명 목록 가져오기 (캐시 활용)"""
@@ -98,36 +125,62 @@ class SearchManagerLocal:
         """conf/service_names.txt에서 서비스명 찾기"""
         file_service_names = self.get_service_names_from_file()
         if not file_service_names:
+            print("DEBUG: No service names loaded from file")
             return None
             
-        query_lower = query.lower()
+        query_lower = query.lower().strip()
         query_tokens = self._extract_service_tokens(query)
         candidates = []
         
+        print(f"DEBUG: Searching in {len(file_service_names)} file service names for query: '{query}'")
+        
         for service_name in file_service_names:
-            # 정확한 매칭
-            if service_name.lower() == query_lower:
+            service_lower = service_name.lower()
+            
+            # 1. 정확한 매칭 (최우선)
+            if service_name == query.strip() or service_lower == query_lower:
+                print(f"DEBUG: Exact match found: '{service_name}'")
                 return service_name
             
-            # 포함 관계 매칭
-            if service_name.lower() in query_lower:
-                candidates.append((service_name, 1.0, 'file_inclusion_service_in_query'))
+            # 2. 완전 포함 관계 매칭
+            if service_lower in query_lower:
+                candidates.append((service_name, 1.0, 'file_service_in_query'))
+                print(f"DEBUG: Service in query match: '{service_name}' in '{query}'")
                 continue
-            if query_lower in service_name.lower():
-                candidates.append((service_name, 0.9, 'file_inclusion_query_in_service'))
+                
+            if query_lower in service_lower:
+                candidates.append((service_name, 0.95, 'file_query_in_service'))
+                print(f"DEBUG: Query in service match: '{query}' in '{service_name}'")
                 continue
             
-            # 토큰 기반 유사도 매칭
+            # 3. 공백 무시한 매칭
+            service_no_space = re.sub(r'\s+', '', service_lower)
+            query_no_space = re.sub(r'\s+', '', query_lower)
+            
+            if service_no_space in query_no_space:
+                candidates.append((service_name, 0.9, 'file_no_space_service_in_query'))
+                continue
+                
+            if query_no_space in service_no_space:
+                candidates.append((service_name, 0.85, 'file_no_space_query_in_service'))
+                continue
+            
+            # 4. 토큰 기반 유사도 매칭 (더 엄격한 기준)
             service_tokens = self._extract_service_tokens(service_name)
             if query_tokens and service_tokens:
                 similarity = self._calculate_service_similarity(query_tokens, service_tokens)
-                if similarity >= 0.6:
+                if similarity >= 0.7:  # 기존 0.6에서 0.7로 상향 조정
                     candidates.append((service_name, similarity, 'file_token_similarity'))
+                    print(f"DEBUG: Token similarity match: '{service_name}' (score: {similarity:.2f})")
         
         if candidates:
+            # 점수 기준으로 정렬
             candidates.sort(key=lambda x: x[1], reverse=True)
-            return candidates[0][0]
+            best_match = candidates[0]
+            print(f"DEBUG: Best file match: '{best_match[0]}' (score: {best_match[1]:.2f}, method: {best_match[2]})")
+            return best_match[0]
         
+        print(f"DEBUG: No match found in file service names")
         return None
 
     def semantic_search_with_adaptive_filtering(self, query, target_service_name=None, query_type="default", top_k=50):
@@ -208,6 +261,7 @@ class SearchManagerLocal:
             enhanced_query = self._build_enhanced_query(query, target_service_name)
             
             vector_queries = [{
+                "kind": "vector",
                 "vector": query_vector,
                 "k_nearest_neighbors": min(self.config.vector_top_k, 50),
                 "fields": "contentVector"
@@ -216,7 +270,7 @@ class SearchManagerLocal:
             results = self._execute_search_with_params(
                 enhanced_query, vector_queries, 
                 "semantic" if vector_config.get('use_semantic_reranker', True) else "simple",
-                top_k, "hybrid"
+                top_k, "any"
             )
             
             return self._process_search_results(results, "Hybrid")
@@ -229,6 +283,7 @@ class SearchManagerLocal:
         """벡터 검색 우선 모드"""
         try:
             vector_queries = [{
+                "kind": "vector",
                 "vector": query_vector,
                 "k_nearest_neighbors": min(top_k * 2, 100),
                 "fields": "contentVector"
@@ -237,7 +292,7 @@ class SearchManagerLocal:
             basic_query = self._build_basic_query(query, target_service_name)
             
             results = self._execute_search_with_params(
-                basic_query if basic_query else "*", vector_queries, "semantic", top_k, "hybrid"
+                basic_query if basic_query else "*", vector_queries, "semantic", top_k, "any"
             )
             
             return self._process_search_results(results, "Vector Primary")
@@ -252,6 +307,7 @@ class SearchManagerLocal:
             enhanced_query = self._build_enhanced_query(query, target_service_name)
             
             vector_queries = [{
+                "kind": "vector",
                 "vector": query_vector,
                 "k_nearest_neighbors": min(top_k // 2, 25),
                 "fields": "contentVector"
@@ -283,7 +339,7 @@ class SearchManagerLocal:
             print(f"ERROR: Text-only search failed: {e}")
             return []
     
-    def _execute_search_with_params(self, search_text, vector_queries, query_type, top_k, search_mode="hybrid"):
+    def _execute_search_with_params(self, search_text, vector_queries, query_type, top_k, search_mode="any"):
         """공통 검색 실행 로직"""
         search_params = {
             "search_text": search_text,
@@ -891,7 +947,7 @@ class SearchManagerLocal:
         return jaccard_score * 0.3 + inclusion_score * 0.7
     
     def extract_service_name_from_query(self, query):
-        """개선된 서비스명 추출 - 원인유형 쿼리 특별 처리"""
+        """개선된 서비스명 추출 - conf/service_names.txt 우선순위 강화"""
         if not query:
             return None
             
@@ -902,40 +958,49 @@ class SearchManagerLocal:
         is_cause_type_query = self._is_cause_type_query(query)
         if is_cause_type_query:
             print(f"DEBUG: [SERVICE_EXTRACTION] Cause type query detected - limiting service extraction")
-            # 원인유형 쿼리인 경우 서비스명 추출을 매우 제한적으로
             return self._extract_service_name_for_cause_type_query(query)
         
-        # 1단계: 일반 용어 서비스 우선 체크
+        # 1단계: 일반 용어 서비스 우선 체크 (변경 없음)
         is_common, common_service = self.is_common_term_service(query)
         if is_common:
             print(f"DEBUG: [SERVICE_EXTRACTION] Common term service found: '{common_service}'")
             return common_service
         
-        # 2단계: 통계 쿼리에 특화된 서비스명 추출
-        stats_service_name = self._extract_service_name_for_statistics(query)
-        if stats_service_name:
-            print(f"DEBUG: [SERVICE_EXTRACTION] Statistics service found: '{stats_service_name}'")
-            return stats_service_name
-        
-        # 3단계: conf/service_names.txt 파일에서 우선 검색
+        # ⭐ 2단계: conf/service_names.txt 파일에서 최우선 검색 (강화)
+        print(f"DEBUG: [SERVICE_EXTRACTION] Checking conf/service_names.txt file first...")
         file_service_name = self._find_service_name_in_file(query)
         if file_service_name:
-            print(f"DEBUG: [SERVICE_EXTRACTION] Service found in file: '{file_service_name}'")
+            print(f"DEBUG: [SERVICE_EXTRACTION] ✅ Service found in FILE: '{file_service_name}'")
             return file_service_name
         
-        # 4단계: RAG 데이터 기반 검색
-        print(f"DEBUG: [SERVICE_EXTRACTION] Fallback to RAG data search...")
+        # 3단계: 통계 쿼리에 특화된 서비스명 추출 (파일에서 찾지 못한 경우만)
+        print(f"DEBUG: [SERVICE_EXTRACTION] File search failed, trying statistics pattern...")
+        stats_service_name = self._extract_service_name_for_statistics(query)
+        if stats_service_name:
+            # 통계에서 추출된 서비스명도 파일에 있는지 다시 확인
+            file_service_names = self.get_service_names_from_file()
+            if file_service_names and stats_service_name in file_service_names:
+                print(f"DEBUG: [SERVICE_EXTRACTION] Statistics service found in file: '{stats_service_name}'")
+                return stats_service_name
+            elif not file_service_names:  # 파일이 없는 경우만 통계 결과 사용
+                print(f"DEBUG: [SERVICE_EXTRACTION] Statistics service found (no file available): '{stats_service_name}'")
+                return stats_service_name
+        
+        # ⭐ 4단계: Azure AI Search 데이터 기반 검색 (최종 fallback)
+        print(f"DEBUG: [SERVICE_EXTRACTION] Fallback to Azure AI Search data...")
         
         normalized_query = self._normalize_statistics_query(query)
         rag_service_names = self.get_service_names_from_rag()
         
         if not rag_service_names:
+            print(f"DEBUG: [SERVICE_EXTRACTION] No RAG service names available, using legacy extraction")
             return self._extract_service_name_legacy(normalized_query)
         
         query_lower = normalized_query.lower()
         query_tokens = self._extract_service_tokens(normalized_query)
         
         if not query_tokens:
+            print(f"DEBUG: [SERVICE_EXTRACTION] No valid tokens extracted from query")
             return None
         
         candidates = []
@@ -958,37 +1023,57 @@ class SearchManagerLocal:
                 candidates.append((service_name, 0.9, 'rag_normalized_inclusion'))
                 continue
             
-            # 토큰 유사도 매칭
+            # 토큰 유사도 매칭 (더 엄격한 기준)
             similarity = self._calculate_service_similarity(query_tokens, service_tokens)
-            if similarity >= 0.4:
+            if similarity >= 0.5:  # 기존 0.4에서 0.5로 상향 조정
                 candidates.append((service_name, similarity, 'rag_token_similarity'))
         
         if not candidates:
+            print(f"DEBUG: [SERVICE_EXTRACTION] No candidates found in RAG data")
             return None
         
         candidates.sort(key=lambda x: x[1], reverse=True)
         best_match = candidates[0]
-        print(f"DEBUG: [SERVICE_EXTRACTION] Best RAG match: '{best_match[0]}' (Score: {best_match[1]:.2f})")
+        print(f"DEBUG: [SERVICE_EXTRACTION] ⚠️  Best RAG match: '{best_match[0]}' (Score: {best_match[1]:.2f})")
+        print(f"DEBUG: [SERVICE_EXTRACTION] Note: This service was NOT found in conf/service_names.txt")
         return best_match[0]
 
     def _is_cause_type_query(self, query):
-        """원인유형 쿼리인지 간단하게 판별"""
+        """원인유형 쿼리인지 엄격하게 판별 - 통계/분류 관련 쿼리만"""
         if not query:
             return False
         
         query_lower = query.lower()
         
-        # 원인유형 직접 키워드
-        cause_type_keywords = [
+        # 1단계: 원인유형/분류를 명시적으로 묻는 키워드
+        explicit_cause_type_keywords = [
             '원인유형', '원인별', '원인유형별', '원인타입', 'cause_type',
-            '문제원인', '장애원인', '발생원인', '근본원인',
             '원인분석', '원인현황', '원인통계', '원인분포',
             '원인분류', '원인종류', '원인카테고리'
         ]
         
-        for keyword in cause_type_keywords:
+        for keyword in explicit_cause_type_keywords:
             if keyword in query_lower:
                 return True
+        
+        # 2단계: "원인" + "통계/분류" 조합 체크
+        has_cause = any(word in query_lower for word in ['원인', 'cause'])
+        has_stats_or_category = any(word in query_lower for word in 
+            ['통계', '분류', '유형', '타입', '별', '현황', '분포', '분석', '카테고리', '종류'])
+        
+        if has_cause and has_stats_or_category:
+            # 하지만 "원인이 뭐야", "원인 알려줘" 같은 일반 질문은 제외
+            exclude_patterns = [
+                r'원인[이가]?\s*(뭐|무엇|어떻게|왜)',
+                r'원인.*?(알려|설명|말해|보여)',
+                r'(뭐|무엇|어떤|어떻게).*?원인'
+            ]
+            
+            for pattern in exclude_patterns:
+                if re.search(pattern, query_lower):
+                    return False
+            
+            return True
         
         return False
 

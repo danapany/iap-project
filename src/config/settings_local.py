@@ -5,13 +5,13 @@ class AppConfigLocal:
     def __init__(self):
         load_dotenv()
         
-        # 기존 설정들
+        # Azure OpenAI 설정
         self.azure_openai_endpoint = os.getenv("OPENAI_ENDPOINT")
         self.azure_openai_key = os.getenv("OPENAI_KEY")
         self.azure_openai_model = os.getenv("CHAT_MODEL", "iap-gpt-4o-mini")
         self.azure_openai_api_version = os.getenv("OPENAI_API_VERSION", "2024-02-01")
         
-        # Vector 검색 관련 설정들
+        # 임베딩 설정
         self.embedding_model = os.getenv("EMBEDDING_MODEL", "text-embedding-ada-002")
         self.embedding_api_version = os.getenv("EMBEDDING_API_VERSION", "2024-02-01")
         
@@ -20,12 +20,10 @@ class AppConfigLocal:
         self.search_key = os.getenv("SEARCH_API_KEY")
         self.search_index = os.getenv("INDEX_REBUILD_NAME", "iap-incident-index")
         
-        # Vector 하이브리드 검색 파라미터
+        # 벡터 하이브리드 검색 파라미터
         self.vector_weight = float(os.getenv("VECTOR_WEIGHT", "0.5"))
         self.text_weight = float(os.getenv("TEXT_WEIGHT", "0.5"))
         self.use_semantic_reranker = os.getenv("USE_SEMANTIC_RERANKER", "true").lower() == "true"
-        
-        # RRF (Reciprocal Rank Fusion) 설정
         self.rrf_k = int(os.getenv("RRF_K", "60"))
         
         # 벡터 검색 최적화 설정
@@ -37,21 +35,16 @@ class AppConfigLocal:
         self.enable_embedding_cache = os.getenv("ENABLE_EMBEDDING_CACHE", "true").lower() == "true"
         self.embedding_cache_ttl = int(os.getenv("EMBEDDING_CACHE_TTL", "3600"))
         
-        # 기존 임계값들
+        # 기본 임계값들
         self.search_score_threshold = 0.20
         self.reranker_score_threshold = 1.8
         self.hybrid_score_threshold = 0.35
         self.semantic_score_threshold = 0.25
         self.max_initial_results = 50
         self.max_final_results = 15
-        
-        # LangSmith 설정
-        self.langchain_api_key = os.getenv("LANGCHAIN_API_KEY")
-        self.langsmith_tracing = os.getenv("LANGSMITH_TRACING", "false").lower() == "true"
-        self.langchain_project = os.getenv("LANGCHAIN_PROJECT", "trouble-chaser-chatbot")
     
     def get_vector_search_config(self, query_type="default"):
-        """쿼리 타입별 벡터 검색 설정 반환 - 4가지 타입으로 통합"""
+        """쿼리 타입별 벡터 검색 설정 반환"""
         configs = {
             "repair": {
                 "vector_weight": 0.6,
@@ -85,13 +78,11 @@ class AppConfigLocal:
         return configs.get(query_type, configs["default"])
     
     def get_search_mode_for_query(self, query_type, query_text):
-        """쿼리에 따른 최적 검색 모드 결정 - 4가지 타입으로 수정"""
-        # 통계성 키워드 체크
+        """쿼리에 따른 최적 검색 모드 결정"""
         stats_keywords = ['건수', '통계', '현황', '분포', '연도별', '월별']
-        is_stats_query = any(keyword in query_text.lower() for keyword in stats_keywords)
-        
-        # 서비스명 정확성이 중요한 쿼리 체크
         service_keywords = ['API', 'ERP', 'OTP', 'SMS', 'VPN']
+        
+        is_stats_query = any(keyword in query_text.lower() for keyword in stats_keywords)
         has_service_keyword = any(keyword in query_text for keyword in service_keywords)
         
         if is_stats_query:
@@ -102,6 +93,7 @@ class AppConfigLocal:
             return "hybrid_balanced"
 
     def validate_config(self):
+        """필수 설정값 검증"""
         required_fields = [
             self.azure_openai_endpoint, 
             self.azure_openai_key, 
@@ -112,30 +104,18 @@ class AppConfigLocal:
         return all(required_fields)
     
     def get_env_status(self):
+        """환경변수 설정 상태 확인"""
         return {k: "✅" if v else "❌" for k, v in {
             "OPENAI_ENDPOINT": self.azure_openai_endpoint,
             "OPENAI_KEY": self.azure_openai_key,
             "SEARCH_ENDPOINT": self.search_endpoint,
             "SEARCH_API_KEY": self.search_key,
             "INDEX_REBUILD_NAME": self.search_index,
-            "EMBEDDING_MODEL": self.embedding_model,
-            "LANGCHAIN_API_KEY": self.langchain_api_key,
-            "LANGSMITH_TRACING": self.langsmith_tracing,
-            "LANGCHAIN_PROJECT": self.langchain_project
+            "EMBEDDING_MODEL": self.embedding_model
         }.items()}
     
-    def setup_langsmith(self):
-        if self.langchain_api_key and self.langsmith_tracing:
-            os.environ.update({
-                "LANGCHAIN_API_KEY": self.langchain_api_key,
-                "LANGCHAIN_TRACING_V2": "true",
-                "LANGCHAIN_PROJECT": self.langchain_project
-            })
-            return True
-        return False
-    
     def get_dynamic_thresholds(self, query_type, query_text):
-        """동적 임계값 설정 - 벡터 검색 통합 + 4가지 타입으로 수정"""
+        """동적 임계값 설정"""
         base_thresholds = {
             'search_threshold': self.search_score_threshold,
             'reranker_threshold': self.reranker_score_threshold,
@@ -154,7 +134,7 @@ class AppConfigLocal:
             'search_mode': self.get_search_mode_for_query(query_type, query_text)
         })
         
-        # 쿼리 타입별 특화 설정 (4가지 타입)
+        # 쿼리 타입별 특화 설정
         specialized_configs = {
             "repair": {
                 'search_threshold': 0.25,

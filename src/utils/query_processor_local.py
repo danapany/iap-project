@@ -21,37 +21,6 @@ except ImportError:
         def __init__(self, *args, **kwargs): pass
         def log_user_activity(self, *args, **kwargs): pass
 
-LANGSMITH_ENABLED = os.getenv('LANGSMITH_TRACING', 'false').lower() == 'true'
-
-if LANGSMITH_ENABLED:
-    try:
-        from langsmith import traceable, trace
-        from langsmith.wrappers import wrap_openai
-        LANGSMITH_AVAILABLE = True
-    except ImportError:
-        LANGSMITH_AVAILABLE = False
-        LANGSMITH_ENABLED = False
-        def traceable(name=None, **kwargs):
-            def decorator(func): return func
-            return decorator
-        def trace(name=None, **kwargs):
-            class DummyTrace:
-                def __enter__(self): return self
-                def __exit__(self, *args): pass
-                def update(self, **kwargs): pass
-            return DummyTrace()
-else:
-    LANGSMITH_AVAILABLE = False
-    def traceable(name=None, **kwargs):
-        def decorator(func): return func
-        return decorator
-    def trace(name=None, **kwargs):
-        class DummyTrace:
-            def __enter__(self): return self
-            def __exit__(self, *args): pass
-            def update(self, **kwargs): pass
-        return DummyTrace()
-
 class DataIntegrityNormalizer:
     """🚨 RAG 데이터 무결성 절대 보장 정규화 클래스"""
     
@@ -459,41 +428,37 @@ class QueryProcessorLocal:
         self.chart_manager = ChartManager()
         self.normalizer = DataIntegrityNormalizer()
         self.statistics_calculator = ImprovedStatisticsCalculator(remove_duplicates=False)
-        self.statistics_db_manager = StatisticsDBManager()
+        
+        # ✅ StatisticsDBManager는 lazy initialization으로 변경
+        self._statistics_db_manager = None  # 초기에는 None
+        
         self.filter_manager = DocumentFilterManager(debug_mode=True)
         
         self.debug_mode = True
-        self._decorator_logging_enabled = False
         self._manual_logging_enabled = True
 
         # 통계 관련 키워드 대폭 확장
         self.statistics_keywords = {
-            # 기본 통계 키워드
             'basic_stats': [
                 '건수', '개수', '수량', '숫자', '몇건', '몇개', '얼마나', '어느정도', 
                 '얼마', '어떻게', '어느', '어떤', '몇번', '몇차례', '몇회'
             ],
-            # 통계 관련 동사
             'stats_verbs': [
                 '알려줘', '보여줘', '말해줘', '확인해줘', '체크해줘', '조회해줘',
                 '검색해줘', '찾아줘', '가져와줘', '추출해줘', '분석해줘'
             ],
-            # 통계 명사
             'stats_nouns': [
-                '통계', '현황', '분포', '집계', '합계', '총합', '누적', '전체',
+                '통계', '현황', '분포', '집계', '합계', '이합', '누적', '전체',
                 '요약', '개요', '상황', '정도', '수준', '범위', '규모', '실적'
             ],
-            # 시간/기간 관련
             'time_keywords': [
                 '연도별', '년도별', '년별', '연별', '해별', '월별', '매월', '월간',
                 '요일별', '주간별', '일별', '시간대별', '주야별', '기간별'
             ],
-            # 분류 관련
             'category_keywords': [
                 '등급별', '장애등급별', 'grade별', '부서별', '팀별', '조직별',
                 '서비스별', '시스템별', '원인별', '원인유형별', '유형별', '타입별'
             ],
-            # 서비스명 패턴 (통계와 함께 나타나는)
             'service_patterns': [
                 r'\b([A-Z]{2,10})\s+(?:연도별|월별|장애|건수|통계|현황)',
                 r'([가-힣]{2,20}(?:플랫폼|시스템|서비스|포털|앱|관리|센터))\s+(?:연도별|월별|장애|건수|통계)',
@@ -512,9 +477,15 @@ class QueryProcessorLocal:
         else:
             self.monitoring_manager = MonitoringManager()
             self.monitoring_enabled = False
-        
-        self.langsmith_enabled = LANGSMITH_ENABLED
-        self._setup_langsmith()
+    
+    @property
+    def statistics_db_manager(self):
+        """✅ Lazy initialization property for StatisticsDBManager"""
+        if self._statistics_db_manager is None:
+            if self.debug_mode:
+                print("🔄 Initializing StatisticsDBManager (lazy loading)...")
+            self._statistics_db_manager = StatisticsDBManager()
+        return self._statistics_db_manager
 
     def generate_rag_response_with_data_integrity(self, query, documents, query_type="default", time_conditions=None, department_conditions=None, reprompting_info=None):
         """🚨 RAG 데이터 무결성을 절대 보장하는 응답 생성"""
@@ -643,7 +614,7 @@ class QueryProcessorLocal:
     def _generate_statistics_response_with_integrity(self, query, documents):
         """데이터 무결성을 보장하는 통계 응답 생성 - 원인유형 처리 강화"""
         try:
-            # 1. DB 우선 조회 시도
+            # ✅ 1. DB 우선 조회 시도 (lazy initialization)
             db_statistics = self.statistics_db_manager.get_statistics(query)
             
             if self.debug_mode and db_statistics.get('debug_info'):
@@ -885,131 +856,6 @@ class QueryProcessorLocal:
         except Exception as e:
             return f"통계 포맷팅 중 오류: {str(e)}"
 
-    def _format_db_statistics_with_integrity(self, db_stats, query):
-        """DB 통계 결과를 데이터 무결성 보장하여 포맷팅"""
-        try:
-            conditions = db_stats['query_conditions']
-            query_scope = self._determine_query_scope(conditions)
-            
-            # 무결성 보장 프롬프트
-            integrity_prompt = f"""당신은 IT 통계 전문가입니다.
-
-🚨 데이터 무결성 절대 보장 🚨
-- 제공된 통계 수치를 절대 변경하지 마세요
-- 계산하거나 추정하지 마세요
-- 원본 수치 그대로 출력하세요
-
-**요청 범위**: {query_scope}
-**원본 통계 데이터** (절대 변경 금지):
-{self._format_db_statistics_for_prompt_with_integrity(db_stats, conditions)}
-
-위 원본 통계 수치를 정확히 그대로 사용하여 응답하세요."""
-
-            response = self.azure_openai_client.chat.completions.create(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": integrity_prompt},
-                    {"role": "user", "content": f"사용자 질문: {query}\n\n위 원본 통계 데이터를 그대로 사용하여 답변하세요."}
-                ],
-                temperature=0.0,
-                max_tokens=2000
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
-            return f"통계 포맷팅 중 오류: {str(e)}"
-    
-    def _format_db_statistics_for_prompt_with_integrity(self, db_stats, conditions):
-        """DB 통계를 무결성 보장하여 프롬프트용 텍스트로 변환"""
-        lines = []
-        
-        value_type = "장애시간(분)" if db_stats['is_error_time_query'] else "발생건수"
-        lines.append(f"**데이터 유형**: {value_type}")
-        lines.append(f"**이 {value_type}**: {db_stats['total_value']}")
-        
-        # 연도별 통계 (원본 수치 그대로)
-        if db_stats['yearly_stats']:
-            lines.append(f"\n**📅 연도별 {value_type}**:")
-            for year, value in sorted(db_stats['yearly_stats'].items()):
-                lines.append(f"* {year}: {value}건")
-        
-        # 월별 통계 (원본 수치 그대로)
-        if db_stats['monthly_stats']:
-            lines.append(f"\n**📅 월별 {value_type}**:")
-            sorted_months = sorted(db_stats['monthly_stats'].items(), key=lambda x: int(x[0].replace('월', '')))
-            for month, value in sorted_months:
-                lines.append(f"* {month}: {value}건")
-        
-        # 기타 통계들도 원본 수치 그대로
-        stat_types = [
-            ('time_stats', '시간대별/요일별'),
-            ('department_stats', '부서별'), 
-            ('service_stats', '서비스별'),
-            ('grade_stats', '등급별'),
-            ('cause_type_stats', '원인유형별')
-        ]
-        
-        for stat_key, title in stat_types:
-            if stat_key == 'time_stats':
-                # 시간대별
-                if db_stats['time_stats']['daynight']:
-                    lines.append(f"\n**🕘 시간대별 {value_type}**:")
-                    for time, value in db_stats['time_stats']['daynight'].items():
-                        lines.append(f"* {time}: {value}건")
-                
-                # 요일별  
-                if db_stats['time_stats']['week']:
-                    lines.append(f"\n**📅 요일별 {value_type}**:")
-                    for day, value in db_stats['time_stats']['week'].items():
-                        lines.append(f"* {day}: {value}건")
-            
-            elif db_stats.get(stat_key):
-                lines.append(f"\n**{title} {value_type}**:")
-                if stat_key == 'grade_stats':
-                    # 등급 순서 보장
-                    grade_order = ['1등급', '2등급', '3등급', '4등급']
-                    for grade in grade_order:
-                        if grade in db_stats[stat_key]:
-                            lines.append(f"* {grade}: {db_stats[stat_key][grade]}건")
-                else:
-                    # 상위 10개
-                    sorted_items = sorted(db_stats[stat_key].items(), key=lambda x: x[1], reverse=True)[:10]
-                    for item, value in sorted_items:
-                        lines.append(f"* {item}: {value}건")
-        
-        lines.append(f"\n⚠️ **중요**: 위 모든 수치는 원본 DB 데이터이므로 절대 변경하지 마세요.")
-        
-        return '\n'.join(lines)
-
-    def _setup_langsmith(self):
-        if not self.langsmith_enabled: return
-        try:
-            langsmith_status = self.config.get_langsmith_status()
-            if langsmith_status['enabled'] and LANGSMITH_AVAILABLE:
-                if self.config.setup_langsmith():
-                    self.azure_openai_client = wrap_openai(self.azure_openai_client)
-        except Exception:
-            pass
-
-    def safe_trace_update(self, trace_obj, **kwargs):
-        if not self.langsmith_enabled: return
-        try:
-            if hasattr(trace_obj, 'update'):
-                trace_obj.update(**kwargs)
-            elif hasattr(trace_obj, 'add_outputs'):
-                if 'outputs' in kwargs:
-                    trace_obj.add_outputs(kwargs['outputs'])
-                if 'metadata' in kwargs:
-                    trace_obj.add_metadata(kwargs['metadata'])
-        except Exception:
-            pass
-
-    def calculate_unified_statistics(self, documents, query, query_type="default"):
-        """통합 통계 계산 - 무결성 보장 계산기 사용"""
-        return self.statistics_calculator._empty_statistics() if not documents else self.statistics_calculator.calculate_comprehensive_statistics(query, documents, query_type)
-
-    @traceable(name="check_reprompting_question")
     def check_and_transform_query_with_reprompting(self, user_query):
         """개선된 리프롬프팅 - 강제 치환 추가"""
         if not user_query:
@@ -1017,59 +863,58 @@ class QueryProcessorLocal:
         
         force_replaced_query = self.force_replace_problematic_queries(user_query)
         
-        with trace(name="reprompting_check", inputs={"user_query": user_query, "force_replaced": force_replaced_query}) as trace_context:
-            try:
-                if force_replaced_query != user_query:
-                    if not self.debug_mode:
-                        st.success("✅ 맞춤형 프롬프트를 적용하여 더 정확한 답변을 제공합니다.")
-                    return {
-                        'transformed': True, 
-                        'original_query': user_query, 
-                        'transformed_query': force_replaced_query, 
-                        'question_type': 'statistics',
-                        'wrong_answer_summary': '동의어 표현 최적화',
-                        'match_type': 'force_replacement'
-                    }
+        try:
+            if force_replaced_query != user_query:
+                if not self.debug_mode:
+                    st.success("✅ 맞춤형 프롬프트를 적용하여 더 정확한 답변을 제공합니다.")
+                return {
+                    'transformed': True, 
+                    'original_query': user_query, 
+                    'transformed_query': force_replaced_query, 
+                    'question_type': 'statistics',
+                    'wrong_answer_summary': '동의어 표현 최적화',
+                    'match_type': 'force_replacement'
+                }
+            
+            exact_result = self.reprompting_db_manager.check_reprompting_question(user_query)
+            if exact_result['exists']:
+                if not self.debug_mode:
+                    st.success("✅ 맞춤형 프롬프트를 적용하여 더 정확한 답변을 제공합니다.")
+                return {
+                    'transformed': True, 
+                    'original_query': user_query, 
+                    'transformed_query': exact_result['custom_prompt'], 
+                    'question_type': exact_result['question_type'], 
+                    'wrong_answer_summary': exact_result['wrong_answer_summary'], 
+                    'match_type': 'exact'
+                }
+            
+            similar_questions = self.reprompting_db_manager.find_similar_questions(user_query, similarity_threshold=0.7, limit=3)
+            if similar_questions:
+                best_match = similar_questions[0]
+                try:
+                    transformed_query = re.sub(re.escape(best_match['question']), best_match['custom_prompt'], user_query, flags=re.IGNORECASE)
+                except:
+                    transformed_query = user_query.replace(best_match['question'], best_match['custom_prompt'])
                 
-                exact_result = self.reprompting_db_manager.check_reprompting_question(user_query)
-                if exact_result['exists']:
-                    if not self.debug_mode:
-                        st.success("✅ 맞춤형 프롬프트를 적용하여 더 정확한 답변을 제공합니다.")
-                    return {
-                        'transformed': True, 
-                        'original_query': user_query, 
-                        'transformed_query': exact_result['custom_prompt'], 
-                        'question_type': exact_result['question_type'], 
-                        'wrong_answer_summary': exact_result['wrong_answer_summary'], 
-                        'match_type': 'exact'
-                    }
-                
-                similar_questions = self.reprompting_db_manager.find_similar_questions(user_query, similarity_threshold=0.7, limit=3)
-                if similar_questions:
-                    best_match = similar_questions[0]
-                    try:
-                        transformed_query = re.sub(re.escape(best_match['question']), best_match['custom_prompt'], user_query, flags=re.IGNORECASE)
-                    except:
-                        transformed_query = user_query.replace(best_match['question'], best_match['custom_prompt'])
-                    
-                    is_transformed = transformed_query != user_query
-                    if is_transformed and not self.debug_mode:
-                        st.info("📋 유사 질문 패턴을 감지하여 질문을 최적화했습니다.")
-                    return {
-                        'transformed': is_transformed, 
-                        'original_query': user_query, 
-                        'transformed_query': transformed_query, 
-                        'question_type': best_match['question_type'], 
-                        'wrong_answer_summary': best_match['wrong_answer_summary'], 
-                        'similarity': best_match['similarity'], 
-                        'similar_question': best_match['question'], 
-                        'match_type': 'similar'
-                    }
-                
-                return {'transformed': False, 'original_query': user_query, 'transformed_query': user_query, 'match_type': 'none'}
-                
-            except Exception as e:
-                return {'transformed': False, 'original_query': user_query, 'transformed_query': user_query, 'match_type': 'error', 'error': str(e)}
+                is_transformed = transformed_query != user_query
+                if is_transformed and not self.debug_mode:
+                    st.info("📋 유사 질문 패턴을 감지하여 질문을 최적화했습니다.")
+                return {
+                    'transformed': is_transformed, 
+                    'original_query': user_query, 
+                    'transformed_query': transformed_query, 
+                    'question_type': best_match['question_type'], 
+                    'wrong_answer_summary': best_match['wrong_answer_summary'], 
+                    'similarity': best_match['similarity'], 
+                    'similar_question': best_match['question'], 
+                    'match_type': 'similar'
+                }
+            
+            return {'transformed': False, 'original_query': user_query, 'transformed_query': user_query, 'match_type': 'none'}
+            
+        except Exception as e:
+            return {'transformed': False, 'original_query': user_query, 'transformed_query': user_query, 'match_type': 'error', 'error': str(e)}
     
     def extract_time_conditions(self, query):
         if not query:
@@ -1096,7 +941,6 @@ class QueryProcessorLocal:
             return {'owner_depart': None, 'is_department_query': False}
         return {'owner_depart': None, 'is_department_query': any(keyword in query for keyword in ['담당부서', '조치부서', '처리부서', '책임부서', '관리부서', '부서', '팀', '조직'])}
 
-    @traceable(name="classify_query_type")
     def classify_query_type_with_llm(self, query):
         """개선된 LLM 기반 의미적 쿼리 분류 - 통계 키워드 인식 강화"""
         if not query:
@@ -1110,10 +954,9 @@ class QueryProcessorLocal:
             print(f"DEBUG: Pre-classified as '{pre_classification}' by keyword matching")
             return pre_classification
         
-        with trace(name="llm_semantic_classification", inputs={"query": query}) as trace_context:
-            try:
-                # 개선된 분류 프롬프트
-                classification_prompt = f"""다음 사용자 질문을 의미적으로 분석하여 정확히 분류하세요.
+        try:
+            # 개선된 분류 프롬프트
+            classification_prompt = f"""다음 사용자 질문을 의미적으로 분석하여 정확히 분류하세요.
 
 **분류 카테고리:**
 
@@ -1149,38 +992,38 @@ class QueryProcessorLocal:
 
 **응답 형식:** repair, inquiry, statistics, default 중 하나만 출력하세요."""
 
-                response = self.azure_openai_client.chat.completions.create(
-                    model=self.model_name,
-                    messages=[
-                        {"role": "system", "content": "당신은 IT 질문을 의미적으로 분석하여 정확히 분류하는 전문가입니다. 특히 통계 관련 질문을 놓치지 않고 정확히 인식해야 합니다."},
-                        {"role": "user", "content": classification_prompt}
-                    ],
-                    temperature=0.0,
-                    max_tokens=50
-                )
+            response = self.azure_openai_client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": "당신은 IT 질문을 의미적으로 분석하여 정확히 분류하는 전문가입니다. 특히 통계 관련 질문을 놓치지 않고 정확히 인식해야 합니다."},
+                    {"role": "user", "content": classification_prompt}
+                ],
+                temperature=0.0,
+                max_tokens=50
+            )
+            
+            query_type = response.choices[0].message.content.strip().lower()
+            
+            if query_type not in ['repair', 'inquiry', 'statistics', 'default']:
+                print(f"WARNING: Invalid query type '{query_type}', applying fallback classification")
+                query_type = self._enhanced_fallback_classification(query)
+            
+            print(f"DEBUG: LLM semantic classification result: {query_type}")
+            
+            confidence_score = self._calculate_enhanced_classification_confidence(query, query_type)
+            print(f"DEBUG: Classification confidence: {confidence_score:.2f}")
+            
+            # 신뢰도가 낮으면 fallback 사용
+            if confidence_score < 0.6:
+                fallback_type = self._enhanced_fallback_classification(query)
+                print(f"DEBUG: Low confidence, using fallback: {fallback_type}")
+                return fallback_type
+            
+            return query_type
                 
-                query_type = response.choices[0].message.content.strip().lower()
-                
-                if query_type not in ['repair', 'inquiry', 'statistics', 'default']:
-                    print(f"WARNING: Invalid query type '{query_type}', applying fallback classification")
-                    query_type = self._enhanced_fallback_classification(query)
-                
-                print(f"DEBUG: LLM semantic classification result: {query_type}")
-                
-                confidence_score = self._calculate_enhanced_classification_confidence(query, query_type)
-                print(f"DEBUG: Classification confidence: {confidence_score:.2f}")
-                
-                # 신뢰도가 낮으면 fallback 사용
-                if confidence_score < 0.6:
-                    fallback_type = self._enhanced_fallback_classification(query)
-                    print(f"DEBUG: Low confidence, using fallback: {fallback_type}")
-                    return fallback_type
-                
-                return query_type
-                    
-            except Exception as e:
-                print(f"ERROR: LLM semantic classification failed: {e}")
-                return self._enhanced_fallback_classification(query)
+        except Exception as e:
+            print(f"ERROR: LLM semantic classification failed: {e}")
+            return self._enhanced_fallback_classification(query)
 
     def _pre_classify_by_keywords(self, query):
         """키워드 기반 사전 분류 - 통계 쿼리 우선 감지"""
@@ -1344,53 +1187,6 @@ class QueryProcessorLocal:
         except Exception:
             return 0.5
 
-    def _calculate_classification_confidence(self, query, predicted_type):
-        """분류 결과에 대한 신뢰도 계산"""
-        try:
-            query_lower = query.lower()
-            
-            strong_signals = {
-                'repair': ['복구방법', '해결방법', '조치방법', '불가', '실패', '원인', '왜', '어떻게'],
-                'inquiry': ['내역', '목록', '리스트', '조회', '보여줘', '알려줘'],
-                'statistics': ['건수', '몇건', '통계', '현황', '분포', '차트', '연도별', '월별'],
-                'default': []
-            }
-            
-            predicted_signals = strong_signals.get(predicted_type, [])
-            signal_count = sum(1 for signal in predicted_signals if signal in query_lower)
-            
-            conflicting_signals = 0
-            for other_type, signals in strong_signals.items():
-                if other_type != predicted_type:
-                    conflicting_signals += sum(1 for signal in signals if signal in query_lower)
-            
-            confidence = 0.5
-            if signal_count > 0:
-                confidence += 0.3 * min(signal_count, 2) / 2
-            if conflicting_signals > 0:
-                confidence -= 0.2 * min(conflicting_signals, 2) / 2
-            
-            return max(0.0, min(1.0, confidence))
-            
-        except Exception:
-            return 0.5
-
-    def _fallback_classification(self, query):
-        """LLM 실패시 간단한 fallback 분류"""
-        if not query:
-            return 'default'
-        
-        query_lower = query.lower()
-        
-        if any(word in query_lower for word in ['복구방법', '해결방법', '조치방법']):
-            return 'repair'
-        elif any(word in query_lower for word in ['내역', '목록', '리스트']):
-            return 'inquiry'  
-        elif any(word in query_lower for word in ['건수', '몇건', '통계', '현황']):
-            return 'statistics'
-        else:
-            return 'default'
-
     def _extract_chart_type_from_query(self, query):
         """쿼리에서 명시적으로 요청된 차트 타입 추출"""
         if not query:
@@ -1452,16 +1248,6 @@ class QueryProcessorLocal:
         print(f"DEBUG: Using {'user-requested' if requested_chart_type else 'default'} chart type: {chart_type}")
         
         return data, chart_type
-
-    def remove_text_charts_from_response(self, response_text):
-        if not response_text:
-            return response_text
-        
-        patterns = [r'각\s*월별.*?차트로\s*나타낼\s*수\s*있습니다:.*?(?=\n\n|\n[^월"\d]|$)', r'\d+월:\s*[▬▓▒▒▬\*\-\|]+.*?(?=\n\n|\n[^월"\d]|$)', r'\n.*[▬▓▒▒▬\*\-\|]{2,}.*\n', r'```[^`]*[▬▓▒▒▬\*\-\|]{2,}[^`]*```']
-        cleaned_response = response_text
-        for pattern in patterns:
-            cleaned_response = re.sub(pattern, '', cleaned_response, flags=re.MULTILINE | re.DOTALL)
-        return re.sub(r'\n{3,}', '\n\n', cleaned_response).strip()
 
     def _extract_incident_id_sort_key(self, incident_id):
         """Incident ID 정렬 키 추출"""
@@ -1552,695 +1338,6 @@ class QueryProcessorLocal:
             chart_info=chart_info
         )
 
-    @traceable(name="process_user_query")
-    def process_query(self, query, query_type=None):
-        """메인 쿼리 처리"""
-        if not query:
-            st.error("질문을 입력해주세요.")
-            return
-        
-        if not hasattr(st.session_state, 'current_query_logged'):
-            st.session_state.current_query_logged = False
-        st.session_state.current_query_logged = False
-        
-        start_time = time.time()
-        response_text = None
-        document_count = 0
-        error_message = None
-        success = False
-        
-        with st.chat_message("assistant"):
-            try:
-                original_query = query
-                force_replaced_query = self.force_replace_problematic_queries(query)
-                
-                if force_replaced_query != original_query:
-                    if self.debug_mode:
-                        st.info(f"🔄 쿼리 강제 치환: '{original_query}' → '{force_replaced_query}'")
-                    query = force_replaced_query
-                
-                reprompting_info = self.check_and_transform_query_with_reprompting(query)
-                processing_query = reprompting_info.get('transformed_query', query)
-                
-                time_conditions = self.extract_time_conditions(processing_query)
-                department_conditions = self.extract_department_conditions(processing_query)
-                
-                if query_type is None:
-                    with st.spinner("🔍 질문 분석 중..."):
-                        query_type = self.classify_query_type_with_llm(processing_query)
-                
-                if self.debug_mode and query_type.lower() == 'inquiry':
-                    st.info("📋 장애 내역 조회 모드로 분기되었습니다. 복구방법 박스 없이 깔끔한 목록을 제공합니다.")
-                
-                target_service_name = self.search_manager.extract_service_name_from_query(processing_query)
-                
-                with st.spinner("📄 문서 검색 중..."):
-                    documents = self.search_manager.semantic_search_with_adaptive_filtering(processing_query, target_service_name, query_type) or []
-                    document_count = len(documents)
-                    
-                    if documents:
-                        with st.expander("📄 매칭된 문서 상세 보기"):
-                            self.ui_components.display_documents_with_quality_info(documents)
-                        
-                        with st.spinner("🤖 AI 답변 생성 중..."):
-                            response = self.generate_rag_response_with_data_integrity(
-                                query, documents, query_type, time_conditions, department_conditions, reprompting_info
-                            )
-                            
-                            if response:
-                                response_text = response[0] if isinstance(response, tuple) else response
-                                
-                                success = self._is_successful_response(response_text, document_count)
-                                if not success:
-                                    error_message = self._get_failure_reason(response_text, document_count)
-                                
-                                self._display_response_with_marker_conversion(response, query_type=query_type)
-                                st.session_state.messages.append({"role": "assistant", "content": response_text})
-                            else:
-                                response_text = "죄송합니다. 응답을 생성할 수 없습니다."
-                                success = False
-                                error_message = "응답 생성 실패"
-                                st.write(response_text)
-                                st.session_state.messages.append({"role": "assistant", "content": response_text})
-                    else:
-                        with st.spinner("📄 추가 검색 중..."):
-                            fallback_documents = self.search_manager.search_documents_fallback(processing_query, target_service_name)
-                            document_count = len(fallback_documents)
-                            
-                            if fallback_documents:
-                                response = self.generate_rag_response_with_data_integrity(
-                                    query, fallback_documents, query_type, time_conditions, department_conditions, reprompting_info
-                                )
-                                response_text = response[0] if isinstance(response, tuple) else response
-                                
-                                success = self._is_successful_response(response_text, document_count)
-                                if not success:
-                                    error_message = self._get_failure_reason(response_text, document_count)
-                                
-                                self._display_response_with_marker_conversion(response, query_type=query_type)
-                                st.session_state.messages.append({"role": "assistant", "content": response_text})
-                            else:
-                                response_text = f"'{target_service_name or '해당 조건'}'에 해당하는 문서를 찾을 수 없습니다."
-                                success = False
-                                error_message = "관련 문서 검색 실패"
-                                st.write(response_text)
-                                st.session_state.messages.append({"role": "assistant", "content": response_text})
-                                
-            except Exception as e:
-                response_time = time.time() - start_time
-                error_message = str(e)[:50] + ("..." if len(str(e)) > 50 else "")
-                success = False
-                response_text = f"쿼리 처리 중 오류가 발생했습니다: {str(e)}"
-                st.error(response_text)
-                st.session_state.messages.append({"role": "assistant", "content": response_text})
-                
-                if not st.session_state.current_query_logged and self.monitoring_enabled and self._manual_logging_enabled:
-                    self._log_query_activity(
-                        query=query,
-                        query_type=query_type,
-                        response_time=response_time,
-                        document_count=document_count,
-                        success=success,
-                        error_message=error_message,
-                        response_content=response_text
-                    )
-                    st.session_state.current_query_logged = True
-                return
-            
-            response_time = time.time() - start_time
-            if not st.session_state.current_query_logged and self.monitoring_enabled and self._manual_logging_enabled:
-                self._log_query_activity(
-                    query=query,
-                    query_type=query_type,
-                    response_time=response_time,
-                    document_count=document_count,
-                    success=success,
-                    error_message=error_message,
-                    response_content=response_text
-                )
-                st.session_state.current_query_logged = True
-
-    def _is_successful_response(self, response_text: str, document_count: int) -> bool:
-        """응답이 성공적인지 판단"""
-        if not response_text or response_text.strip() == "":
-            return False
-        
-        failure_patterns = [
-            r"해당.*조건.*문서.*찾을 수 없습니다",
-            r"검색된 문서가 없어서 답변을 제공할 수 없습니다",
-            r"관련 정보를 찾을 수 없습니다",
-            r"문서를 찾을 수 없습니다",
-            r"답변을 생성할 수 없습니다",
-            r"죄송합니다.*오류가 발생했습니다",
-            r"처리 중 오류가 발생했습니다",
-            r"연결에 실패했습니다",
-            r"서비스를 이용할 수 없습니다",
-            r"오류가 발생했습니다"
-        ]
-        
-        for pattern in failure_patterns:
-            if re.search(pattern, response_text, re.IGNORECASE):
-                return False
-        
-        if len(response_text.strip()) < 10:
-            return False
-        
-        if document_count == 0:
-            return False
-        
-        if not self._is_rag_based_response(response_text, document_count):
-            return False
-        
-        return True
-
-    def _is_rag_based_response(self, response_text: str, document_count: int = None) -> bool:
-        """RAG 원천 데이터 기반 답변인지 판단"""
-        
-        if not response_text:
-            return False
-        
-        response_lower = response_text.lower()
-        
-        if document_count is not None and document_count < 2:
-            return False
-        
-        rag_markers = ['[repair_box_start]', '[cause_box_start]', 'case1', 'case2', 'case3', '장애 id', 'incident_id', 'service_name', '복구방법:', '장애원인:', '서비스명:', '발생일시:', '장애시간:', '담당부서:', '참조장애정보', '장애등급:', 'inm2']
-        rag_marker_count = sum(1 for marker in rag_markers if marker in response_lower)
-        
-        rag_patterns = [r'장애\s*id\s*:\s*inm\d+', r'서비스명\s*:\s*\w+', r'발생일[시자]\s*:\s*\d{4}', r'장애시간\s*:\s*\d+분', r'복구방법\s*:\s*', r'장애원인\s*:\s*', r'\d+등급', r'incident_repair', r'error_date', r'case\d+\.']
-        rag_pattern_count = sum(1 for pattern in rag_patterns if re.search(pattern, response_lower))
-        
-        general_patterns = [r'일반적으로\s+', r'보통\s+', r'대부분\s+', r'흔히\s+', r'주로\s+', r'다음과\s+같은\s+방법', r'다음\s+단계', r'기본적인\s+', r'표준적인\s+', r'권장사항', r'best\s+practice', r'모범\s+사례', r'다음과\s+같이\s+접근', r'시스템\s+관리자', r'네트워크\s+관리', r'서버\s+관리']
-        general_pattern_count = sum(1 for pattern in general_patterns if re.search(pattern, response_lower))
-        
-        non_rag_keywords = ['일반적으로', '보통', '대부분', '흔히', '주로', '기본적으로', '표준적으로', '권장사항', '모범사례', '다음과 같은 방법', '다음 단계', '기본적인 점검', '시스템 관리', '네트워크 관리', '서버 관리', '일반적인 해결책', '표준 절차', '기본 원칙', '다음과 같은 조치', '기본적인 순서']
-        non_rag_keyword_count = sum(1 for keyword in non_rag_keywords if keyword in response_lower)
-        
-        statistics_indicators = ['건수', '통계', '현황', '분포', '연도별', '월별', '차트']
-        statistics_count = sum(1 for indicator in statistics_indicators if indicator in response_lower)
-        
-        print(f"DEBUG RAG 판단: rag_markers={rag_marker_count}, rag_patterns={rag_pattern_count}, general_patterns={general_pattern_count}, non_rag_keywords={non_rag_keyword_count}")
-        
-        if rag_marker_count >= 3 or rag_pattern_count >= 2:
-            return True
-        
-        if statistics_count >= 2 and any(word in response_lower for word in ['차트', '표', '이', '합계']):
-            return True
-        
-        if general_pattern_count >= 2 or non_rag_keyword_count >= 3:
-            if rag_marker_count == 0 and rag_pattern_count == 0:
-                print(f"DEBUG: 일반적 답변으로 판단됨 (general_pattern_count={general_pattern_count}, non_rag_keyword_count={non_rag_keyword_count})")
-                return False
-        
-        if rag_marker_count > 0 or rag_pattern_count > 0:
-            return True
-        
-        if len(response_text) > 200 and document_count and document_count >= 3:
-            if non_rag_keyword_count < 2:
-                return True
-        
-        print(f"DEBUG: 기본적으로 일반 답변으로 판단됨")
-        return False
-
-    def _get_failure_reason(self, response_text: str, document_count: int) -> str:
-        """실패 원인 분석"""
-        if not response_text or response_text.strip() == "":
-            return "응답 내용 없음"
-        
-        if document_count == 0:
-            return "관련 문서 검색 실패"
-        
-        if len(response_text.strip()) < 10:
-            return "응답 길이 부족"
-        
-        failure_reasons = {
-            r"해당.*조건.*문서.*찾을 수 없습니다": "조건 맞는 문서 없음",
-            r"검색된 문서가 없어서": "검색 결과 없음",
-            r"오류가 발생했습니다": "시스템 오류 발생",
-            r"답변을 생성할 수 없습니다": "답변 생성 실패"
-        }
-        
-        for pattern, reason in failure_reasons.items():
-            if re.search(pattern, response_text, re.IGNORECASE):
-                return reason
-        
-        if not self._is_rag_based_response(response_text, document_count):
-            return "RAG 기반 답변 아님"
-        
-        return "적절한 답변 생성 실패"
-    
-    def _log_query_activity(self, query: str, query_type: str = None, response_time: float = None,
-                        document_count: int = None, success: bool = None, 
-                        error_message: str = None, response_content: str = None):
-        """쿼리 활동 로깅"""
-        try:
-            if hasattr(self, '_decorator_logging_enabled') and self._decorator_logging_enabled:
-                print(f"DEBUG: 데코레이터 로깅이 활성화되어 수동 로깅을 건너뜁니다.")
-                return
-                
-            if hasattr(self, '_manual_logging_enabled') and not self._manual_logging_enabled:
-                print(f"DEBUG: 수동 로깅이 비활성화되어 로깅을 건너뜁니다.")
-                return
-            
-            if hasattr(st.session_state, 'current_query_logged') and st.session_state.current_query_logged:
-                print(f"DEBUG: 현재 쿼리가 이미 로깅되어 중복 로깅을 방지합니다.")
-                return
-                
-            if self.monitoring_manager:
-                ip_address = getattr(st.session_state, 'client_ip', '127.0.0.1')
-                
-                self.monitoring_manager.log_user_activity(
-                    ip_address=ip_address,
-                    question=query,
-                    query_type=query_type,
-                    user_agent="Streamlit/ChatBot",
-                    response_time=response_time,
-                    document_count=document_count,
-                    success=success,
-                    error_message=error_message,
-                    response_content=response_content
-                )
-                
-                if hasattr(st.session_state, 'current_query_logged'):
-                    st.session_state.current_query_logged = True
-                    
-                print(f"DEBUG: 쿼리 로깅 완료 - Query: {query[:50]}..., Success: {success}")
-                
-        except Exception as e:
-            print(f"모니터링 로그 실패: {str(e)}")
-
-    def force_replace_problematic_queries(self, query):
-        """문제 쿼리 치환 로직 - 통계 쿼리 패턴 추가"""
-        if not query:
-            return query
-        
-        # 기존 치환 규칙
-        simple_replacements = {
-            '몇건이야': '몇건',
-            '몇건이니': '몇건', 
-            '몇건인가': '몇건',
-            '몇개야': '몇개',
-            '몇개인가': '몇개',
-            '알려줘': '',
-            '보여줘': '',
-            '말해줘': ''
-        }
-        
-        # 통계 쿼리 강화 패턴 추가
-        stats_enhancements = {
-            # "ERP 연도별 장애건수 알려줘" → "ERP 연도별 장애건수"
-            r'([A-Z가-힣][A-Z가-힣0-9\s]{1,20}(?:연도별|월별|등급별)[^가-힣]*(?:장애)?[^가-힣]*건수)\s*(?:알려줘|보여줘|말해줘|확인해줘)': r'\1',
-            # "몇건이야" 패턴들을 "건수"로 통합
-            r'(.*?)\s*(?:몇건이야|몇건이니|몇건인가|몇개야|몇개인가|얼마나|어느정도)\s*$': r'\1 건수',
-        }
-        
-        normalized_query = query
-        
-        # 패턴 기반 치환
-        for pattern, replacement in stats_enhancements.items():
-            normalized_query = re.sub(pattern, replacement, normalized_query, flags=re.IGNORECASE)
-        
-        # 단순 치환
-        for old, new in simple_replacements.items():
-            normalized_query = normalized_query.replace(old, new)
-        
-        # 연속된 공백 정리
-        normalized_query = re.sub(r'\s+', ' ', normalized_query).strip()
-        
-        if normalized_query != query:
-            print(f"DEBUG: Query normalized: '{query}' -> '{normalized_query}'")
-        
-        return normalized_query
-
-    def _calculate_statistics_with_integrity(self, documents, query):
-        """문서 기반 통계 계산 - 데이터 무결성 보장"""
-        try:
-            stats = self.statistics_calculator.calculate_comprehensive_statistics(query, documents, "statistics")
-            
-            if not stats or stats.get('total_count', 0) == 0:
-                return "조건에 맞는 장애 데이터를 찾을 수 없습니다."
-            
-            # 통계 응답 생성
-            response_lines = []
-            
-            # 기본 통계 정보
-            total_count = stats.get('total_count', 0)
-            is_error_time = stats.get('is_error_time_query', False)
-            value_type = "장애시간(분)" if is_error_time else "발생건수"
-            
-            response_lines.append(f"## 📊 통계 요약")
-            response_lines.append(f"**이 {value_type}: {total_count}**")
-            
-            # 연도별 통계
-            if stats.get('yearly_stats'):
-                response_lines.append(f"\n## 📈 연도별 통계")
-                for year, count in sorted(stats['yearly_stats'].items()):
-                    response_lines.append(f"* **{year}: {count}건**")
-                response_lines.append(f"\n**💡 이 합계: {sum(stats['yearly_stats'].values())}건**")
-            
-            # 월별 통계
-            if stats.get('monthly_stats'):
-                response_lines.append(f"\n## 📈 월별 통계")
-                sorted_months = sorted(stats['monthly_stats'].items(), key=lambda x: int(x[0].replace('월', '')))
-                for month, count in sorted_months:
-                    response_lines.append(f"* **{month}: {count}건**")
-                response_lines.append(f"\n**💡 이 합계: {sum(stats['monthly_stats'].values())}건**")
-            
-            # 등급별 통계
-            if stats.get('grade_stats'):
-                response_lines.append(f"\n## ⚠️ 장애등급별 통계")
-                grade_order = ['1등급', '2등급', '3등급', '4등급']
-                for grade in grade_order:
-                    if grade in stats['grade_stats']:
-                        response_lines.append(f"* **{grade}: {stats['grade_stats'][grade]}건**")
-                response_lines.append(f"\n**💡 이 합계: {sum(stats['grade_stats'].values())}건**")
-            
-            # 서비스별 통계 (상위 10개)
-            if stats.get('service_stats'):
-                response_lines.append(f"\n## 💻 서비스별 통계 (상위 10개)")
-                sorted_services = sorted(stats['service_stats'].items(), key=lambda x: x[1], reverse=True)[:10]
-                for service, count in sorted_services:
-                    response_lines.append(f"* **{service}: {count}건**")
-                response_lines.append(f"\n**💡 상위 10개 합계: {sum(count for _, count in sorted_services)}건**")
-            
-            # 부서별 통계 (상위 10개)
-            if stats.get('department_stats'):
-                response_lines.append(f"\n## 🏢 부서별 통계 (상위 10개)")
-                sorted_departments = sorted(stats['department_stats'].items(), key=lambda x: x[1], reverse=True)[:10]
-                for dept, count in sorted_departments:
-                    response_lines.append(f"* **{dept}: {count}건**")
-                response_lines.append(f"\n**💡 상위 10개 합계: {sum(count for _, count in sorted_departments)}건**")
-            
-            # 시간대별 통계
-            if stats.get('time_stats', {}).get('daynight'):
-                response_lines.append(f"\n## 🕘 시간대별 통계")
-                for time, count in stats['time_stats']['daynight'].items():
-                    response_lines.append(f"* **{time}: {count}건**")
-                response_lines.append(f"\n**💡 이 합계: {sum(stats['time_stats']['daynight'].values())}건**")
-            
-            # 요일별 통계
-            if stats.get('time_stats', {}).get('week'):
-                response_lines.append(f"\n## 📅 요일별 통계")
-                for day, count in stats['time_stats']['week'].items():
-                    response_lines.append(f"* **{day}: {count}건**")
-                response_lines.append(f"\n**💡 이 합계: {sum(stats['time_stats']['week'].values())}건**")
-            
-            return '\n'.join(response_lines)
-            
-        except Exception as e:
-            print(f"ERROR: 문서 기반 통계 계산 실패: {e}")
-            import traceback
-            traceback.print_exc()
-            return f"통계 계산 중 오류가 발생했습니다: {str(e)}"
-
-    # 기타 필수 메서드들 유지
-    def _convert_to_query_type_enum(self, query_type_str):
-        mapping = {
-            'repair': QueryType.REPAIR,
-            'inquiry': QueryType.INQUIRY, 
-            'statistics': QueryType.STATISTICS,
-            'default': QueryType.DEFAULT
-        }
-        return mapping.get(query_type_str, QueryType.DEFAULT)
-
-    def _determine_query_scope(self, conditions):
-        scope_parts = []
-        
-        if conditions.get('year'):
-            scope_parts.append(conditions['year'])
-        
-        if conditions.get('months'):
-            months = [m.replace('월', '') for m in conditions['months']]
-            if len(months) == 1:
-                scope_parts.append(f"{months[0]}월")
-            elif len(months) > 1:
-                scope_parts.append(f"{months[0]}~{months[-1]}월")
-        
-        if conditions.get('daynight'):
-            scope_parts.append(conditions['daynight'])
-        
-        if conditions.get('week'):
-            week_val = conditions['week']
-            if week_val not in ['평일', '주말']:
-                scope_parts.append(f"{week_val}요일")
-            else:
-                scope_parts.append(week_val)
-        
-        if conditions.get('incident_grade'):
-            scope_parts.append(conditions['incident_grade'])
-        
-        if conditions.get('service_name'):
-            scope_parts.append(f"'{conditions['service_name']}' 서비스")
-        
-        if conditions.get('owner_depart'):
-            scope_parts.append(f"'{conditions['owner_depart']}' 부서")
-        
-        return ' '.join(scope_parts) if scope_parts else "전체 기간"
-    
-    def _format_db_statistics_for_prompt(self, db_stats, conditions):
-        """DB 통계를 프롬프트용 텍스트로 변환"""
-        lines = []
-        
-        value_type = "장애시간(분)" if db_stats['is_error_time_query'] else "발생건수"
-        query_scope = self._determine_query_scope(conditions)
-        
-        lines.append(f"**요청 범위**: {query_scope}")
-        lines.append(f"**데이터 유형**: {value_type}")
-        lines.append(f"**총 {value_type}**: {db_stats['total_value']}")
-        
-        if db_stats['yearly_stats']:
-            lines.append(f"\n**📅 연도별 {value_type}**:")
-            for year, value in sorted(db_stats['yearly_stats'].items()):
-                lines.append(f"* **{year}: {value}건**")
-            lines.append(f"\n**💡 총 합계: {sum(db_stats['yearly_stats'].values())}건**")
-        
-        if db_stats['monthly_stats']:
-            lines.append(f"\n**📅 월별 {value_type}**:")
-            sorted_months = sorted(db_stats['monthly_stats'].items(), key=lambda x: int(x[0].replace('월', '')))
-            for month, value in sorted_months:
-                lines.append(f"* **{month}: {value}건**")
-            lines.append(f"\n**💡 총 합계: {sum(db_stats['monthly_stats'].values())}건**")
-        
-        if db_stats['time_stats']['daynight']:
-            lines.append(f"\n**🕘 시간대별 {value_type}**:")
-            for time, value in db_stats['time_stats']['daynight'].items():
-                lines.append(f"* **{time}: {value}건**")
-            lines.append(f"\n**💡 총 합계: {sum(db_stats['time_stats']['daynight'].values())}건**")
-        
-        if db_stats['time_stats']['week']:
-            lines.append(f"\n**📅 요일별 {value_type}**:")
-            week_order = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
-            week_stats = db_stats['time_stats']['week']
-            
-            for day in week_order:
-                if day in week_stats:
-                    lines.append(f"* **{day}: {week_stats[day]}건**")
-            
-            if '평일' in week_stats:
-                lines.append(f"* **평일: {week_stats['평일']}건**")
-            if '주말' in week_stats:
-                lines.append(f"* **주말: {week_stats['주말']}건**")
-                
-            lines.append(f"\n**💡 총 합계: {sum(week_stats.values())}건**")
-        
-        # 부서별, 서비스별, 등급별, 원인유형별 통계 처리
-        stat_types = [
-            ('department_stats', '🏢 부서별', 'department'),
-            ('service_stats', '💻 서비스별', 'service'),
-            ('grade_stats', '⚠️ 장애등급별', 'grade'),
-            ('cause_type_stats', '🔍 원인유형별', 'cause')
-        ]
-        
-        for stat_key, title, stat_type in stat_types:
-            if db_stats.get(stat_key):
-                lines.append(f"\n**{title} {value_type} (상위 10개)**:")
-                if stat_type == 'grade':
-                    grade_order = ['1등급', '2등급', '3등급', '4등급']
-                    grade_stats = db_stats[stat_key]
-                    
-                    for grade in grade_order:
-                        if grade in grade_stats:
-                            lines.append(f"* **{grade}: {grade_stats[grade]}건**")
-                    
-                    for grade, value in sorted(grade_stats.items()):
-                        if grade not in grade_order:
-                            lines.append(f"* **{grade}: {value}건**")
-                    
-                    lines.append(f"\n**💡 총 합계: {sum(grade_stats.values())}건**")
-                else:
-                    sorted_items = sorted(db_stats[stat_key].items(), key=lambda x: x[1], reverse=True)[:10]
-                    for item, value in sorted_items:
-                        lines.append(f"* **{item}: {value}건**")
-                    lines.append(f"\n**💡 상위 10개 합계: {sum(value for _, value in sorted_items)}건**")
-        
-        lines.append(f"\n⚠️ **중요**: 위 통계는 모두 '{query_scope}' 범위의 데이터입니다.")
-        
-        return '\n'.join(lines)
-    
-    def _format_incident_details_for_prompt(self, incidents):
-        """장애 상세 내역을 프롬프트용 텍스트로 변환"""
-        lines = []
-        
-        week_mapping = {'월': '월요일', '화': '화요일', '수': '수요일', '목': '목요일', '금': '금요일', '토': '토요일', '일': '일요일'}
-        
-        for i, incident in enumerate(incidents, 1):
-            lines.append(f"### {i}. 장애 ID: {incident.get('incident_id', 'N/A')}")
-            lines.append(f"- 서비스명: {incident.get('service_name', 'N/A')}")
-            lines.append(f"- 발생일자: {incident.get('error_date', 'N/A')}")
-            lines.append(f"- 장애시간: {incident.get('error_time', 0)}분")
-            
-            incident_grade = incident.get('incident_grade', 'N/A')
-            if incident_grade and incident_grade != 'N/A':
-                if incident_grade.isdigit():
-                    formatted_grade = f"{incident_grade}등급"
-                elif '등급' not in incident_grade:
-                    formatted_grade = f"{incident_grade}등급"
-                else:
-                    formatted_grade = incident_grade
-            else:
-                formatted_grade = 'N/A'
-            lines.append(f"- 장애등급: {formatted_grade}")
-            
-            lines.append(f"- 담당부서: {incident.get('owner_depart', 'N/A')}")
-            
-            if incident.get('daynight'):
-                lines.append(f"- 시간대: {incident.get('daynight')}")
-                
-            if incident.get('week'):
-                week_value = incident.get('week')
-                formatted_week = week_mapping.get(week_value, week_value)
-                lines.append(f"- 요일: {formatted_week}")
-            
-            symptom = incident.get('symptom', '')
-            if symptom:
-                lines.append(f"- 장애현상: {symptom[:150]}...")
-            
-            root_cause = incident.get('root_cause', '')
-            if root_cause:
-                lines.append(f"- 장애원인: {root_cause[:150]}...")
-            
-            lines.append("")
-        
-        return '\n'.join(lines)
-    
-    def _get_chart_data_from_db_stats(self, db_stats, requested_chart_type=None):
-        """DB 통계에서 차트 데이터 추출 - 원인유형 우선 처리"""
-        conditions = db_stats['query_conditions']
-        
-        # 원인유형 쿼리인 경우 원인유형 차트 데이터 우선 반환
-        if db_stats.get('is_cause_type_query', False) and db_stats.get('cause_type_stats'):
-            cause_stats = db_stats['cause_type_stats']
-            # 상위 10개만 차트로 표시
-            top_causes = dict(list(cause_stats.items())[:10])
-            chart_type = requested_chart_type or 'horizontal_bar'
-            return top_causes, chart_type
-        
-        # 기존 로직
-        group_by = conditions.get('group_by', [])
-        
-        data_map = {
-            'year': ('yearly_stats', 'line'),
-            'month': ('monthly_stats', 'line'),
-            'daynight': ('time_stats', 'bar', 'daynight'),
-            'week': ('time_stats', 'bar', 'week'),
-            'owner_depart': ('department_stats', 'horizontal_bar'),
-            'service_name': ('service_stats', 'horizontal_bar'),
-            'incident_grade': ('grade_stats', 'pie'),
-            'cause_type': ('cause_type_stats', 'horizontal_bar')
-        }
-        
-        for group_type in group_by:
-            if group_type in data_map:
-                mapping = data_map[group_type]
-                if len(mapping) == 3:  # time_stats case
-                    data = db_stats[mapping[0]].get(mapping[2], {})
-                    default_chart_type = mapping[1]
-                else:
-                    data = db_stats.get(mapping[0], {})
-                    default_chart_type = mapping[1]
-                
-                if group_type in ['owner_depart', 'service_name', 'cause_type']:
-                    data = dict(sorted(data.items(), key=lambda x: x[1], reverse=True)[:10])
-                
-                break
-        else:
-            data = db_stats.get('yearly_stats', {}) or db_stats.get('monthly_stats', {})
-            default_chart_type = 'line'
-        
-        chart_type = requested_chart_type or default_chart_type
-        
-        if default_chart_type == 'line' and len(data) == 1:
-            chart_type = 'bar'
-        
-        return data, chart_type
-    
-    def _generate_chart_title_from_db_stats(self, query, db_stats):
-        """DB 통계 기반 차트 제목 생성 - 원인유형 처리"""
-        conditions = db_stats['query_conditions']
-        
-        # 원인유형 쿼리인 경우 특별 처리
-        if db_stats.get('is_cause_type_query', False):
-            title_parts = ["원인유형별"]
-            
-            if conditions.get('year'):
-                title_parts.insert(0, f"{conditions['year']}년")
-            
-            if db_stats['is_error_time_query']:
-                title_parts.append("장애시간 분포")
-            else:
-                title_parts.append("장애 발생 현황")
-            
-            return ' '.join(title_parts)
-        
-        # 기존 로직
-        group_by = conditions.get('group_by', [])
-        title_parts = []
-        
-        if conditions.get('year'):
-            title_parts.append(conditions['year'])
-        
-        group_titles = {
-            'year': "연도별",
-            'month': "월별",
-            'daynight': "시간대별",
-            'week': "요일별",
-            'owner_depart': "부서별",
-            'service_name': "서비스별",
-            'incident_grade': "등급별",
-            'cause_type': "원인유형별"
-        }
-        
-        for group_type in group_by:
-            if group_type in group_titles:
-                title_parts.append(group_titles[group_type])
-                break
-        
-        if db_stats['is_error_time_query']:
-            title_parts.append("장애시간")
-        else:
-            title_parts.append("장애 발생 현황")
-        
-        return ' '.join(title_parts)
-
-    def _display_response_with_marker_conversion(self, response, chart_info=None, query_type="default"):
-        """UI 컴포넌트에 모든 처리를 위임하는 단순화된 버전"""
-        if not response:
-            st.write("응답이 없습니다.")
-            return
-        
-        response_text, chart_info = response if isinstance(response, tuple) else (response, chart_info)
-        
-        print(f"PROCESSOR_DEBUG: Query type 전달: {query_type}")
-        print(f"PROCESSOR_DEBUG: Response 길이: {len(response_text)}")
-        print(f"PROCESSOR_DEBUG: REPAIR_BOX 포함 여부: {'[REPAIR_BOX_START]' in response_text}")
-        
-        self.ui_components.display_response_with_query_type_awareness(
-            response, 
-            query_type=query_type, 
-            chart_info=chart_info
-        )
-
-    @traceable(name="process_user_query")
     def process_query(self, query, query_type=None):
         """🚨 메인 쿼리 처리 - RAG 데이터 무결성 절대 보장"""
         if not query:
@@ -2484,10 +1581,6 @@ class QueryProcessorLocal:
                         error_message: str = None, response_content: str = None):
         """쿼리 활동 로깅"""
         try:
-            if hasattr(self, '_decorator_logging_enabled') and self._decorator_logging_enabled:
-                print(f"DEBUG: 데코레이터 로깅이 활성화되어 수동 로깅을 건너뜁니다.")
-                return
-                
             if hasattr(self, '_manual_logging_enabled') and not self._manual_logging_enabled:
                 print(f"DEBUG: 수동 로깅이 비활성화되어 로깅을 건너뜁니다.")
                 return
@@ -2541,460 +1634,149 @@ class QueryProcessorLocal:
         
         return normalized_query.strip()
 
-    def _remove_all_box_markers(self, text):
-        """모든 박스 마커 강화 제거"""
-        import re
-        
-        # 복구방법 박스 마커 제거
-        text = re.sub(r'\[REPAIR_BOX_START\].*?\[REPAIR_BOX_END\]', '', text, flags=re.DOTALL)
-        
-        # 기타 박스 마커들 제거
-        text = re.sub(r'\[.*?_BOX_START\].*?\[.*?_BOX_END\]', '', text, flags=re.DOTALL)
-        
-        return text
+    # 기타 필수 메서드들 유지
+    def _convert_to_query_type_enum(self, query_type_str):
+        mapping = {
+            'repair': QueryType.REPAIR,
+            'inquiry': QueryType.INQUIRY, 
+            'statistics': QueryType.STATISTICS,
+            'default': QueryType.DEFAULT
+        }
+        return mapping.get(query_type_str, QueryType.DEFAULT)
 
-    def _remove_repair_sections(self, text):
-        """복구방법 관련 섹션 제거"""
-        import re
+    def _determine_query_scope(self, conditions):
+        scope_parts = []
         
-        lines = text.split('\n')
-        cleaned_lines = []
-        skip_section = False
+        if conditions.get('year'):
+            scope_parts.append(conditions['year'])
         
-        for line in lines:
-            line_lower = line.lower().strip()
-            
-            # 복구방법 섹션 시작 감지
-            if any(keyword in line_lower for keyword in [
-                '복구방법', '복구절차', '조치방법', '해결방법', '대응방법',
-                'repair', 'recovery', 'solution'
-            ]):
-                skip_section = True
-                continue
+        if conditions.get('months'):
+            months = [m.replace('월', '') for m in conditions['months']]
+            if len(months) == 1:
+                scope_parts.append(f"{months[0]}월")
+            elif len(months) > 1:
+                scope_parts.append(f"{months[0]}~{months[-1]}월")
+        
+        if conditions.get('daynight'):
+            scope_parts.append(conditions['daynight'])
+        
+        if conditions.get('week'):
+            week_val = conditions['week']
+            if week_val not in ['평일', '주말']:
+                scope_parts.append(f"{week_val}요일")
+            else:
+                scope_parts.append(week_val)
+        
+        if conditions.get('incident_grade'):
+            scope_parts.append(conditions['incident_grade'])
+        
+        if conditions.get('service_name'):
+            scope_parts.append(f"'{conditions['service_name']}' 서비스")
+        
+        if conditions.get('owner_depart'):
+            scope_parts.append(f"'{conditions['owner_depart']}' 부서")
+        
+        return ' '.join(scope_parts) if scope_parts else "전체 기간"
+    
+    def _get_chart_data_from_db_stats(self, db_stats, requested_chart_type=None):
+        """DB 통계에서 차트 데이터 추출 - 원인유형 우선 처리"""
+        conditions = db_stats['query_conditions']
+        
+        # 원인유형 쿼리인 경우 원인유형 차트 데이터 우선 반환
+        if db_stats.get('is_cause_type_query', False) and db_stats.get('cause_type_stats'):
+            cause_stats = db_stats['cause_type_stats']
+            # 상위 10개만 차트로 표시
+            top_causes = dict(list(cause_stats.items())[:10])
+            chart_type = requested_chart_type or 'horizontal_bar'
+            return top_causes, chart_type
+        
+        # 기존 로직
+        group_by = conditions.get('group_by', [])
+        
+        data_map = {
+            'year': ('yearly_stats', 'line'),
+            'month': ('monthly_stats', 'line'),
+            'daynight': ('time_stats', 'bar', 'daynight'),
+            'week': ('time_stats', 'bar', 'week'),
+            'owner_depart': ('department_stats', 'horizontal_bar'),
+            'service_name': ('service_stats', 'horizontal_bar'),
+            'incident_grade': ('grade_stats', 'pie'),
+            'cause_type': ('cause_type_stats', 'horizontal_bar')
+        }
+        
+        for group_type in group_by:
+            if group_type in data_map:
+                mapping = data_map[group_type]
+                if len(mapping) == 3:  # time_stats case
+                    data = db_stats[mapping[0]].get(mapping[2], {})
+                    default_chart_type = mapping[1]
+                else:
+                    data = db_stats.get(mapping[0], {})
+                    default_chart_type = mapping[1]
                 
-            # 다른 섹션 시작되면 스킵 해제
-            if line.startswith('#') or line.startswith('##') or line.startswith('Case'):
-                skip_section = False
+                if group_type in ['owner_depart', 'service_name', 'cause_type']:
+                    data = dict(sorted(data.items(), key=lambda x: x[1], reverse=True)[:10])
                 
-            # 표 시작되면 스킵 해제
-            if '|' in line and '장애 ID' in line:
-                skip_section = False
-                
-            if not skip_section:
-                cleaned_lines.append(line)
+                break
+        else:
+            data = db_stats.get('yearly_stats', {}) or db_stats.get('monthly_stats', {})
+            default_chart_type = 'line'
         
-        return '\n'.join(cleaned_lines)
-
-    def _generate_statistics_response_from_db(self, query, documents):
-        """DB 직접 조회를 통한 정확한 통계 응답 생성"""
-        try:
-            db_statistics = self.statistics_db_manager.get_statistics(query)
-            
-            if self.debug_mode and db_statistics.get('debug_info'):
-                debug_info = db_statistics['debug_info']
-                
-                with st.expander("🔍 SQL 쿼리 디버그 정보", expanded=False):
-                    st.markdown("### 🔍 파싱된 조건")
-                    st.json(debug_info['parsed_conditions'])
-                    
-                    st.markdown("### 💾 실행된 SQL 쿼리")
-                    st.code(debug_info['sql_query'], language='sql')
-                    
-                    st.markdown("### 🔢 SQL 파라미터")
-                    st.json(list(debug_info['sql_params']))
-                    
-                    st.markdown("### 📊 쿼리 결과")
-                    st.info(f"총 {debug_info['result_count']}개의 결과 반환")
-                    
-                    if db_statistics.get('results'):
-                        st.markdown("#### 결과 샘플 (최대 5개)")
-                        st.json(db_statistics['results'][:5])
-            
-            conditions = db_statistics['query_conditions']
-            filtered_statistics = self._filter_statistics_by_conditions(db_statistics, conditions)
-            incident_details = self.statistics_db_manager.get_incident_details(conditions, limit=100)
-            
-            chart_fig, chart_info = None, None
-            requested_chart_type = self._extract_chart_type_from_query(query)
-            
-            chart_keywords = ['차트', '그래프', '시각화', '그려', '그려줘', '보여줘', '시각적으로', '도표', '도식화']
-            if any(keyword in query.lower() for keyword in chart_keywords):
-                chart_data, chart_type = self._get_chart_data_from_db_stats(filtered_statistics, requested_chart_type)
-                
-                if chart_data and len(chart_data) > 0:
-                    try:
-                        chart_fig = self.chart_manager.create_chart(
-                            chart_type, 
-                            chart_data, 
-                            self._generate_chart_title_from_db_stats(query, filtered_statistics)
-                        )
-                        if chart_fig:
-                            chart_info = {
-                                'chart': chart_fig,
-                                'chart_type': chart_type,
-                                'chart_data': chart_data,
-                                'chart_title': self._generate_chart_title_from_db_stats(query, filtered_statistics),
-                                'query': query,
-                                'is_error_time_query': filtered_statistics['is_error_time_query']
-                            }
-                    except Exception as e:
-                        print(f"차트 생성 실패: {e}")
-            
-            statistics_summary = self._format_db_statistics_for_prompt(filtered_statistics, conditions)
-            incident_list = self._format_incident_details_for_prompt(incident_details[:50])
-            query_scope = self._determine_query_scope(conditions)
-            
-            system_prompt = f"""당신은 IT 시스템 장애 통계 전문가입니다.
-사용자의 질문 범위를 정확히 파악하여 **요청된 범위의 데이터만** 답변하세요.
-
-## 🎯 사용자 요청 범위
-{query_scope}
-
-## 📊 가독성 있는 통계 표시 형식 지침
-사용자가 요청한 통계 유형에 따라 다음 형식을 정확히 따르세요:
-
-**연도별 통계:**
-* **2020년: 37건**
-* **2021년: 58건**
-* **2022년: 60건**
-**💡 총 합계: 316건**
-
-**월별 통계:**
-* **1월: X건**
-* **2월: Y건**
-* **3월: Z건**
-**💡 총 합계: N건**
-
-**요일별 통계:**
-* **월요일: X건**
-* **화요일: Y건**
-* **수요일: Z건**
-**💡 총 합계: N건**
-
-**원인유형별 통계:**
-* **제품결함: X건**
-* **수행 실수: Y건**
-* **환경설정오류: Z건**
-**💡 총 합계: N건**
-
-**서비스별 통계:**
-* **ERP: X건**
-* **KOS-오더: Y건**
-* **API_Link: Z건**
-**💡 총 합계: N건**
-
-**부서별 통계:**
-* **재무DX개발팀: X건**
-* **시스템운영팀: Y건**
-* **보안침해대응팀: Z건**
-**💡 총 합계: N건**
-
-## 절대 규칙
-1. **사용자가 요청한 범위의 데이터만 답변하세요**
-2. 요청하지 않은 연도나 기간의 데이터는 절대 포함하지 마세요
-3. 제공된 통계 수치를 절대 변경하지 마세요
-4. 추가 계산이나 추정을 하지 마세요
-5. **리스트 형태로 통계를 표시하고 총 합계를 명확히 표시하세요**
-6. **근거 문서 내역은 절대 답변에 포함하지 마세요**
-
-## 응답 형식
-1. **📊 {query_scope} 통계 요약** (2-3문장)
-2. **📈 상세 통계** (위 형식에 따른 리스트 표시)
-
-답변은 명확하고 구조화된 형식으로 작성하되, 제공된 수치를 정확히 인용하세요.
-근거 문서 내역은 별도로 처리되므로 답변에 포함하지 마세요.
-"""
-
-            user_prompt = f"""## 사용자 질문
-{query}
-
-## 요청 범위: {query_scope}
-
-## 정확하게 계산된 통계 데이터 ({query_scope} 범위만)
-{statistics_summary}
-
-위 데이터를 바탕으로 **{query_scope} 범위만** 명확하고 친절하게 답변하세요.
-반드시 다음 구조를 따르세요:
-
-1. **📊 {query_scope} 통계 요약**
-- 핵심 수치와 인사이트 (2-3문장)
-
-2. **📈 상세 통계**
-[위에서 지정한 리스트 형식에 따라 표시]
-**💡 총 합계: [전체 합계]**
-
-⚠️ 중요: 요청하지 않은 연도나 기간의 통계는 절대 포함하지 마세요.
-근거 문서 내역은 답변에 포함하지 마세요.
-"""
-
-            response = self.azure_openai_client.chat.completions.create(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.0,
-                max_tokens=3000
-            )
-            
-            final_answer = response.choices[0].message.content
-            
-            # 근거 문서 내역을 st.expander로 표시
-            if incident_details and len(incident_details) > 0:
-                with st.expander(f"📋 근거 문서 내역 (총 {len(incident_details)}건)", expanded=False):
-                    
-                    week_mapping = {'월': '월요일', '화': '화요일', '수': '수요일', '목': '목요일', '금': '금요일', '토': '토요일', '일': '일요일'}
-                    
-                    if len(incident_details) >= 15:
-                        st.markdown("### 📋 통계로 집계된 장애 내역 (요약)")
-                        st.markdown("*문서가 많아 요약 형태로 제공됩니다*")
-                        
-                        for i, incident in enumerate(incident_details, 1):
-                            # 등급 포맷팅
-                            incident_grade = incident.get('incident_grade', 'N/A')
-                            if incident_grade and incident_grade != 'N/A':
-                                if incident_grade.isdigit():
-                                    formatted_grade = f"{incident_grade}등급"
-                                elif '등급' not in incident_grade:
-                                    formatted_grade = f"{incident_grade}등급"
-                                else:
-                                    formatted_grade = incident_grade
-                            else:
-                                formatted_grade = 'N/A'
-                            
-                            # 요일 포맷팅
-                            week_value = incident.get('week', '')
-                            formatted_week = week_mapping.get(week_value, week_value) if week_value else ''
-                            
-                            # 장애현상 요약
-                            symptom = incident.get('symptom', '')[:50] + '...' if len(incident.get('symptom', '')) > 50 else incident.get('symptom', '')
-                            
-                            summary_line = f"**{i}.** `{incident.get('incident_id', 'N/A')}` | " \
-                                        f"{incident.get('service_name', 'N/A')} | " \
-                                        f"{incident.get('error_date', 'N/A')} | " \
-                                        f"{incident.get('error_time', 0)}분 | " \
-                                        f"{formatted_grade}"
-                            
-                            time_info = []
-                            if incident.get('daynight'):
-                                time_info.append(incident.get('daynight'))
-                            if formatted_week:
-                                time_info.append(formatted_week)
-                            
-                            if time_info:
-                                summary_line += f" | {'/'.join(time_info)}"
-                            
-                            if symptom:
-                                summary_line += f"\n   🔍 *{symptom}*"
-                            
-                            st.markdown(summary_line)
-                            
-                            if i % 10 == 0 and i < len(incident_details):
-                                st.markdown("---")
-                    
-                    else:
-                        st.markdown("### 📋 통계로 집계된 장애 내역 (상세)")
-                        
-                        for i, incident in enumerate(incident_details, 1):
-                            st.markdown(f"#### {i}. 장애 ID: {incident.get('incident_id', 'N/A')}")
-                            
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                st.write(f"- 서비스명: {incident.get('service_name', 'N/A')}")
-                                st.write(f"- 발생일자: {incident.get('error_date', 'N/A')}")
-                                st.write(f"- 장애시간: {incident.get('error_time', 0)}분")
-                                
-                                incident_grade = incident.get('incident_grade', 'N/A')
-                                if incident_grade and incident_grade != 'N/A':
-                                    if incident_grade.isdigit():
-                                        formatted_grade = f"{incident_grade}등급"
-                                    elif '등급' not in incident_grade:
-                                        formatted_grade = f"{incident_grade}등급"
-                                    else:
-                                        formatted_grade = incident_grade
-                                else:
-                                    formatted_grade = 'N/A'
-                                st.write(f"- 장애등급: {formatted_grade}")
-                                
-                                st.write(f"- 담당부서: {incident.get('owner_depart', 'N/A')}")
-                            
-                            with col2:
-                                if incident.get('daynight'):
-                                    st.write(f"- 시간대: {incident.get('daynight')}")
-                                    
-                                if incident.get('week'):
-                                    week_value = incident.get('week')
-                                    formatted_week = week_mapping.get(week_value, week_value)
-                                    st.write(f"- 요일: {formatted_week}")
-                                    
-                                if incident.get('cause_type'):
-                                    st.write(f"- 원인유형: {incident.get('cause_type')}")
-                            
-                            symptom = incident.get('symptom', '')
-                            if symptom:
-                                st.write(f"- 장애현상: {symptom[:150]}...")
-                            
-                            root_cause = incident.get('root_cause', '')
-                            if root_cause:
-                                st.write(f"- 장애원인: {root_cause[:150]}...")
-                            
-                            if i < len(incident_details):
-                                st.markdown("---")
-            
-            return (final_answer, chart_info) if chart_info else final_answer
-            
-        except Exception as e:
-            print(f"ERROR: 통계 응답 생성 실패: {e}")
-            import traceback
-            traceback.print_exc()
-            return f"통계 조회 중 오류가 발생했습니다: {str(e)}"
-
-    def _calculate_statistics_with_integrity(self, documents, query):
-        """문서 기반 통계 계산 - 데이터 무결성 보장"""
-        try:
-            # 무결성 보장 통계 계산기를 사용하여 통계 계산
-            stats = self.statistics_calculator.calculate_comprehensive_statistics(query, documents, "statistics")
-            
-            if not stats or stats.get('total_count', 0) == 0:
-                return "조건에 맞는 장애 데이터를 찾을 수 없습니다."
-            
-            # 통계 응답 생성
-            response_lines = []
-            
-            # 기본 통계 정보
-            total_count = stats.get('total_count', 0)
-            is_error_time = stats.get('is_error_time_query', False)
-            value_type = "장애시간(분)" if is_error_time else "발생건수"
-            
-            response_lines.append(f"## 📊 통계 요약")
-            response_lines.append(f"**총 {value_type}: {total_count}**")
-            
-            # 연도별 통계
-            if stats.get('yearly_stats'):
-                response_lines.append(f"\n## 📈 연도별 통계")
-                for year, count in sorted(stats['yearly_stats'].items()):
-                    response_lines.append(f"* **{year}: {count}건**")
-                response_lines.append(f"\n**💡 총 합계: {sum(stats['yearly_stats'].values())}건**")
-            
-            # 월별 통계
-            if stats.get('monthly_stats'):
-                response_lines.append(f"\n## 📈 월별 통계")
-                sorted_months = sorted(stats['monthly_stats'].items(), key=lambda x: int(x[0].replace('월', '')))
-                for month, count in sorted_months:
-                    response_lines.append(f"* **{month}: {count}건**")
-                response_lines.append(f"\n**💡 총 합계: {sum(stats['monthly_stats'].values())}건**")
-            
-            # 등급별 통계
-            if stats.get('grade_stats'):
-                response_lines.append(f"\n## ⚠️ 장애등급별 통계")
-                grade_order = ['1등급', '2등급', '3등급', '4등급']
-                for grade in grade_order:
-                    if grade in stats['grade_stats']:
-                        response_lines.append(f"* **{grade}: {stats['grade_stats'][grade]}건**")
-                response_lines.append(f"\n**💡 총 합계: {sum(stats['grade_stats'].values())}건**")
-            
-            # 서비스별 통계 (상위 10개)
-            if stats.get('service_stats'):
-                response_lines.append(f"\n## 💻 서비스별 통계 (상위 10개)")
-                sorted_services = sorted(stats['service_stats'].items(), key=lambda x: x[1], reverse=True)[:10]
-                for service, count in sorted_services:
-                    response_lines.append(f"* **{service}: {count}건**")
-                response_lines.append(f"\n**💡 상위 10개 합계: {sum(count for _, count in sorted_services)}건**")
-            
-            # 부서별 통계 (상위 10개)
-            if stats.get('department_stats'):
-                response_lines.append(f"\n## 🏢 부서별 통계 (상위 10개)")
-                sorted_departments = sorted(stats['department_stats'].items(), key=lambda x: x[1], reverse=True)[:10]
-                for dept, count in sorted_departments:
-                    response_lines.append(f"* **{dept}: {count}건**")
-                response_lines.append(f"\n**💡 상위 10개 합계: {sum(count for _, count in sorted_departments)}건**")
-            
-            # 시간대별 통계
-            if stats.get('time_stats', {}).get('daynight'):
-                response_lines.append(f"\n## 🕘 시간대별 통계")
-                for time, count in stats['time_stats']['daynight'].items():
-                    response_lines.append(f"* **{time}: {count}건**")
-                response_lines.append(f"\n**💡 총 합계: {sum(stats['time_stats']['daynight'].values())}건**")
-            
-            # 요일별 통계
-            if stats.get('time_stats', {}).get('week'):
-                response_lines.append(f"\n## 📅 요일별 통계")
-                for day, count in stats['time_stats']['week'].items():
-                    response_lines.append(f"* **{day}: {count}건**")
-                response_lines.append(f"\n**💡 총 합계: {sum(stats['time_stats']['week'].values())}건**")
-            
-            return '\n'.join(response_lines)
-            
-        except Exception as e:
-            print(f"ERROR: 문서 기반 통계 계산 실패: {e}")
-            import traceback
-            traceback.print_exc()
-            return f"통계 계산 중 오류가 발생했습니다: {str(e)}"        
-
-    def _verify_service_name_in_db(self, service_name):
-        """DB에서 서비스명 존재 여부 및 유사 서비스 검증"""
-        try:
-            # 정확한 매치 확인
-            exact_query = f"SELECT DISTINCT service_name FROM incidents WHERE service_name = ? LIMIT 1"
-            exact_result = self.statistics_db_manager._execute_query(exact_query, (service_name,))
-            
-            if exact_result:
-                return {'exists': True, 'exact_match': service_name, 'similar_services': []}
-            
-            # 부분 매치 확인
-            partial_query = f"SELECT DISTINCT service_name FROM incidents WHERE service_name LIKE ? LIMIT 5"
-            partial_result = self.statistics_db_manager._execute_query(partial_query, (f"%{service_name}%",))
-            
-            similar_services = [row['service_name'] for row in partial_result]
-            
-            return {
-                'exists': len(similar_services) > 0,
-                'exact_match': None,
-                'similar_services': similar_services
-            }
-            
-        except Exception as e:
-            print(f"ERROR: Service name verification failed: {e}")
-            return {'exists': False, 'exact_match': None, 'similar_services': []}
-
-    def _get_total_count_without_service_filter(self, query):
-        """서비스 필터 없이 전체 건수 조회 (검증용)"""
-        try:
-            # 서비스명을 제외한 조건으로 쿼리 생성
-            test_conditions = self.statistics_db_manager.parse_statistics_query(query)
-            test_conditions['service_name'] = None  # 서비스명 조건 제거
-            
-            sql_query, params, _ = self.statistics_db_manager.build_sql_query(test_conditions)
-            results = self.statistics_db_manager._execute_query(sql_query, params)
-            
-            if results and not test_conditions['group_by']:
-                return results[0].get('total_value', 0)
-            elif results:
-                return sum(row.get('total_value', 0) for row in results)
-            
-            return 0
-        except:
-            return 0
-
-    def _add_explicit_service_condition(self, query, service_name):
-        """쿼리에 명시적으로 서비스명 조건 추가 - 안전한 문자열 처리"""
-        if not service_name:
-            return query
+        chart_type = requested_chart_type or default_chart_type
         
-        # service_name이 튜플인 경우 처리
-        if isinstance(service_name, tuple):
-            service_name = service_name[0] if service_name else ""
+        if default_chart_type == 'line' and len(data) == 1:
+            chart_type = 'bar'
         
-        # 문자열로 변환 및 정리
-        service_name = str(service_name).strip()
+        return data, chart_type
+    
+    def _generate_chart_title_from_db_stats(self, query, db_stats):
+        """DB 통계 기반 차트 제목 생성 - 원인유형 처리"""
+        conditions = db_stats['query_conditions']
         
-        if not service_name:
-            return query
+        # 원인유형 쿼리인 경우 특별 처리
+        if db_stats.get('is_cause_type_query', False):
+            title_parts = ["원인유형별"]
+            
+            if conditions.get('year'):
+                title_parts.insert(0, f"{conditions['year']}년")
+            
+            if db_stats['is_error_time_query']:
+                title_parts.append("장애시간 분포")
+            else:
+                title_parts.append("장애 발생 현황")
+            
+            return ' '.join(title_parts)
         
-        # 이미 서비스명이 포함되어 있는지 확인
-        if service_name.lower() in query.lower():
-            return query
+        # 기존 로직
+        group_by = conditions.get('group_by', [])
+        title_parts = []
         
-        # 서비스명을 쿼리 앞에 추가
-        return f"{service_name} {query}"
+        if conditions.get('year'):
+            title_parts.append(conditions['year'])
+        
+        group_titles = {
+            'year': "연도별",
+            'month': "월별",
+            'daynight': "시간대별",
+            'week': "요일별",
+            'owner_depart': "부서별",
+            'service_name': "서비스별",
+            'incident_grade': "등급별",
+            'cause_type': "원인유형별"
+        }
+        
+        for group_type in group_by:
+            if group_type in group_titles:
+                title_parts.append(group_titles[group_type])
+                break
+        
+        if db_stats['is_error_time_query']:
+            title_parts.append("장애시간")
+        else:
+            title_parts.append("장애 발생 현황")
+        
+        return ' '.join(title_parts)
+
+    def calculate_unified_statistics(self, documents, query, query_type="default"):
+        """통합 통계 계산 - 무결성 보장 계산기 사용"""
+        return self.statistics_calculator._empty_statistics() if not documents else self.statistics_calculator.calculate_comprehensive_statistics(query, documents, query_type)

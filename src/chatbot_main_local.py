@@ -90,13 +90,13 @@ def apply_page_style():
     </style>""", unsafe_allow_html=True)
 
 def main():
-    st.set_page_config(page_title="챗봇1", page_icon="🚀", layout="wide")
+    st.set_page_config(page_title="트러블 체이서 챗봇", page_icon="🚀", layout="wide")
     
     if not EXCEL_AVAILABLE:
         st.sidebar.warning("📊 엑셀 다운로드 기능이 비활성화되었습니다. pandas와 openpyxl을 설치해주세요.")
     
     apply_page_style()
-    st.title("🚀 챗봇1")
+    st.title("🚀 트러블 체이서 챗봇")
     
     # 품질 설정
     level_map = {"고급": "high", "초급": "low", "중급": "medium"}
