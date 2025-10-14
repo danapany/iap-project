@@ -94,11 +94,52 @@ class StatisticsDBManager:
             db_path = get_incident_db_path()
         self.db_path = db_path
         
+        # 서비스명 목록 로드
+        self._load_service_names()
+        
         # DB 존재 확인
         self._ensure_db_exists()
         
         # 실제 DB에서 존재하는 원인유형들을 동적으로 로드
         self._load_actual_cause_types_from_db()
+    
+    def _load_service_names(self):
+        """service_names.txt 파일에서 서비스명 목록 로드"""
+        self.service_names = []
+        
+        # 여러 경로에서 service_names.txt 파일 찾기
+        possible_paths = [
+            'config/service_names.txt',
+            'service_names.txt',
+            '/mnt/user-data/uploads/service_names.txt',
+            os.path.join(os.path.dirname(self.db_path), 'service_names.txt'),
+            os.path.join(os.path.dirname(__file__), 'service_names.txt'),
+            os.path.join(os.path.dirname(__file__), '..', 'config', 'service_names.txt')
+        ]
+        
+        for path in possible_paths:
+            try:
+                if os.path.exists(path):
+                    with open(path, 'r', encoding='utf-8') as f:
+                        self.service_names = [line.strip() for line in f if line.strip()]
+                    
+                    # 길이가 긴 서비스명부터 우선 매칭하도록 정렬
+                    self.service_names.sort(key=len, reverse=True)
+                    
+                    if getattr(self, 'debug_mode', True):
+                        print(f"✅ Loaded {len(self.service_names)} service names from: {path}")
+                        print(f"   Sample services: {self.service_names[:5]}")
+                    return
+                    
+            except Exception as e:
+                if getattr(self, 'debug_mode', True):
+                    print(f"Failed to load service names from {path}: {e}")
+                continue
+        
+        if getattr(self, 'debug_mode', True):
+            print("⚠️  Service names file not found, using empty list")
+        
+        self.service_names = []
     
     def _ensure_db_exists(self):
         """DB 파일 존재 확인"""
@@ -115,7 +156,7 @@ class StatisticsDBManager:
             conn.close()
             
             if getattr(self, 'debug_mode', True):
-                print(f"✓ Database connection successful: {self.db_path}")
+                print(f"✅ Database connection successful: {self.db_path}")
                 
         except Exception as e:
             if getattr(self, 'debug_mode', True):
@@ -139,7 +180,7 @@ class StatisticsDBManager:
                 if actual_types:
                     self.ACTUAL_CAUSE_TYPES = actual_types
                     if getattr(self, 'debug_mode', True):
-                        print(f"✓ Loaded {len(self.ACTUAL_CAUSE_TYPES)} cause types from DB:")
+                        print(f"✅ Loaded {len(self.ACTUAL_CAUSE_TYPES)} cause types from DB:")
                         for i, result in enumerate(results[:10]):
                             print(f"   {i+1}. {result['cause_type']} ({result['count']}건)")
                         if len(results) > 10:
@@ -172,7 +213,7 @@ class StatisticsDBManager:
             results = [dict(row) for row in cursor.fetchall()]
             
             if getattr(self, 'debug_mode', True):
-                print(f"✓ Query returned {len(results)} rows")
+                print(f"✅ Query returned {len(results)} rows")
             
             return results
             
@@ -199,7 +240,7 @@ class StatisticsDBManager:
         for actual_cause in self.ACTUAL_CAUSE_TYPES:
             if actual_cause in query_text or actual_cause.lower() in query_lower:
                 if getattr(self, 'debug_mode', True):
-                    print(f"✓ [STAGE 1] Exact cause_type match found: '{actual_cause}'")
+                    print(f"✅ [STAGE 1] Exact cause_type match found: '{actual_cause}'")
                 self.matching_stats['exact_matches'] += 1
                 return actual_cause
         
@@ -212,7 +253,7 @@ class StatisticsDBManager:
             pattern = r'\b' + re.escape(natural_lang) + r'\b'
             if re.search(pattern, query_lower, re.IGNORECASE):
                 if getattr(self, 'debug_mode', True):
-                    print(f"✓ [STAGE 2] Mapped cause_type: '{natural_lang}' → '{mapped_cause}'")
+                    print(f"✅ [STAGE 2] Mapped cause_type: '{natural_lang}' → '{mapped_cause}'")
                 self.matching_stats['mapping_matches'] += 1
                 return mapped_cause
         
@@ -225,7 +266,7 @@ class StatisticsDBManager:
             # 3자 이상의 키워드가 포함되어 있는지 확인
             if len(cause_normalized) >= 3 and cause_normalized in query_normalized:
                 if getattr(self, 'debug_mode', True):
-                    print(f"✓ [STAGE 3] Partial match cause_type: '{actual_cause}'")
+                    print(f"✅ [STAGE 3] Partial match cause_type: '{actual_cause}'")
                 self.matching_stats['partial_matches'] += 1
                 return actual_cause
         
@@ -251,12 +292,12 @@ class StatisticsDBManager:
             if any(keyword in query_lower for keyword in keywords):
                 if getattr(self, 'debug_mode', True):
                     matched_keywords = [k for k in keywords if k in query_lower]
-                    print(f"✓ [STAGE 4] Keyword match cause_type: '{cause_type}' (keywords: {matched_keywords})")
+                    print(f"✅ [STAGE 4] Keyword match cause_type: '{cause_type}' (keywords: {matched_keywords})")
                 self.matching_stats['keyword_matches'] += 1
                 return cause_type
         
         if getattr(self, 'debug_mode', True):
-            print(f"✗ [NO MATCH] No cause_type match found")
+            print(f"❌ [NO MATCH] No cause_type match found")
         self.matching_stats['no_matches'] += 1
         
         return None
@@ -277,14 +318,14 @@ class StatisticsDBManager:
         for keyword in self.CAUSE_TYPE_KEYWORDS:
             if keyword in normalized_query:
                 if getattr(self, 'debug_mode', True):
-                    print(f"✓ Cause type query detected by keyword: '{keyword}'")
+                    print(f"✅ Cause type query detected by keyword: '{keyword}'")
                 return True
         
         # 2차: 원인유형이 매칭되는지 확인
         matched_cause = self._match_cause_type(query)
         if matched_cause:
             if getattr(self, 'debug_mode', True):
-                print(f"✓ Cause type query detected by matching: '{matched_cause}'")
+                print(f"✅ Cause type query detected by matching: '{matched_cause}'")
             return True
         
         # 3차: 원인 관련 패턴 확인
@@ -298,7 +339,7 @@ class StatisticsDBManager:
         for pattern in cause_patterns:
             if re.search(pattern, normalized_query):
                 if getattr(self, 'debug_mode', True):
-                    print(f"✓ Cause type query detected by pattern: '{pattern}'")
+                    print(f"✅ Cause type query detected by pattern: '{pattern}'")
                 return True
         
         return False
@@ -361,19 +402,43 @@ class StatisticsDBManager:
             print(f"🔍 Is cause type query: {conditions['is_cause_type_query']}")
         
         # 3. 연도 추출
-        year_patterns = [
-            r'\b(202[0-9]|201[0-9])년\b', 
-            r'\b(202[0-9]|201[0-9])년도\b', 
-            r'\b(202[0-9]|201[0-9])\s*년\b', 
-            r'\b(202[0-9]|201[0-9])\b(?=.*(?:장애|건수|통계|현황|몇|개수|원인))',
+        # 먼저 두 자리 연도 패턴 확인 (22년 → 2022년 변환)
+        two_digit_year_patterns = [
+            r'\b([0-9]{2})년\b',
+            r'\b([0-9]{2})년도\b',
+            r'\b([0-9]{2})\s*년\b'
         ]
         
-        for pattern in year_patterns:
+        year_found = False
+        for pattern in two_digit_year_patterns:
             if year_match := re.search(pattern, normalized_query):
-                conditions['year'] = self._normalize_year_query(year_match.group(1))
-                if getattr(self, 'debug_mode', True): 
-                    print(f"✓ Extracted year: {conditions['year']}")
-                break
+                two_digit_year = year_match.group(1)
+                # 두 자리 연도를 네 자리로 변환 (00-99 → 2000-2099)
+                # 현재 연도 기준으로 합리적인 범위 설정
+                year_int = int(two_digit_year)
+                if 0 <= year_int <= 99:
+                    full_year = f"20{two_digit_year}"
+                    conditions['year'] = full_year
+                    year_found = True
+                    if getattr(self, 'debug_mode', True):
+                        print(f"✅ Extracted year (2-digit converted): {two_digit_year}년 → {full_year}")
+                    break
+        
+        # 두 자리 연도를 찾지 못한 경우 네 자리 연도 패턴 확인
+        if not year_found:
+            four_digit_year_patterns = [
+                r'\b(202[0-9]|201[0-9])년\b', 
+                r'\b(202[0-9]|201[0-9])년도\b', 
+                r'\b(202[0-9]|201[0-9])\s*년\b', 
+                r'\b(202[0-9]|201[0-9])\b(?=.*(?:장애|건수|통계|현황|몇|개수|원인))',
+            ]
+            
+            for pattern in four_digit_year_patterns:
+                if year_match := re.search(pattern, normalized_query):
+                    conditions['year'] = self._normalize_year_query(year_match.group(1))
+                    if getattr(self, 'debug_mode', True): 
+                        print(f"✅ Extracted year (4-digit): {conditions['year']}")
+                    break
         
         # 4. 장애등급 추출
         grade_patterns = [
@@ -392,7 +457,7 @@ class StatisticsDBManager:
                     if not re.search(r'20\d{2}', before_text):
                         conditions['incident_grade'] = grade_num
                         if getattr(self, 'debug_mode', True): 
-                            print(f"✓ Extracted incident_grade: {conditions['incident_grade']}")
+                            print(f"✅ Extracted incident_grade: {conditions['incident_grade']}")
                         break
         
         # 5. 월 범위 추출
@@ -408,7 +473,7 @@ class StatisticsDBManager:
                 if 1 <= start <= 12 and 1 <= end <= 12 and start <= end:
                     conditions['months'] = [str(m) for m in range(start, end + 1)]
                     if getattr(self, 'debug_mode', True): 
-                        print(f"✓ Extracted month range: {conditions['months']}")
+                        print(f"✅ Extracted month range: {conditions['months']}")
                     break
         
         # 개별 월 추출
@@ -420,17 +485,17 @@ class StatisticsDBManager:
                 if valid_months:
                     conditions['months'] = valid_months
                     if getattr(self, 'debug_mode', True): 
-                        print(f"✓ Extracted months: {conditions['months']}")
+                        print(f"✅ Extracted months: {conditions['months']}")
         
-        # 6. 서비스명 추출
+        # 6. 서비스명 추출 (개선됨)
         conditions['service_name'] = self._extract_service_name_enhanced(original_query)
         if conditions['service_name'] and getattr(self, 'debug_mode', True):
-            print(f"✓ Extracted service_name: '{conditions['service_name']}'")
+            print(f"✅ Extracted service_name: '{conditions['service_name']}'")
         
         # 7. 원인유형 추출 (강화)
         conditions['cause_type'] = self._match_cause_type(original_query)
         if conditions['cause_type'] and getattr(self, 'debug_mode', True):
-            print(f"✓ Extracted cause_type: '{conditions['cause_type']}'")
+            print(f"✅ Extracted cause_type: '{conditions['cause_type']}'")
         
         # 8. 요일 추출
         week_patterns = {
@@ -447,7 +512,7 @@ class StatisticsDBManager:
             if any(re.search(pattern, normalized_query) for pattern in day_patterns):
                 conditions['week'] = day_val
                 if getattr(self, 'debug_mode', True): 
-                    print(f"✓ Extracted week: {conditions['week']}")
+                    print(f"✅ Extracted week: {conditions['week']}")
                 break
         
         # 평일/주말 처리
@@ -466,18 +531,18 @@ class StatisticsDBManager:
             if any(re.search(pattern, normalized_query) for pattern in patterns):
                 conditions['daynight'] = daynight_val
                 if getattr(self, 'debug_mode', True): 
-                    print(f"✓ Extracted daynight: {conditions['daynight']}")
+                    print(f"✅ Extracted daynight: {conditions['daynight']}")
                 break
         
         # 10. 장애시간 쿼리 여부
         error_time_keywords = [
             '장애시간', '장애 시간', 'error_time', '시간 합계', '시간 합산', '분', 
-            '총 시간', '누적 시간', '전체 시간', '합계 시간', '시간통계'
+            '이 시간', '누적 시간', '전체 시간', '합계 시간', '시간통계'
         ]
         conditions['is_error_time_query'] = any(k in normalized_query for k in error_time_keywords)
         if conditions['is_error_time_query'] and getattr(self, 'debug_mode', True):
             matched_keywords = [k for k in error_time_keywords if k in normalized_query]
-            print(f"✓ Error time query detected: {matched_keywords}")
+            print(f"✅ Error time query detected: {matched_keywords}")
         
         # 11. 그룹화 기준 추출 (원인유형 강화)
         groupby_keywords = {
@@ -497,13 +562,13 @@ class StatisticsDBManager:
                     conditions['group_by'].append(group_field)
                     if getattr(self, 'debug_mode', True):
                         matched_keywords = [k for k in keywords if k in normalized_query]
-                        print(f"✓ Added '{group_field}' to group_by (keyword: {matched_keywords})")
+                        print(f"✅ Added '{group_field}' to group_by (keyword: {matched_keywords})")
         
         # 12. 원인유형 쿼리인 경우 자동 그룹화 설정
         if conditions['is_cause_type_query'] and 'cause_type' not in conditions['group_by']:
             conditions['group_by'].append('cause_type')
             if getattr(self, 'debug_mode', True):
-                print(f"✓ Auto-added 'cause_type' to group_by (cause type query detected)")
+                print(f"✅ Auto-added 'cause_type' to group_by (cause type query detected)")
         
         # 13. 기본 그룹화 추론
         if not conditions['group_by']:
@@ -520,7 +585,7 @@ class StatisticsDBManager:
                 conditions['group_by'] = ['year']
             
             if getattr(self, 'debug_mode', True) and conditions['group_by']:
-                print(f"✓ Auto-assigned default group_by: {conditions['group_by']}")
+                print(f"✅ Auto-assigned default group_by: {conditions['group_by']}")
         
         if getattr(self, 'debug_mode', True):
             print(f"\n📋 FINAL PARSED CONDITIONS:")
@@ -539,7 +604,7 @@ class StatisticsDBManager:
         return conditions
 
     def _extract_service_name_enhanced(self, query: str) -> Optional[str]:
-        """향상된 서비스명 추출 로직"""
+        """향상된 서비스명 추출 로직 - service_names.txt 파일 참조"""
         if not query:
             return None
             
@@ -551,9 +616,36 @@ class StatisticsDBManager:
             if getattr(self, 'debug_mode', True):
                 print(f"⚠️  Cause type query detected - careful service name extraction")
         
-        # 서비스명 패턴들 (원인유형 키워드 제외)
+        # 1단계: service_names.txt 파일의 서비스명들과 직접 매칭 (길이 순 정렬로 긴 이름부터)
+        if hasattr(self, 'service_names') and self.service_names:
+            for service_name in self.service_names:
+                # 정확한 매칭
+                if service_name in query:
+                    if getattr(self, 'debug_mode', True):
+                        print(f"✅ [EXACT MATCH] Service name found: '{service_name}'")
+                    return service_name
+                
+                # 대소문자 무시한 매칭
+                if service_name.lower() in query.lower():
+                    if getattr(self, 'debug_mode', True):
+                        print(f"✅ [CASE INSENSITIVE] Service name found: '{service_name}'")
+                    return service_name
+            
+            # 2단계: 부분 매칭 (3글자 이상)
+            for service_name in self.service_names:
+                if len(service_name) >= 3:
+                    # 공백 제거 후 매칭
+                    normalized_service = service_name.replace(' ', '').replace('-', '').lower()
+                    normalized_query = query.replace(' ', '').replace('-', '').lower()
+                    
+                    if normalized_service in normalized_query:
+                        if getattr(self, 'debug_mode', True):
+                            print(f"✅ [PARTIAL MATCH] Service name found: '{service_name}'")
+                        return service_name
+        
+        # 3단계: 기존 패턴 매칭 (service_names.txt가 없거나 매칭 실패 시)
         service_patterns = [
-            # "생체인증플랫폼", "네트워크보안범위관리" 등을 위한 긴 서비스명 패턴
+            # "상체인증플랫폼", "네트워크보안범위관리" 등을 위한 긴 서비스명 패턴
             r'([가-힣]{4,20}(?:플랫폼|시스템|서비스|포털|앱|APP|관리|센터))\s*(?:년도별|연도별|월별|장애|건수|통계|현황|몇|개수)',
             
             # 기존 패턴들
@@ -597,7 +689,7 @@ class StatisticsDBManager:
                             service_name not in self.ACTUAL_CAUSE_TYPES):
                             
                             if getattr(self, 'debug_mode', True):
-                                print(f"✓ Service name found with pattern {i+1}: '{service_name}'")
+                                print(f"✅ [PATTERN] Service name found with pattern {i+1}: '{service_name}'")
                             return service_name
                             
             except Exception as e:
@@ -606,7 +698,7 @@ class StatisticsDBManager:
                 continue
         
         if getattr(self, 'debug_mode', True):
-            print(f"✗ No service name found in query")
+            print(f"❌ No service name found in query")
         
         return None
 
@@ -737,12 +829,21 @@ class StatisticsDBManager:
                 if getattr(self, 'debug_mode', True): 
                     print(f"WHERE: daynight = '{conditions['daynight']}'")
             
-            # 서비스명 조건
+            # 서비스명 조건 (개선됨)
             if conditions.get('service_name'):
-                where_clauses.append("service_name LIKE ?")
-                params.append(f"%{conditions['service_name']}%")
+                # 정확한 매칭 우선, 그 다음 LIKE 매칭
+                service_conditions = [
+                    "service_name = ?",
+                    "service_name LIKE ?"
+                ]
+                params.extend([
+                    conditions['service_name'],
+                    f"%{conditions['service_name']}%"
+                ])
+                where_clauses.append(f"({' OR '.join(service_conditions)})")
+                
                 if getattr(self, 'debug_mode', True): 
-                    print(f"WHERE: service_name LIKE '%{conditions['service_name']}%'")
+                    print(f"WHERE: service_name exact or like '{conditions['service_name']}'")
             
             # 부서 조건
             if conditions.get('owner_depart'):
@@ -803,6 +904,7 @@ class StatisticsDBManager:
                 print(f"User Query: '{query}'")
                 print(f"DB Path: {self.db_path}")
                 print(f"Available Cause Types: {len(getattr(self, 'ACTUAL_CAUSE_TYPES', []))}")
+                print(f"Available Service Names: {len(getattr(self, 'service_names', []))}")
                 print(f"{'='*100}\n")
             
             # 쿼리 파싱
@@ -848,6 +950,7 @@ class StatisticsDBManager:
                     'sql_params': params,
                     'result_count': len(results),
                     'available_cause_types': getattr(self, 'ACTUAL_CAUSE_TYPES', [])[:10],
+                    'available_service_names': getattr(self, 'service_names', [])[:10],
                     'matching_stats': getattr(self, 'matching_stats', {}).copy()
                 }
             }
@@ -889,7 +992,7 @@ class StatisticsDBManager:
                     if cause_type and cause_type.lower() not in ['null', 'none', '']:
                         statistics['cause_type_stats'][cause_type] = value
                         if getattr(self, 'debug_mode', True):
-                            print(f"✓ Added cause_type stat: '{cause_type}' = {value}")
+                            print(f"✅ Added cause_type stat: '{cause_type}' = {value}")
             
             # 전체 건수 계산
             if not conditions['group_by'] and results:
@@ -936,6 +1039,8 @@ class StatisticsDBManager:
                 if statistics['cause_type_stats']: 
                     print(f"Cause Type Stats: {dict(list(statistics['cause_type_stats'].items())[:5])}")
                     print(f"Cause Type Count: {len(statistics['cause_type_stats'])}")
+                if statistics['service_stats']: 
+                    print(f"Service Stats: {statistics['service_stats']}")
                 if statistics['time_stats']['daynight']: 
                     print(f"Daynight Stats: {statistics['time_stats']['daynight']}")
                 if statistics['time_stats']['week']: 
@@ -1031,9 +1136,17 @@ class StatisticsDBManager:
                 where_clauses.append("daynight = ?")
                 params.append(conditions['daynight'])
             
+            # 서비스명 조건 (정확한 매칭 + LIKE 매칭)
             if conditions.get('service_name'):
-                where_clauses.append("service_name LIKE ?")
-                params.append(f"%{conditions['service_name']}%")
+                service_conditions = [
+                    "service_name = ?",
+                    "service_name LIKE ?"
+                ]
+                params.extend([
+                    conditions['service_name'],
+                    f"%{conditions['service_name']}%"
+                ])
+                where_clauses.append(f"({' OR '.join(service_conditions)})")
             
             if conditions.get('owner_depart'):
                 where_clauses.append("owner_depart LIKE ?")
@@ -1069,7 +1182,7 @@ class StatisticsDBManager:
             '말해줘': '알려주세요', '확인해줘': '알려주세요', '체크해줘': '알려주세요',
             '얼마나': '몇', '어느정도': '몇', '어떻게': '몇', '어느': '몇', '어떤': '몇',
             '몇번': '몇건', '몇차례': '몇건', '몇회': '몇건', '수량': '건수', '숫자': '건수',
-            '개수': '건수', '총': '전체', '총합': '전체', '모든': '전체', '모두': '전체',
+            '개수': '건수', '이': '전체', '이합': '전체', '모든': '전체', '모두': '전체',
             '누적': '전체', '상황': '현황', '현재': '현황', '지금까지': '현황', '정도': '현황',
             '수준': '현황', '범위': '현황', '규모': '현황',
             
@@ -1115,6 +1228,7 @@ class StatisticsDBManager:
         print(f"{'='*100}")
         print(f"DB Path: {self.db_path}")
         print(f"Available Cause Types: {len(getattr(self, 'ACTUAL_CAUSE_TYPES', []))}")
+        print(f"Available Service Names: {len(getattr(self, 'service_names', []))}")
         print(f"{'='*100}")
         
         # 매칭 통계 초기화
@@ -1133,7 +1247,7 @@ class StatisticsDBManager:
             
             # 원인유형 쿼리 여부 확인
             is_cause_query = self._is_cause_type_query(query)
-            print(f"   Is cause type query: {'✓' if is_cause_query else '✗'}")
+            print(f"   Is cause type query: {'✅' if is_cause_query else '❌'}")
             
             # 원인유형 매칭
             matched_cause = self._match_cause_type(query)
@@ -1157,7 +1271,7 @@ class StatisticsDBManager:
                 print(f"   DB Query Error: {e}")
             
             success = is_cause_query or matched_cause or conditions['is_cause_type_query']
-            print(f"   Overall Result: {'✓ SUCCESS' if success else '✗ FAILED'}")
+            print(f"   Overall Result: {'✅ SUCCESS' if success else '❌ FAILED'}")
             
             test_results.append({
                 'query': query,
@@ -1187,13 +1301,19 @@ class StatisticsDBManager:
         print(f"\nFailed Tests:")
         for result in test_results:
             if not result['success']:
-                print(f"  ✗ '{result['query']}'")
+                print(f"  ❌ '{result['query']}'")
         
         print(f"\nAvailable Cause Types in DB ({len(getattr(self, 'ACTUAL_CAUSE_TYPES', []))}):")
         for i, cause_type in enumerate(getattr(self, 'ACTUAL_CAUSE_TYPES', [])[:15], 1):
             print(f"  {i:2d}. {cause_type}")
         if len(getattr(self, 'ACTUAL_CAUSE_TYPES', [])) > 15:
             print(f"  ... and {len(getattr(self, 'ACTUAL_CAUSE_TYPES', [])) - 15} more")
+        
+        print(f"\nAvailable Service Names ({len(getattr(self, 'service_names', []))}):")
+        for i, service_name in enumerate(getattr(self, 'service_names', [])[:10], 1):
+            print(f"  {i:2d}. {service_name}")
+        if len(getattr(self, 'service_names', [])) > 10:
+            print(f"  ... and {len(getattr(self, 'service_names', [])) - 10} more")
         
         print(f"\n{'='*100}")
         
@@ -1239,3 +1359,70 @@ class StatisticsDBManager:
                 'distribution': [],
                 'error': str(e)
             }
+    
+    def test_service_name_extraction(self, test_queries: List[str] = None):
+        """서비스명 추출 테스트 함수"""
+        if not test_queries:
+            test_queries = [
+                "KOS-공통 장애 몇건",
+                "KOS 서비스 통계",
+                "KOS-Billing 현황",
+                "IDMS 장애건수",
+                "통합IDMS 통계",
+                "KT AICC 현황",
+                "생체인증플랫폼 장애",
+                "네트워크설비운영관제 통계",
+                "API_Link_GW 현황",
+                "원스토어 장애건수"
+            ]
+        
+        print(f"\n{'='*100}")
+        print(f"🧪 SERVICE NAME EXTRACTION TEST")
+        print(f"{'='*100}")
+        print(f"Available Service Names: {len(getattr(self, 'service_names', []))}")
+        print(f"{'='*100}")
+        
+        test_results = []
+        
+        for i, query in enumerate(test_queries, 1):
+            print(f"\n🔍 Test {i}: '{query}'")
+            
+            # 서비스명 추출
+            extracted_service = self._extract_service_name_enhanced(query)
+            print(f"   Extracted service: {extracted_service if extracted_service else 'None'}")
+            
+            # 전체 파싱 결과
+            conditions = self.parse_statistics_query(query)
+            print(f"   Parsed service: {conditions['service_name']}")
+            
+            success = extracted_service is not None
+            print(f"   Result: {'✅ SUCCESS' if success else '❌ FAILED'}")
+            
+            test_results.append({
+                'query': query,
+                'extracted_service': extracted_service,
+                'parsed_service': conditions['service_name'],
+                'success': success
+            })
+        
+        # 테스트 결과 요약
+        print(f"\n{'='*100}")
+        print(f"📊 SERVICE NAME TEST RESULTS")
+        print(f"{'='*100}")
+        
+        successful_tests = sum(1 for r in test_results if r['success'])
+        success_rate = (successful_tests / len(test_results)) * 100
+        
+        print(f"Total Tests: {len(test_results)}")
+        print(f"Successful: {successful_tests}")
+        print(f"Failed: {len(test_results) - successful_tests}")
+        print(f"Success Rate: {success_rate:.1f}%")
+        
+        print(f"\nFailed Tests:")
+        for result in test_results:
+            if not result['success']:
+                print(f"  ❌ '{result['query']}'")
+        
+        print(f"\n{'='*100}")
+        
+        return test_results

@@ -399,10 +399,41 @@ class ConditionExtractor:
     @classmethod 
     def _extract_time_conditions(cls, query_lower: str, conditions: FilterConditions):
         """시간 관련 조건 추출 - 통합 월 처리 - 명확한 경우에만 추출"""
-        # 연도 추출
-        year_match = re.search(r'\b(202[0-9]|201[0-9])\b', query_lower)
-        if year_match:
-            conditions.year = year_match.group(1)
+        # 연도 추출 - 2자리와 4자리 모두 지원
+        year = None
+        
+        # 먼저 4자리 년도 확인 (우선순위) - "2025년", "2025" 모두 인식
+        year_match_4digit = re.search(r'\b(202[0-9]|201[0-9])(?:년|년도)?', query_lower)
+        if year_match_4digit:
+            year = year_match_4digit.group(1)
+        else:
+            # 2자리 년도 확인 ("22년", "20년", "20년도" 등)
+            year_match_2digit = re.search(r'\b([0-9]{2})년(?:도)?', query_lower)
+            if year_match_2digit:
+                two_digit_year = int(year_match_2digit.group(1))
+                # 현재 년도 기준으로 적절한 세기 결정
+                current_year = datetime.now().year
+                current_century = (current_year // 100) * 100  # 2000
+                current_two_digit = current_year % 100  # 25 (2025년 기준)
+                
+                # 2자리 년도를 4자리로 변환 (실용적인 접근)
+                # - 90~99 → 1990~1999
+                # - 00~89 → 2000~2089
+                # 예: "22년" -> 2022, "95년" -> 1995, "30년" -> 2030
+                if two_digit_year >= 90:
+                    # 90년대는 1900년대로
+                    year = str(current_century - 100 + two_digit_year)
+                else:
+                    # 00~89는 2000년대로
+                    year = str(current_century + two_digit_year)
+                
+                # 추가 검증: 1990년 ~ 2089년 범위만 허용
+                year_int = int(year)
+                if not (1990 <= year_int <= 2089):
+                    year = None
+        
+        if year:
+            conditions.year = year
         
         # ⭐ 통계 쿼리가 아니면 월 조건 자동 추출 중단
         stats_keywords = ['건수', '통계', '현황', '분포', '몇건', '개수', '~별', '년도별', '월별', '연도별']
@@ -1747,5 +1778,61 @@ def test_filter_manager():
     print(f"\nFilter Summary: {json.dumps(summary, ensure_ascii=False, indent=2)}")
 
 
+
+
+def test_year_extraction():
+    """년도 추출 기능 테스트"""
+    print("=" * 70)
+    print("년도 추출 기능 테스트 (2자리/4자리 년도 인식)")
+    print("=" * 70)
+    
+    test_cases = [
+        ("2025년 1월 장애", "2025", "4자리 년도 기본"),
+        ("2020년도 통계", "2020", "4자리 년도 + '년도'"),
+        ("22년 3월 장애 통계", "2022", "2자리 -> 2022"),
+        ("20년도 장애 현황", "2020", "2자리 -> 2020"),
+        ("23년 OTP 장애", "2023", "2자리 -> 2023"),
+        ("19년 SMS 장애", "2019", "2자리 -> 2019"),
+        ("15년 장애", "2015", "2자리 -> 2015"),
+        ("30년 전망", "2030", "2자리 -> 2030"),
+        ("50년 장애", "2050", "2자리 -> 2050 (미래)"),
+        ("89년 장애", "2089", "경계값 -> 2089 (최대)"),
+        ("90년 장애", "1990", "경계값 -> 1990 (최소)"),
+        ("95년 장애", "1995", "2자리 -> 1995 (과거)"),
+        ("99년 장애", "1999", "2자리 -> 1999 (과거)"),
+        ("00년 장애", "2000", "2자리 -> 2000 (2000년대 시작)"),
+    ]
+    
+    extractor = ConditionExtractor()
+    passed = 0
+    failed = 0
+    
+    for query, expected_year, description in test_cases:
+        conditions = extractor.extract_all_conditions(query, QueryType.STATISTICS)
+        actual_year = conditions.year
+        
+        if actual_year == expected_year:
+            status = "✓ PASS"
+            passed += 1
+        else:
+            status = "✗ FAIL"
+            failed += 1
+        
+        print(f"{status} | {description}")
+        print(f"      Query: '{query}'")
+        print(f"      Expected: {expected_year}, Got: {actual_year}")
+        print()
+    
+    print("=" * 70)
+    print(f"테스트 결과: {passed} PASSED, {failed} FAILED")
+    print("=" * 70)
+
+
+
+
 if __name__ == "__main__":
-    test_filter_manager()
+    # 기존 통합 테스트
+    # test_filter_manager()
+    
+    # 년도 추출 기능 테스트
+    test_year_extraction()

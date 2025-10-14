@@ -37,6 +37,7 @@ class DataIntegrityNormalizer:
         except (ValueError, TypeError):
             return 0
     
+
     @staticmethod
     def normalize_date_fields(doc):
         normalized_doc = doc.copy()
@@ -50,6 +51,11 @@ class DataIntegrityNormalizer:
                     if len(parts) >= 2:
                         if parts[0].isdigit() and len(parts[0]) == 4 and not normalized_doc.get('year'):
                             normalized_doc['year'] = parts[0]
+                        elif parts[0].isdigit() and len(parts[0]) == 2 and not normalized_doc.get('year'):
+                            # 모든 2자리 연도를 2000년대로 처리
+                            short_year = int(parts[0])
+                            if 0 <= short_year <= 99:
+                                normalized_doc['year'] = f"20{short_year:02d}"
                         if parts[1].isdigit():
                             month_num = int(parts[1])
                             if 1 <= month_num <= 12 and not normalized_doc.get('month'):
@@ -136,18 +142,27 @@ class ImprovedStatisticsCalculator:
     
     def _extract_filter_conditions(self, query):
         conditions = {'year': None, 'month': None, 'start_month': None, 'end_month': None, 
-                     'daynight': None, 'week': None, 'service_name': None, 'department': None, 'grade': None}
+                    'daynight': None, 'week': None, 'service_name': None, 'department': None, 'grade': None}
         if not query: return conditions
         
         query_lower = query.lower()
         
-        # 연도 추출
-        year_match = re.search(r'\b(202[0-9]|201[0-9])\b', query_lower)
-        if year_match: conditions['year'] = year_match.group(1)
+        # 연도 추출 - 4자리 연도 우선 
+        year_match = re.search(r'\b(202[0-9]|201[0-9])년?\b', query_lower)
+        if year_match: 
+            conditions['year'] = year_match.group(1)
+        else:
+            # 2자리 연도 패턴 감지 (예: 22년, 20년)
+            short_year_match = re.search(r'\b(\d{2})년\b', query_lower)
+            if short_year_match:
+                short_year = int(short_year_match.group(1))
+                # 모든 2자리 연도를 2000년대로 변환
+                if 0 <= short_year <= 99:
+                    conditions['year'] = f"20{short_year:02d}"
         
         # 월 범위 처리
         month_patterns = [r'\b(\d+)\s*~\s*(\d+)월\b', r'\b(\d+)월\s*~\s*(\d+)월\b', 
-                         r'\b(\d+)\s*-\s*(\d+)월\b', r'\b(\d+)월\s*-\s*(\d+)월\b']
+                        r'\b(\d+)\s*-\s*(\d+)월\b', r'\b(\d+)월\s*-\s*(\d+)월\b']
         for pattern in month_patterns:
             month_range_match = re.search(pattern, query_lower)
             if month_range_match:
@@ -221,19 +236,31 @@ class ImprovedStatisticsCalculator:
         return True, "passed"
     
     def _extract_year_from_document(self, doc):
+        # year 필드에서 직접 추출 (4자리 또는 2자리)
         for key in ['year', 'extracted_year']:
             year = doc.get(key)
             if year:
                 year_str = str(year).strip()
                 if len(year_str) == 4 and year_str.isdigit():
                     return year_str
+                elif len(year_str) == 2 and year_str.isdigit():
+                    # 모든 2자리 연도를 2000년대로 변환
+                    short_year = int(year_str)
+                    if 0 <= short_year <= 99:
+                        return f"20{short_year:02d}"
         
+        # error_date에서 추출
         error_date = str(doc.get('error_date', '')).strip()
         if len(error_date) >= 4:
             if '-' in error_date:
                 parts = error_date.split('-')
                 if parts and len(parts[0]) == 4 and parts[0].isdigit():
                     return parts[0]
+                elif parts and len(parts[0]) == 2 and parts[0].isdigit():
+                    # 모든 2자리 연도를 2000년대로 처리
+                    short_year = int(parts[0])
+                    if 0 <= short_year <= 99:
+                        return f"20{short_year:02d}"
             elif error_date[:4].isdigit():
                 return error_date[:4]
         return None
@@ -483,12 +510,203 @@ class QueryProcessorLocal:
         """✅ Lazy initialization property for StatisticsDBManager"""
         if self._statistics_db_manager is None:
             if self.debug_mode:
-                print("🔄 Initializing StatisticsDBManager (lazy loading)...")
+                print("📄 Initializing StatisticsDBManager (lazy loading)...")
             self._statistics_db_manager = StatisticsDBManager()
         return self._statistics_db_manager
 
+    def _validate_documents_against_query_conditions(self, query, documents):
+        """🚨 핵심 개선: 쿼리 조건과 문서 일치성 검증"""
+        if not query or not documents:
+            return []
+        
+        # 쿼리에서 조건 추출
+        extracted_service = self.search_manager.extract_service_name_from_query(query)
+        extracted_year = self._extract_year_from_query(query)
+        extracted_months = self._extract_months_from_query(query)
+        
+        if self.debug_mode:
+            print(f"DEBUG: Query conditions - Service: {extracted_service}, Year: {extracted_year}, Months: {extracted_months}")
+        
+        validated_documents = []
+        
+        for doc in documents:
+            is_valid = True
+            validation_reasons = []
+            
+            # 서비스명 검증 (가장 중요)
+            if extracted_service:
+                doc_service = doc.get('service_name', '').strip()
+                if not self._is_service_match(extracted_service, doc_service):
+                    is_valid = False
+                    validation_reasons.append(f"Service mismatch: expected '{extracted_service}', got '{doc_service}'")
+            
+            # 연도 검증
+            if extracted_year:
+                doc_year = self._extract_year_from_document(doc)
+                if not doc_year or doc_year != extracted_year:
+                    is_valid = False
+                    validation_reasons.append(f"Year mismatch: expected '{extracted_year}', got '{doc_year}'")
+            
+            # 월 검증 (옵션)
+            if extracted_months:
+                doc_month = self._extract_month_from_document(doc)
+                if doc_month and int(doc_month) not in extracted_months:
+                    is_valid = False
+                    validation_reasons.append(f"Month mismatch: expected {extracted_months}, got '{doc_month}'")
+            
+            if is_valid:
+                validated_documents.append(doc)
+                if self.debug_mode:
+                    print(f"DEBUG: Document {doc.get('incident_id', 'Unknown')} validated successfully")
+            else:
+                if self.debug_mode:
+                    print(f"DEBUG: Document {doc.get('incident_id', 'Unknown')} rejected: {', '.join(validation_reasons)}")
+        
+        return validated_documents
+    
+    def _is_service_match(self, query_service, doc_service):
+        """서비스명 매칭 로직 - 정확한 매칭과 유연한 매칭 모두 고려"""
+        if not query_service or not doc_service:
+            return False
+        
+        query_service_lower = query_service.lower().strip()
+        doc_service_lower = doc_service.lower().strip()
+        
+        # 1. 정확한 매칭
+        if query_service_lower == doc_service_lower:
+            return True
+        
+        # 2. 포함 관계 매칭
+        if query_service_lower in doc_service_lower or doc_service_lower in query_service_lower:
+            return True
+        
+        # 3. 공백 제거 후 매칭
+        query_no_space = re.sub(r'\s+', '', query_service_lower)
+        doc_no_space = re.sub(r'\s+', '', doc_service_lower)
+        if query_no_space == doc_no_space:
+            return True
+        
+        # 4. 토큰 기반 매칭 (부분 일치)
+        query_tokens = set(re.findall(r'[a-z가-힣0-9]+', query_service_lower))
+        doc_tokens = set(re.findall(r'[a-z가-힣0-9]+', doc_service_lower))
+        
+        if query_tokens and doc_tokens:
+            intersection = len(query_tokens.intersection(doc_tokens))
+            union = len(query_tokens.union(doc_tokens))
+            similarity = intersection / union if union > 0 else 0
+            
+            # 유사도 70% 이상이면 매칭으로 간주
+            if similarity >= 0.7:
+                return True
+        
+        return False
+    
+    def _extract_year_from_query(self, query):
+        """쿼리에서 연도 추출"""
+        if not query:
+            return None
+        
+        # 4자리 연도 패턴
+        year_patterns = [r'\b(\d{4})년\b', r'\b(\d{4})\s*년도\b', r'\b(\d{4})년도\b', r'\b(202[0-9]|201[0-9])\b']
+        
+        for pattern in year_patterns:
+            matches = re.findall(pattern, query, re.IGNORECASE)
+            if matches:
+                year = matches[-1]  # 가장 마지막 매칭된 연도 사용
+                if year.isdigit() and len(year) == 4:
+                    return year
+        
+        # 2자리 연도 패턴
+        short_year_match = re.search(r'\b(\d{2})년\b', query)
+        if short_year_match:
+            short_year = int(short_year_match.group(1))
+            # 모든 2자리 연도를 2000년대로 변환
+            if 0 <= short_year <= 99:
+                return f"20{short_year:02d}"
+        
+        return None
+    
+    def _extract_months_from_query(self, query):
+        """쿼리에서 월 추출"""
+        if not query:
+            return []
+        
+        months = []
+        
+        # 월 범위 패턴 (예: 1~6월, 1월~6월)
+        range_patterns = [r'\b(\d+)\s*~\s*(\d+)월\b', r'\b(\d+)월\s*~\s*(\d+)월\b']
+        for pattern in range_patterns:
+            matches = re.findall(pattern, query, re.IGNORECASE)
+            for match in matches:
+                start_month, end_month = int(match[0]), int(match[1])
+                if 1 <= start_month <= 12 and 1 <= end_month <= 12 and start_month <= end_month:
+                    months.extend(range(start_month, end_month + 1))
+        
+        # 개별 월 패턴 (예: 1월, 2월)
+        if not months:  # 범위가 없는 경우에만
+            month_matches = re.findall(r'\b(\d{1,2})월\b', query)
+            for match in month_matches:
+                month_num = int(match)
+                if 1 <= month_num <= 12:
+                    months.append(month_num)
+        
+        return list(set(months))  # 중복 제거
+    
+    def _extract_year_from_document(self, doc):
+        """문서에서 연도 추출"""
+        # year 필드에서 직접 추출
+        for key in ['year', 'extracted_year']:
+            year = doc.get(key)
+            if year:
+                year_str = str(year).strip()
+                if len(year_str) == 4 and year_str.isdigit():
+                    return year_str
+        
+        # error_date에서 추출
+        error_date = str(doc.get('error_date', '')).strip()
+        if len(error_date) >= 4:
+            if '-' in error_date:
+                parts = error_date.split('-')
+                if parts and len(parts[0]) == 4 and parts[0].isdigit():
+                    return parts[0]
+            elif error_date[:4].isdigit():
+                return error_date[:4]
+        
+        return None
+    
+    def _extract_month_from_document(self, doc):
+        """문서에서 월 추출"""
+        for key in ['month', 'extracted_month']:
+            month = doc.get(key)
+            if month:
+                try:
+                    month_num = int(month)
+                    if 1 <= month_num <= 12:
+                        return str(month_num)
+                except (ValueError, TypeError):
+                    pass
+        
+        error_date = str(doc.get('error_date', '')).strip()
+        if '-' in error_date:
+            parts = error_date.split('-')
+            if len(parts) >= 2 and parts[1].isdigit():
+                try:
+                    month_num = int(parts[1])
+                    if 1 <= month_num <= 12:
+                        return str(month_num)
+                except (ValueError, TypeError):
+                    pass
+        elif len(error_date) >= 6 and error_date.isdigit():
+            try:
+                month_num = int(error_date[4:6])
+                if 1 <= month_num <= 12:
+                    return str(month_num)
+            except (ValueError, TypeError):
+                pass
+        return None
+
     def generate_rag_response_with_data_integrity(self, query, documents, query_type="default", time_conditions=None, department_conditions=None, reprompting_info=None):
-        """🚨 RAG 데이터 무결성을 절대 보장하는 응답 생성"""
+        """🚨 RAG 데이터 무결성을 절대 보장하는 응답 생성 - 조건 검증 강화"""
         if not documents:
             return "검색된 문서가 없어서 답변을 제공할 수 없습니다."
         
@@ -499,13 +717,36 @@ class QueryProcessorLocal:
             if self.debug_mode:
                 print(f"DEBUG: Data integrity preserved for {len(integrity_documents)} documents")
             
+            # ⚠️ 핵심 개선: 조건 매칭 재검증 - 사용자 질문과 문서 일치성 확인
+            validated_documents = self._validate_documents_against_query_conditions(query, integrity_documents)
+            
+            if not validated_documents:
+                # 검색된 문서가 있지만 조건에 맞지 않는 경우
+                extracted_service = self.search_manager.extract_service_name_from_query(query)
+                extracted_year = self._extract_year_from_query(query)
+                
+                if extracted_service and extracted_year:
+                    return f"제공된 데이터에서 '{extracted_service}'와 관련된 {extracted_year}년도 장애 내역은 없습니다."
+                elif extracted_service:
+                    return f"제공된 데이터에서 '{extracted_service}' 서비스와 관련된 장애 내역은 없습니다."
+                elif extracted_year:
+                    return f"제공된 데이터에서 {extracted_year}년도 장애 내역은 없습니다."
+                else:
+                    return "검색된 문서가 요청하신 조건과 일치하지 않습니다."
+            
+            if self.debug_mode:
+                print(f"DEBUG: Validated {len(validated_documents)}/{len(integrity_documents)} documents match query conditions")
+            
+            # 검증된 문서로 응답 생성 진행
+            final_documents = validated_documents
+            
             # 통계 계산 - statistics 쿼리타입에서만 차트 생성
             if query_type == "statistics":
-                return self._generate_statistics_response_with_integrity(query, integrity_documents)
+                return self._generate_statistics_response_with_integrity(query, final_documents)
             
             # 정렬 적용
             sort_info = self.detect_sorting_requirements(query)
-            processing_documents = self.apply_custom_sorting(integrity_documents, sort_info)
+            processing_documents = self.apply_custom_sorting(final_documents, sort_info)
             
             final_query = reprompting_info.get('transformed_query', query) if reprompting_info and reprompting_info.get('transformed') else query
             
@@ -627,7 +868,7 @@ class QueryProcessorLocal:
                     st.markdown("### 💾 실행된 SQL 쿼리")
                     st.code(debug_info['sql_query'], language='sql')
                     
-                    st.markdown("### 🔢 SQL 파라미터")
+                    st.markdown("### 📢 SQL 파라미터")
                     st.json(list(debug_info['sql_params']))
                     
                     st.markdown("### 📊 쿼리 결과")
@@ -856,6 +1097,7 @@ class QueryProcessorLocal:
         except Exception as e:
             return f"통계 포맷팅 중 오류: {str(e)}"
 
+    # 기존 메서드들 유지 (다른 개선된 버전에서 가져온 메서드들 추가)
     def check_and_transform_query_with_reprompting(self, user_query):
         """개선된 리프롬프팅 - 강제 치환 추가"""
         if not user_query:
@@ -1467,6 +1709,7 @@ class QueryProcessorLocal:
                 )
                 st.session_state.current_query_logged = True
 
+    # 기타 필수 메서드들
     def _is_successful_response(self, response_text: str, document_count: int) -> bool:
         """응답이 성공적인지 판단"""
         if not response_text or response_text.strip() == "":
