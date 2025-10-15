@@ -523,9 +523,10 @@ class QueryProcessorLocal:
         extracted_service = self.search_manager.extract_service_name_from_query(query)
         extracted_year = self._extract_year_from_query(query)
         extracted_months = self._extract_months_from_query(query)
+        time_conditions = self.extract_time_conditions(query)  # ✅ 추가
         
         if self.debug_mode:
-            print(f"DEBUG: Query conditions - Service: {extracted_service}, Year: {extracted_year}, Months: {extracted_months}")
+            print(f"DEBUG: Query conditions - Service: {extracted_service}, Year: {extracted_year}, Months: {extracted_months}, TimeConditions: {time_conditions}")
         
         validated_documents = []
         
@@ -533,26 +534,52 @@ class QueryProcessorLocal:
             is_valid = True
             validation_reasons = []
             
-            # 서비스명 검증 (가장 중요)
+            # 서비스명 검증 (기존)
             if extracted_service:
                 doc_service = doc.get('service_name', '').strip()
                 if not self._is_service_match(extracted_service, doc_service):
                     is_valid = False
                     validation_reasons.append(f"Service mismatch: expected '{extracted_service}', got '{doc_service}'")
             
-            # 연도 검증
+            # 연도 검증 (기존)
             if extracted_year:
                 doc_year = self._extract_year_from_document(doc)
                 if not doc_year or doc_year != extracted_year:
                     is_valid = False
                     validation_reasons.append(f"Year mismatch: expected '{extracted_year}', got '{doc_year}'")
             
-            # 월 검증 (옵션)
+            # 월 검증 (기존)
             if extracted_months:
                 doc_month = self._extract_month_from_document(doc)
                 if doc_month and int(doc_month) not in extracted_months:
                     is_valid = False
                     validation_reasons.append(f"Month mismatch: expected {extracted_months}, got '{doc_month}'")
+            
+            # ✅ 시간대 검증 추가
+            if time_conditions.get('is_time_query') and time_conditions.get('daynight'):
+                doc_daynight = doc.get('daynight', '').strip()
+                if not doc_daynight or doc_daynight != time_conditions['daynight']:
+                    is_valid = False
+                    validation_reasons.append(f"Daynight mismatch: expected '{time_conditions['daynight']}', got '{doc_daynight}'")
+            
+            # ✅ 요일 검증 추가
+            if time_conditions.get('is_time_query') and time_conditions.get('week'):
+                doc_week = doc.get('week', '').strip()
+                expected_week = time_conditions['week']
+                
+                # 평일/주말 특별 처리
+                if expected_week == '평일':
+                    if doc_week not in ['월', '화', '수', '목', '금']:
+                        is_valid = False
+                        validation_reasons.append(f"Week mismatch: expected weekday, got '{doc_week}'")
+                elif expected_week == '주말':
+                    if doc_week not in ['토', '일']:
+                        is_valid = False
+                        validation_reasons.append(f"Week mismatch: expected weekend, got '{doc_week}'")
+                else:
+                    if not doc_week or doc_week != expected_week:
+                        is_valid = False
+                        validation_reasons.append(f"Week mismatch: expected '{expected_week}', got '{doc_week}'")
             
             if is_valid:
                 validated_documents.append(doc)
