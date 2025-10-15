@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import json
 import os
 from collections import defaultdict, Counter
-from auth_manager import AuthManager
+from utils.auth_manager import AuthManager
 from utils.monitoring_manager import MonitoringManager
 from utils.chart_utils import ChartManager
 
