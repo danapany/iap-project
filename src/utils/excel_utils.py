@@ -293,15 +293,15 @@ class ExcelDownloadManager:
             return True
             
         except Exception as e:
-        print(f"DEBUG: Download button display error: {e}")
-        import traceback
-        traceback.print_exc()
-        
-        # 에러 발생 시에도 기본 다운로드 옵션 제공
-        st.markdown("---")
-        st.markdown("### 📊 엑셀 다운로드")
-        st.error("엑셀 다운로드 기능에 오류가 발생했습니다. 데이터를 복사하여 엑셀에 붙여넣기 해주세요.")
-        return False
+            print(f"DEBUG: Download button display error: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # 에러 발생 시에도 기본 다운로드 옵션 제공
+            st.markdown("---")
+            st.markdown("### 📊 엑셀 다운로드")
+            st.error("엑셀 다운로드 기능에 오류가 발생했습니다. 데이터를 복사하여 엑셀에 붙여넣기 해주세요.")
+            return False
     
     def _create_simple_table_from_response(self, response_text):
         """응답에서 간단한 표 데이터 생성"""
@@ -365,8 +365,6 @@ class ExcelDownloadManager:
         except Exception as e:
             print(f"DEBUG: Simple table creation error: {e}")
             return None
-            print(f"DEBUG: Simple table creation error: {e}")
-            return None    
 
     def extract_download_info_from_query(self, query):
         """쿼리에서 다운로드 관련 정보 추출"""

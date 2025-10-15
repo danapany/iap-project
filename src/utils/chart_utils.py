@@ -588,10 +588,12 @@ class ChartManager:
         stable_data = st.session_state[chart_session_key]
         stable_query = st.session_state.get("stable_chart_query", query)
         
-        # 차트 표시
+        # 차트 표시 - 70% 가로 크기
         if chart is not None:
             try:
-                st.pyplot(chart, use_container_width=False, clear_figure=True)
+                col_chart = st.columns([0.15, 0.7, 0.15])
+                with col_chart[1]:
+                    st.pyplot(chart, use_container_width=False, clear_figure=True)
                 print("DEBUG: Chart displayed successfully")
             except Exception as e:
                 print(f"DEBUG: Failed to display chart: {e}")
