@@ -22,4 +22,5 @@ pip install urllib3
 pip install plotly
 pip install seaborn
 pip install chardet
+pip install bcrypt
 python -m streamlit run src/app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true

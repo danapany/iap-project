@@ -22,9 +22,18 @@ import base64  # 추가된 import
 # 환경 변수 로드
 load_dotenv()
 
-# 데이터 캐시 비우기
-st.cache_data.clear()
-st.cache_resource.clear()
+# ⭐ 페이지 설정 (반드시 최상단에 위치, 한 번만 실행)
+st.set_page_config(
+    page_title="장애보고서 초안 생성기",
+    page_icon="💡",
+    layout="wide",  # "wide" 또는 "centered" 중 선택 (wide: 전체 너비, centered: 가운데 정렬)
+    initial_sidebar_state="auto"
+)
+
+# 데이터 캐시 비우기 (개발 중에만 사용, 프로덕션에서는 주석 처리 권장)
+# 매번 실행되면 성능 저하 및 레이아웃 불안정의 원인이 됩니다
+# st.cache_data.clear()
+# st.cache_resource.clear()
 
 # 환경 변수에서 설정 값 직접 가져오기
 STORAGE_CONN_STR = os.getenv("STORAGE_CONN_STR")

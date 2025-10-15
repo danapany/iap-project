@@ -15,18 +15,18 @@ from datetime import datetime, timedelta
 st.set_page_config(
     page_title="서비스별 오류 시즌성 분석기",
     page_icon="📊",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# CSS를 사용하여 좌측 정렬 및 너비 900px 고정
+# CSS를 사용하여 90% 너비 설정 (오른쪽 여백 강화)
 st.markdown("""
     <style>
     .main .block-container {
-        max-width: 900px;
+        max-width: 90%;
         padding-left: 2rem;
-        padding-right: 2rem;
-        margin-left: 0;
+        padding-right: 4rem;
+        margin-left: auto;
         margin-right: auto;
     }
     </style>
@@ -323,7 +323,7 @@ monthly_total_full = pd.merge(full_months_df, monthly_total, on='month', how='le
 monthly_total_full['count'] = monthly_total_full['count'].astype(int)
 
 # 차트 생성
-fig_monthly, ax_monthly = plt.subplots(figsize=(12, 6))
+fig_monthly, ax_monthly = plt.subplots(figsize=(8.4, 6))
 bars_monthly = ax_monthly.bar(monthly_total_full['month'], monthly_total_full['count'], 
                              color='skyblue', alpha=0.8, edgecolor='darkblue', linewidth=1)
 
@@ -352,7 +352,9 @@ for i, bar in enumerate(bars_monthly):
                        f'{int(height)}', ha='center', va='bottom', fontsize=10)
 
 plt.tight_layout()
-st.pyplot(fig_monthly)
+col_chart = st.columns([0.15, 0.7, 0.15])
+with col_chart[1]:
+    st.pyplot(fig_monthly)
 
 # 월별 요약 통계
 col_stat1, col_stat2, col_stat3 = st.columns(3)
@@ -491,7 +493,7 @@ window_months = 3
 ma_info_months = get_moving_average_info(window_months)
 trend_data_months, trend_indices_months = calculate_moving_average(service_monthly_full['count'].values, window_months)
 
-fig, ax = plt.subplots(figsize=(12, 6))
+fig, ax = plt.subplots(figsize=(8.4, 6))
 
 # 실제 데이터 막대그래프
 bars = ax.bar(service_monthly_full["month"], service_monthly_full["count"], alpha=0.7, label="실제 오류 수")
@@ -518,7 +520,9 @@ if current_month_idx < len(bars):
     bars[current_month_idx].set_alpha(1.0)
 
 plt.tight_layout()
-st.pyplot(fig)
+col_chart = st.columns([0.15, 0.7, 0.15])
+with col_chart[1]:
+    st.pyplot(fig)
 
 # 트렌드 분석 설명
 with st.expander("📈 트렌드 분석 해석"):
@@ -582,7 +586,7 @@ y_max = max(5, daily_counts["count"].max())
 
 # 막대그래프 출력
 month_title = selected_month_option if selected_month_option != "전체" else "전체 기간"
-fig2, ax2 = plt.subplots(figsize=(14, 6))
+fig2, ax2 = plt.subplots(figsize=(9.8, 6))
 
 # 실제 데이터 막대그래프
 bars2 = ax2.bar(daily_counts["day"], daily_counts["count"], alpha=0.7, label="실제 오류 수")
@@ -613,7 +617,9 @@ if selected_month_option == "전체" or int(selected_month_option.replace("월",
             bars2[current_day_idx].set_alpha(1.0)
 
 plt.tight_layout()
-st.pyplot(fig2)
+col_chart = st.columns([0.15, 0.7, 0.15])
+with col_chart[1]:
+    st.pyplot(fig2)
 
 # 📆 9. 서비스별 요일별 오류 그래프
 st.subheader("📆 서비스별 요일별 오류 발생 패턴")
@@ -634,7 +640,7 @@ weekday_counts = (
     .reset_index(name="count")
 )
 
-fig3, ax3 = plt.subplots(figsize=(10, 6))
+fig3, ax3 = plt.subplots(figsize=(7, 6))
 bars3 = ax3.bar(weekday_counts["week"], weekday_counts["count"])
 
 # 현재 요일 강조
@@ -649,7 +655,9 @@ ax3.set_xlabel("요일", fontsize=12)
 ax3.set_ylabel("오류 수", fontsize=12)
 ax3.grid(True, alpha=0.3)
 plt.tight_layout()
-st.pyplot(fig3)
+col_chart = st.columns([0.15, 0.7, 0.15])
+with col_chart[1]:
+    st.pyplot(fig3)
 
 # 🌙 10. 서비스별 주간/야간 오류 그래프
 if 'daynight' in df.columns:
@@ -670,14 +678,16 @@ if 'daynight' in df.columns:
     )
     time_counts.columns = ["daynight", "count"]
 
-    fig4, ax4 = plt.subplots(figsize=(8, 6))
+    fig4, ax4 = plt.subplots(figsize=(5.6, 6))
     ax4.bar(time_counts["daynight"], time_counts["count"])
     ax4.set_title(f"{selected_service_daynight} - 주간/야간 오류 발생 패턴", fontsize=14, pad=20)
     ax4.set_xlabel("시간대", fontsize=12)
     ax4.set_ylabel("오류 수", fontsize=12)
     ax4.grid(True, alpha=0.3)
     plt.tight_layout()
-    st.pyplot(fig4)
+    col_chart = st.columns([0.15, 0.7, 0.15])
+    with col_chart[1]:
+        st.pyplot(fig4)
 else:
     st.info("주간/야간 데이터(daynight 컬럼)가 없어 해당 차트를 표시할 수 없습니다.")
 
@@ -733,7 +743,7 @@ else:
     title_suffix = selected_heatmap_service
 
 # 히트맵 그리기
-fig_heatmap, ax_heatmap = plt.subplots(figsize=(16, 8))
+fig_heatmap, ax_heatmap = plt.subplots(figsize=(11.2, 8))
 sns.heatmap(
     heatmap_data, 
     annot=False, 
@@ -748,7 +758,9 @@ ax_heatmap.set_xlabel("일", fontsize=12)
 ax_heatmap.set_ylabel("월", fontsize=12)
 ax_heatmap.set_yticklabels([f"{i}월" for i in range(1, 13)], rotation=0)
 plt.tight_layout()
-st.pyplot(fig_heatmap)
+col_chart = st.columns([0.15, 0.7, 0.15])
+with col_chart[1]:
+    st.pyplot(fig_heatmap)
 
 # 히트맵 해석 도움말
 with st.expander("📖 히트맵 해석 가이드"):

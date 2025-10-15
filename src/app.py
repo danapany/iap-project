@@ -1,6 +1,6 @@
 # app.py (메인 파일)
 import streamlit as st
-from auth_manager import AuthManager
+from utils.auth_manager import AuthManager
 
 # 인증 매니저 초기화
 auth_manager = AuthManager()

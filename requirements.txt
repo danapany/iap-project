@@ -20,3 +20,4 @@ urllib3
 plotly
 seaborn
 chardet
+bcrypt
