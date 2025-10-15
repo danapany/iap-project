@@ -141,13 +141,14 @@ class ImprovedStatisticsCalculator:
         self.remove_duplicates = remove_duplicates
     
     def _extract_filter_conditions(self, query):
+        """쿼리에서 필터 조건 추출 - 분기/반기 지원 추가"""
         conditions = {'year': None, 'month': None, 'start_month': None, 'end_month': None, 
                     'daynight': None, 'week': None, 'service_name': None, 'department': None, 'grade': None}
         if not query: return conditions
         
         query_lower = query.lower()
         
-        # 연도 추출 - 4자리 연도 우선 
+        # 연도 추출 - 4자리 연도 우선  
         year_match = re.search(r'\b(202[0-9]|201[0-9])년?\b', query_lower)
         if year_match: 
             conditions['year'] = year_match.group(1)
@@ -160,17 +161,46 @@ class ImprovedStatisticsCalculator:
                 if 0 <= short_year <= 99:
                     conditions['year'] = f"20{short_year:02d}"
         
-        # 월 범위 처리
-        month_patterns = [r'\b(\d+)\s*~\s*(\d+)월\b', r'\b(\d+)월\s*~\s*(\d+)월\b', 
-                        r'\b(\d+)\s*-\s*(\d+)월\b', r'\b(\d+)월\s*-\s*(\d+)월\b']
-        for pattern in month_patterns:
-            month_range_match = re.search(pattern, query_lower)
-            if month_range_match:
-                start_month, end_month = int(month_range_match.group(1)), int(month_range_match.group(2))
-                if 1 <= start_month <= 12 and 1 <= end_month <= 12 and start_month <= end_month:
-                    conditions['start_month'], conditions['end_month'] = start_month, end_month
-                    break
+        # 🆕 분기/반기 처리 (월 범위로 자동 변환)
+        quarter_patterns = {
+            r'1분기|제1분기|q1|1q': (1, 3),
+            r'2분기|제2분기|q2|2q': (4, 6),
+            r'3분기|제3분기|q3|3q': (7, 9),
+            r'4분기|제4분기|q4|4q': (10, 12),
+            r'상반기|전반기|1반기|h1': (1, 6),
+            r'하반기|후반기|2반기|h2': (7, 12)
+        }
         
+        quarter_matched = False
+        for pattern, (start, end) in quarter_patterns.items():
+            if re.search(pattern, query_lower):
+                conditions['start_month'] = start
+                conditions['end_month'] = end
+                quarter_matched = True
+                
+                # 연도가 없으면 현재 연도(2025) 자동 설정
+                if not conditions['year']:
+                    conditions['year'] = '2025'
+                    if self.debug_mode:
+                        print(f"DEBUG: 분기/반기 표현 감지, 자동으로 2025년 설정")
+                
+                if self.debug_mode:
+                    print(f"DEBUG: 분기/반기 감지 - {start}~{end}월로 변환")
+                break
+        
+        # 월 범위 처리 (분기/반기가 없을 때만)
+        if not quarter_matched:
+            month_patterns = [r'\b(\d+)\s*~\s*(\d+)월\b', r'\b(\d+)월\s*~\s*(\d+)월\b', 
+                            r'\b(\d+)\s*-\s*(\d+)월\b', r'\b(\d+)월\s*-\s*(\d+)월\b']
+            for pattern in month_patterns:
+                month_range_match = re.search(pattern, query_lower)
+                if month_range_match:
+                    start_month, end_month = int(month_range_match.group(1)), int(month_range_match.group(2))
+                    if 1 <= start_month <= 12 and 1 <= end_month <= 12 and start_month <= end_month:
+                        conditions['start_month'], conditions['end_month'] = start_month, end_month
+                        break
+        
+        # 개별 월 추출 (범위가 없을 때만)
         if not conditions['start_month']:
             month_match = re.search(r'\b(\d{1,2})월\b', query_lower)
             if month_match and 1 <= int(month_match.group(1)) <= 12:
@@ -654,16 +684,33 @@ class QueryProcessorLocal:
         return None
     
     def _extract_months_from_query(self, query):
-        """쿼리에서 월 추출"""
+        """쿼리에서 월 추출 - 분기/반기 지원 추가"""
         if not query:
             return []
         
         months = []
+        query_lower = query.lower()
+        
+        # 🆕 분기/반기 패턴 우선 처리
+        quarter_patterns = {
+            r'1분기|제1분기|q1|1q': [1, 2, 3],
+            r'2분기|제2분기|q2|2q': [4, 5, 6],
+            r'3분기|제3분기|q3|3q': [7, 8, 9],
+            r'4분기|제4분기|q4|4q': [10, 11, 12],
+            r'상반기|전반기|1반기|h1': [1, 2, 3, 4, 5, 6],
+            r'하반기|후반기|2반기|h2': [7, 8, 9, 10, 11, 12]
+        }
+        
+        for pattern, month_list in quarter_patterns.items():
+            if re.search(pattern, query_lower):
+                if self.debug_mode:
+                    print(f"DEBUG: 분기/반기 표현 감지 - {month_list} 반환")
+                return month_list
         
         # 월 범위 패턴 (예: 1~6월, 1월~6월)
         range_patterns = [r'\b(\d+)\s*~\s*(\d+)월\b', r'\b(\d+)월\s*~\s*(\d+)월\b']
         for pattern in range_patterns:
-            matches = re.findall(pattern, query, re.IGNORECASE)
+            matches = re.findall(pattern, query_lower, re.IGNORECASE)
             for match in matches:
                 start_month, end_month = int(match[0]), int(match[1])
                 if 1 <= start_month <= 12 and 1 <= end_month <= 12 and start_month <= end_month:
@@ -671,7 +718,7 @@ class QueryProcessorLocal:
         
         # 개별 월 패턴 (예: 1월, 2월)
         if not months:  # 범위가 없는 경우에만
-            month_matches = re.findall(r'\b(\d{1,2})월\b', query)
+            month_matches = re.findall(r'\b(\d{1,2})월\b', query_lower)
             for match in month_matches:
                 month_num = int(match)
                 if 1 <= month_num <= 12:
