@@ -39,15 +39,16 @@ class RepromptingDBManager:
             logging.error(f"쿼리 실행 실패: {str(e)}")
             raise
     
+
     def init_database(self):
-        """데이터베이스 초기화 및 테이블 생성"""
+        """데이터베이스 초기화 및 테이블 생성 - 단어 치환 지원 추가"""
         try:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
             
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # 테이블 생성
+                # 기존 테이블에 replacement_mode 컬럼 추가
                 tables = [
                     """CREATE TABLE IF NOT EXISTS reprompting_questions (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,37 +56,33 @@ class RepromptingDBManager:
                         question TEXT NOT NULL UNIQUE,
                         custom_prompt TEXT NOT NULL,
                         wrong_answer_summary TEXT,
+                        replacement_mode TEXT DEFAULT 'full',  -- 'full' 또는 'word'
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )""",
-                    """CREATE TABLE IF NOT EXISTS upload_history (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        file_name TEXT NOT NULL,
-                        total_rows INTEGER,
-                        success_rows INTEGER,
-                        error_rows INTEGER,
-                        upload_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        upload_status TEXT
-                    )""",
-                    """CREATE TABLE IF NOT EXISTS individual_input_history (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        question_id INTEGER,
-                        action_type TEXT NOT NULL,
-                        input_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (question_id) REFERENCES reprompting_questions (id)
-                    )"""
+                    # ... 나머지 테이블들 동일
                 ]
+                
+                for table in tables:
+                    cursor.execute(table)
+                
+                # 기존 테이블에 replacement_mode 컬럼이 없으면 추가
+                try:
+                    cursor.execute("ALTER TABLE reprompting_questions ADD COLUMN replacement_mode TEXT DEFAULT 'full'")
+                    print("INFO: replacement_mode 컬럼 추가됨")
+                except sqlite3.OperationalError as e:
+                    if "duplicate column" not in str(e).lower():
+                        print(f"WARNING: 컬럼 추가 실패: {e}")
                 
                 # 인덱스 생성
                 indexes = [
                     "CREATE INDEX IF NOT EXISTS idx_question_type ON reprompting_questions(question_type)",
                     "CREATE INDEX IF NOT EXISTS idx_question ON reprompting_questions(question)",
+                    "CREATE INDEX IF NOT EXISTS idx_replacement_mode ON reprompting_questions(replacement_mode)",
                     "CREATE INDEX IF NOT EXISTS idx_created_at ON reprompting_questions(created_at)",
                     "CREATE INDEX IF NOT EXISTS idx_updated_at ON reprompting_questions(updated_at)"
                 ]
                 
-                for table in tables:
-                    cursor.execute(table)
                 for index in indexes:
                     cursor.execute(index)
                 
@@ -95,50 +92,330 @@ class RepromptingDBManager:
         except Exception as e:
             logging.error(f"데이터베이스 초기화 실패: {str(e)}")
             raise
-    
-    def add_single_reprompting_question(self, question_type, question, custom_prompt, wrong_answer_summary=""):
-        """단일 재프롬프팅 질문 추가 또는 업데이트"""
+
+    def find_similar_questions_enhanced(self, user_query, similarity_threshold=0.6, limit=5):
+        """
+        개선된 유사 질문 찾기 - 단어 치환 모드 지원
+        
+        Args:
+            user_query: 사용자 질문
+            similarity_threshold: 유사도 임계값
+            limit: 반환할 최대 결과 수
+        
+        Returns:
+            list: 유사 질문 목록 (유사도 순으로 정렬)
+        """
+        try:
+            all_questions = self._execute_query("""
+                SELECT id, question_type, question, custom_prompt, wrong_answer_summary, replacement_mode
+                FROM reprompting_questions
+            """, fetch_all=True)
+            
+            similar_questions = []
+            user_query_lower = user_query.lower()
+            
+            for q_data in all_questions:
+                q_id, q_type, question, custom_prompt, summary, mode = q_data
+                mode = mode or 'full'  # 기본값
+                
+                if mode == 'word':
+                    # 단어 치환 모드: 부분 문자열 매칭
+                    question_lower = question.lower()
+                    
+                    # 1. 정확한 단어 경계 매칭 (가장 높은 우선순위)
+                    word_boundary_pattern = r'\b' + re.escape(question_lower) + r'\b'
+                    if re.search(word_boundary_pattern, user_query_lower):
+                        similar_questions.append({
+                            'id': q_id,
+                            'question_type': q_type,
+                            'question': question,
+                            'custom_prompt': custom_prompt,
+                            'wrong_answer_summary': summary,
+                            'replacement_mode': mode,
+                            'similarity': 1.0,  # 정확한 단어 매칭
+                            'match_type': 'word_boundary'
+                        })
+                        continue
+                    
+                    # 2. 부분 문자열 매칭 (구두점 포함)
+                    if question_lower in user_query_lower:
+                        # 위치 기반 유사도 계산 (문장 앞쪽에 있을수록 높은 점수)
+                        position = user_query_lower.find(question_lower)
+                        position_score = 1.0 - (position / len(user_query_lower))
+                        
+                        # 길이 기반 유사도 (매칭된 단어가 전체에서 차지하는 비율)
+                        length_score = len(question_lower) / len(user_query_lower)
+                        
+                        # 최종 유사도: 위치(30%) + 길이(70%)
+                        similarity = position_score * 0.3 + length_score * 0.7
+                        
+                        similar_questions.append({
+                            'id': q_id,
+                            'question_type': q_type,
+                            'question': question,
+                            'custom_prompt': custom_prompt,
+                            'wrong_answer_summary': summary,
+                            'replacement_mode': mode,
+                            'similarity': similarity,
+                            'match_type': 'substring'
+                        })
+                        continue
+                    
+                    # 3. 토큰 기반 유사도 (fallback)
+                    user_tokens = set(re.findall(r'\w+', user_query_lower))
+                    question_tokens = set(re.findall(r'\w+', question_lower))
+                    
+                    if user_tokens and question_tokens:
+                        intersection = len(user_tokens.intersection(question_tokens))
+                        union = len(user_tokens.union(question_tokens))
+                        token_similarity = intersection / union if union > 0 else 0
+                        
+                        if token_similarity >= similarity_threshold * 0.5:  # 더 낮은 임계값
+                            similar_questions.append({
+                                'id': q_id,
+                                'question_type': q_type,
+                                'question': question,
+                                'custom_prompt': custom_prompt,
+                                'wrong_answer_summary': summary,
+                                'replacement_mode': mode,
+                                'similarity': token_similarity,
+                                'match_type': 'token'
+                            })
+                
+                else:  # mode == 'full'
+                    # 전체 질문 매칭 모드 (기존 로직)
+                    similarity = difflib.SequenceMatcher(None, user_query_lower, question.lower()).ratio()
+                    
+                    if similarity >= similarity_threshold:
+                        similar_questions.append({
+                            'id': q_id,
+                            'question_type': q_type,
+                            'question': question,
+                            'custom_prompt': custom_prompt,
+                            'wrong_answer_summary': summary,
+                            'replacement_mode': mode,
+                            'similarity': similarity,
+                            'match_type': 'full_question'
+                        })
+            
+            # 유사도 순으로 정렬
+            return sorted(similar_questions, key=lambda x: (x['similarity'], len(x['question'])), 
+                        reverse=True)[:limit]
+        
+        except Exception as e:
+            logging.error(f"유사 질문 검색 실패: {str(e)}")
+            return []
+
+    def check_and_transform_query_with_reprompting(self, user_query):
+        """개선된 재프롬프팅 - 단어 치환 지원"""
+        if not user_query:
+            return {
+                'transformed': False,
+                'original_query': user_query,
+                'transformed_query': user_query,
+                'match_type': 'none'
+            }
+        
+        try:
+            # 1단계: 정확한 매칭 시도
+            exact_result = self.reprompting_db_manager.check_reprompting_question(user_query)
+            if exact_result['exists']:
+                if not self.debug_mode:
+                    st.success("✅ 맞춤형 프롬프트를 적용하여 더 정확한 답변을 제공합니다.")
+                return {
+                    'transformed': True,
+                    'original_query': user_query,
+                    'transformed_query': exact_result['custom_prompt'],
+                    'question_type': exact_result['question_type'],
+                    'wrong_answer_summary': exact_result['wrong_answer_summary'],
+                    'match_type': 'exact',
+                    'replacement_mode': 'full'
+                }
+            
+            # 2단계: 유사 질문 검색 (개선된 메서드 사용)
+            similar_questions = self.reprompting_db_manager.find_similar_questions_enhanced(
+                user_query, similarity_threshold=0.6, limit=5
+            )
+            
+            if similar_questions:
+                best_match = similar_questions[0]
+                
+                # 치환 모드에 따른 처리
+                if best_match['replacement_mode'] == 'word':
+                    # 단어 치환 모드: 질문 내의 특정 단어만 치환
+                    transformed_query = self._apply_word_replacement(
+                        user_query, 
+                        best_match['question'], 
+                        best_match['custom_prompt']
+                    )
+                else:
+                    # 전체 질문 치환 모드: 기존 로직
+                    try:
+                        transformed_query = re.sub(
+                            re.escape(best_match['question']),
+                            best_match['custom_prompt'],
+                            user_query,
+                            flags=re.IGNORECASE
+                        )
+                    except:
+                        transformed_query = user_query.replace(
+                            best_match['question'],
+                            best_match['custom_prompt']
+                        )
+                
+                is_transformed = transformed_query != user_query
+                
+                if is_transformed:
+                    if not self.debug_mode:
+                        st.info(f"📋 유사 질문 패턴을 감지하여 질문을 최적화했습니다. "
+                            f"(유사도: {best_match['similarity']:.2f}, "
+                            f"매칭: {best_match['match_type']})")
+                    
+                    if self.debug_mode:
+                        print(f"DEBUG: 재프롬프팅 적용")
+                        print(f"  - 원본: {user_query}")
+                        print(f"  - 변환: {transformed_query}")
+                        print(f"  - 모드: {best_match['replacement_mode']}")
+                        print(f"  - 매칭: {best_match['match_type']}")
+                        print(f"  - 유사도: {best_match['similarity']:.2f}")
+                
+                return {
+                    'transformed': is_transformed,
+                    'original_query': user_query,
+                    'transformed_query': transformed_query,
+                    'question_type': best_match['question_type'],
+                    'wrong_answer_summary': best_match['wrong_answer_summary'],
+                    'similarity': best_match['similarity'],
+                    'similar_question': best_match['question'],
+                    'match_type': best_match['match_type'],
+                    'replacement_mode': best_match['replacement_mode']
+                }
+            
+            return {
+                'transformed': False,
+                'original_query': user_query,
+                'transformed_query': user_query,
+                'match_type': 'none'
+            }
+            
+        except Exception as e:
+            print(f"ERROR: 재프롬프팅 처리 실패: {e}")
+            import traceback
+            traceback.print_exc()
+            return {
+                'transformed': False,
+                'original_query': user_query,
+                'transformed_query': user_query,
+                'match_type': 'error',
+                'error': str(e)
+            }
+
+    def _apply_word_replacement(self, user_query, search_word, replacement_word):
+        """
+        사용자 질문에서 특정 단어를 찾아 치환
+        
+        Args:
+            user_query: 원본 사용자 질문
+            search_word: 찾을 단어
+            replacement_word: 치환할 단어
+        
+        Returns:
+            str: 치환된 질문
+        """
+        try:
+            # 1. 정확한 단어 경계 매칭 시도 (가장 정확)
+            word_boundary_pattern = r'\b' + re.escape(search_word) + r'\b'
+            if re.search(word_boundary_pattern, user_query, re.IGNORECASE):
+                return re.sub(word_boundary_pattern, replacement_word, user_query, flags=re.IGNORECASE)
+            
+            # 2. 부분 문자열 매칭 (구두점/특수문자 포함)
+            # "aaaa~" 같은 경우를 처리하기 위해
+            search_lower = search_word.lower()
+            query_lower = user_query.lower()
+            
+            if search_lower in query_lower:
+                # 대소문자 보존하면서 치환
+                start_idx = query_lower.find(search_lower)
+                end_idx = start_idx + len(search_lower)
+                
+                return (user_query[:start_idx] + 
+                    replacement_word + 
+                    user_query[end_idx:])
+            
+            # 3. 매칭 실패 - 원본 반환
+            return user_query
+            
+        except Exception as e:
+            print(f"ERROR: 단어 치환 실패: {e}")
+            return user_query
+
+
+    def add_single_reprompting_question(self, question_type, question, custom_prompt, 
+                                    wrong_answer_summary="", replacement_mode="full"):
+        """
+        단일 재프롬프팅 질문 추가 또는 업데이트 - replacement_mode 지원
+        
+        Args:
+            question_type: 질문 유형
+            question: 원본 질문 (word 모드일 경우 치환할 단어)
+            custom_prompt: 맞춤형 프롬프트 (word 모드일 경우 치환될 단어)
+            wrong_answer_summary: 오답 요약
+            replacement_mode: 'full' (전체 질문 치환) 또는 'word' (단어 치환)
+        """
         try:
             existing_id = self._execute_query(
-                "SELECT id FROM reprompting_questions WHERE question = ?", 
+                "SELECT id FROM reprompting_questions WHERE question = ?",
                 (question,), fetch_one=True
             )
             
             if existing_id:
                 self._execute_query("""
                     UPDATE reprompting_questions 
-                    SET question_type = ?, custom_prompt = ?, wrong_answer_summary = ?, updated_at = CURRENT_TIMESTAMP
+                    SET question_type = ?, custom_prompt = ?, wrong_answer_summary = ?, 
+                        replacement_mode = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE question = ?
-                """, (question_type, custom_prompt, wrong_answer_summary, question))
+                """, (question_type, custom_prompt, wrong_answer_summary, replacement_mode, question))
                 
                 self._execute_query(
-                    "INSERT INTO individual_input_history (question_id, action_type) VALUES (?, 'update')", 
+                    "INSERT INTO individual_input_history (question_id, action_type) VALUES (?, 'update')",
                     (existing_id[0],)
                 )
                 
-                return {'success': True, 'action': 'updated', 'message': '기존 질문이 업데이트되었습니다.'}
+                return {
+                    'success': True,
+                    'action': 'updated',
+                    'message': f'기존 질문이 업데이트되었습니다. (모드: {replacement_mode})'
+                }
             else:
                 with sqlite3.connect(self.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute("""
                         INSERT INTO reprompting_questions 
-                        (question_type, question, custom_prompt, wrong_answer_summary)
-                        VALUES (?, ?, ?, ?)
-                    """, (question_type, question, custom_prompt, wrong_answer_summary))
+                        (question_type, question, custom_prompt, wrong_answer_summary, replacement_mode)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (question_type, question, custom_prompt, wrong_answer_summary, replacement_mode))
                     
                     question_id = cursor.lastrowid
                     cursor.execute(
-                        "INSERT INTO individual_input_history (question_id, action_type) VALUES (?, 'insert')", 
+                        "INSERT INTO individual_input_history (question_id, action_type) VALUES (?, 'insert')",
                         (question_id,)
                     )
                     conn.commit()
                 
-                return {'success': True, 'action': 'inserted', 'message': '새 질문이 추가되었습니다.'}
+                return {
+                    'success': True,
+                    'action': 'inserted',
+                    'message': f'새 질문이 추가되었습니다. (모드: {replacement_mode})'
+                }
                 
         except sqlite3.IntegrityError:
-            return {'success': False, 'error': '데이터 무결성 오류가 발생했습니다. 중복된 질문일 수 있습니다.'}
+            return {
+                'success': False,
+                'error': '데이터 무결성 오류가 발생했습니다. 중복된 질문일 수 있습니다.'
+            }
         except Exception as e:
             logging.error(f"질문 추가/업데이트 실패: {str(e)}")
+            return {'success': False, 'error': str(e)}
             return {'success': False, 'error': str(e)}
     
     def get_individual_input_statistics(self):

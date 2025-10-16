@@ -1641,6 +1641,10 @@ class QueryProcessorLocal:
 
     def process_query(self, query, query_type=None):
         """🚨 메인 쿼리 처리 - RAG 데이터 무결성 절대 보장"""
+
+        if not hasattr(st.session_state, 'embedding_cache'):
+            st.session_state.embedding_cache = {}
+
         if not query:
             st.error("질문을 입력해주세요.")
             return
