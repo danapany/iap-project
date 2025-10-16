@@ -55,3 +55,4 @@ if auth_manager.is_admin_logged_in():
 pg = st.navigation(pages)
 
 pg.run()
+

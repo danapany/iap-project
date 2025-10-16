@@ -121,67 +121,167 @@ class SearchManagerLocal:
             self._service_file_cache_loaded = True
         return self._service_names_file_cache or []
     
-    def _find_service_name_in_file(self, query):
-        """conf/service_names.txt에서 서비스명 찾기"""
+    def _find_service_name_in_file(self, query: str) -> Optional[str]:
+        """
+        conf/service_names.txt에서 서비스명 찾기 - 한글 서비스명 매칭 강화 (개선 버전)
+        
+        개선 사항:
+        1. 한글 조사 처리 추가 (가/이, 을/를, 의, 에, 에서 등)
+        2. 정규 표현식을 사용한 더 견고한 단어 경계 체크
+        3. 매칭 우선순위 명확화
+        4. 성능 최적화 및 중복 코드 제거
+        """
         file_service_names = self.get_service_names_from_file()
         if not file_service_names:
-            print("DEBUG: No service names loaded from file")
+            if self.debug_mode:
+                print("DEBUG: [SERVICE_FILE] No service names loaded from file")
             return None
-            
-        query_lower = query.lower().strip()
+        
+        query_stripped = query.strip()
+        query_lower = query_stripped.lower()
         query_tokens = self._extract_service_tokens(query)
+        
+        if self.debug_mode:
+            print(f"DEBUG: [SERVICE_FILE] Searching in {len(file_service_names)} file service names")
+            print(f"DEBUG: [SERVICE_FILE] Query: '{query}'")
+        
         candidates = []
         
-        print(f"DEBUG: Searching in {len(file_service_names)} file service names for query: '{query}'")
+        # 한글 조사 패턴 (단어 뒤에 붙을 수 있는 조사들)
+        korean_particles = r'(?:[이가을를의에서와과도만부터까지로으로는]|에게|에서|으로|로서|부터|까지|처럼)?'
         
         for service_name in file_service_names:
             service_lower = service_name.lower()
             
-            # 1. 정확한 매칭 (최우선)
-            if service_name == query.strip() or service_lower == query_lower:
-                print(f"DEBUG: Exact match found: '{service_name}'")
+            # ========================================
+            # 1단계: 정확한 매칭 (최우선)
+            # ========================================
+            if service_name == query_stripped or service_lower == query_lower:
+                if self.debug_mode:
+                    print(f"DEBUG: [SERVICE_FILE] ✅ EXACT MATCH: '{service_name}'")
                 return service_name
             
-            # 2. 완전 포함 관계 매칭
+            # ========================================
+            # 2단계: 단어 경계 매칭 (즉시 반환) - 핵심 개선!
+            # ========================================
             if service_lower in query_lower:
-                candidates.append((service_name, 1.0, 'file_service_in_query'))
-                print(f"DEBUG: Service in query match: '{service_name}' in '{query}'")
-                continue
+                # 방법 1: 정규 표현식을 사용한 단어 경계 체크
+                # \b는 영문에만 작동하므로, 직접 경계 체크
+                escaped_service = re.escape(service_lower)
                 
-            if query_lower in service_lower:
-                candidates.append((service_name, 0.95, 'file_query_in_service'))
-                print(f"DEBUG: Query in service match: '{query}' in '{service_name}'")
+                # 한글 조사를 포함한 패턴 매칭
+                pattern = r'(?:^|[\s\t\n,.;:!?()\[\]{}\"\'\-/])' + escaped_service + korean_particles + r'(?:[\s\t\n,.;:!?()\[\]{}\"\'\-/]|$)'
+                
+                if re.search(pattern, query_lower):
+                    if self.debug_mode:
+                        print(f"DEBUG: [SERVICE_FILE] ✅ WORD BOUNDARY MATCH (regex): '{service_name}' in '{query}'")
+                    return service_name  # 즉시 반환 - 이게 핵심!
+                
+                # 방법 2: 인덱스 기반 단어 경계 체크 (fallback)
+                start_idx = query_lower.find(service_lower)
+                if start_idx != -1:
+                    end_idx = start_idx + len(service_lower)
+                    
+                    # 앞쪽 경계 체크
+                    is_start_valid = (
+                        start_idx == 0 or 
+                        query_lower[start_idx - 1] in ' \t\n,.:;!?()[]{}"\'-/'
+                    )
+                    
+                    # 뒷쪽 경계 체크 (한글 조사 고려)
+                    is_end_valid = (
+                        end_idx == len(query_lower) or 
+                        query_lower[end_idx] in ' \t\n,.:;!?()[]{}"\'-/' or
+                        self._is_korean_particle(query_lower[end_idx:end_idx+2])  # 2글자 조사 체크
+                    )
+                    
+                    if is_start_valid and is_end_valid:
+                        if self.debug_mode:
+                            print(f"DEBUG: [SERVICE_FILE] ✅ WORD BOUNDARY MATCH (index): '{service_name}' in '{query}'")
+                        return service_name  # 즉시 반환
+                
+                # 단어 경계가 아니지만 포함된 경우 - 높은 점수로 후보 등록
+                candidates.append((service_name, 0.95, 'file_service_substring'))
+                if self.debug_mode:
+                    print(f"DEBUG: [SERVICE_FILE] Service substring match: '{service_name}' in '{query}'")
                 continue
             
-            # 3. 공백 무시한 매칭
+            # ========================================
+            # 3단계: 쿼리가 서비스명에 포함된 경우
+            # ========================================
+            if query_lower in service_lower:
+                candidates.append((service_name, 0.90, 'file_query_in_service'))
+                if self.debug_mode:
+                    print(f"DEBUG: [SERVICE_FILE] Query in service match: '{query}' in '{service_name}'")
+                continue
+            
+            # ========================================
+            # 4단계: 공백 무시한 매칭
+            # ========================================
             service_no_space = re.sub(r'\s+', '', service_lower)
             query_no_space = re.sub(r'\s+', '', query_lower)
             
             if service_no_space in query_no_space:
-                candidates.append((service_name, 0.9, 'file_no_space_service_in_query'))
-                continue
-                
-            if query_no_space in service_no_space:
-                candidates.append((service_name, 0.85, 'file_no_space_query_in_service'))
+                candidates.append((service_name, 0.85, 'file_no_space_service_in_query'))
                 continue
             
-            # 4. 토큰 기반 유사도 매칭 (더 엄격한 기준)
+            if query_no_space in service_no_space:
+                candidates.append((service_name, 0.80, 'file_no_space_query_in_service'))
+                continue
+            
+            # ========================================
+            # 5단계: 토큰 기반 유사도 매칭 (더 엄격한 기준)
+            # ========================================
             service_tokens = self._extract_service_tokens(service_name)
             if query_tokens and service_tokens:
                 similarity = self._calculate_service_similarity(query_tokens, service_tokens)
-                if similarity >= 0.7:  # 기존 0.6에서 0.7로 상향 조정
+                if similarity >= 0.7:  # 0.6에서 0.7로 상향 조정
                     candidates.append((service_name, similarity, 'file_token_similarity'))
-                    print(f"DEBUG: Token similarity match: '{service_name}' (score: {similarity:.2f})")
+                    if self.debug_mode:
+                        print(f"DEBUG: [SERVICE_FILE] Token similarity: '{service_name}' (score: {similarity:.2f})")
         
+        # ========================================
+        # 후보 중 최고 점수 선택
+        # ========================================
         if candidates:
-            # 점수 기준으로 정렬
             candidates.sort(key=lambda x: x[1], reverse=True)
             best_match = candidates[0]
-            print(f"DEBUG: Best file match: '{best_match[0]}' (score: {best_match[1]:.2f}, method: {best_match[2]})")
+            if self.debug_mode:
+                print(f"DEBUG: [SERVICE_FILE] 🎯 Best match: '{best_match[0]}' (score: {best_match[1]:.2f}, method: {best_match[2]})")
             return best_match[0]
         
-        print(f"DEBUG: No match found in file service names")
+        if self.debug_mode:
+            print(f"DEBUG: [SERVICE_FILE] ❌ No match found in file")
         return None
+
+    def _is_korean_particle(self, text: str) -> bool:
+        """
+        주어진 텍스트가 한글 조사로 시작하는지 확인
+        
+        Args:
+            text: 확인할 텍스트 (최소 1~2글자)
+        
+        Returns:
+            bool: 조사로 시작하면 True
+        """
+        if not text:
+            return False
+        
+        # 1글자 조사
+        single_char_particles = ['이', '가', '을', '를', '의', '에', '와', '과', '도', '만', '로', '는']
+        
+        # 2글자 조사
+        double_char_particles = ['에게', '에서', '으로', '로서', '부터', '까지', '처럼', '만큼', '밖에']
+        
+        # 2글자 조사 먼저 체크
+        if len(text) >= 2 and text[:2] in double_char_particles:
+            return True
+        
+        # 1글자 조사 체크
+        if len(text) >= 1 and text[0] in single_char_particles:
+            return True
+        
+        return False
 
     def semantic_search_with_adaptive_filtering(self, query, target_service_name=None, query_type="default", top_k=50):
         """메인 검색 진입점 - RAG 데이터 무결성 절대 보장"""

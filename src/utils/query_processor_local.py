@@ -1258,62 +1258,89 @@ class QueryProcessorLocal:
         return {'owner_depart': None, 'is_department_query': any(keyword in query for keyword in ['담당부서', '조치부서', '처리부서', '책임부서', '관리부서', '부서', '팀', '조직'])}
 
     def classify_query_type_with_llm(self, query):
-        """개선된 LLM 기반 의미적 쿼리 분류 - 통계 키워드 인식 강화"""
+        """LLM 우선 의미적 쿼리 분류 - 키워드는 fallback으로만"""
         if not query:
             return 'default'
         
-        print(f"DEBUG: Starting enhanced semantic query classification for: '{query}'")
-        
-        # 1단계: 사전 키워드 기반 필터링 (강화)
-        pre_classification = self._pre_classify_by_keywords(query)
-        if pre_classification != 'unknown':
-            print(f"DEBUG: Pre-classified as '{pre_classification}' by keyword matching")
-            return pre_classification
+        print(f"DEBUG: Starting LLM-first query classification for: '{query}'")
         
         try:
-            # 개선된 분류 프롬프트
-            classification_prompt = f"""다음 사용자 질문을 의미적으로 분석하여 정확히 분류하세요.
+            # 🔥 개선된 분류 프롬프트 - 의도 중심
+            classification_prompt = f"""당신은 IT 장애 관리 시스템의 질문 분석 전문가입니다.
+    사용자의 질문을 읽고 **진짜 의도**가 무엇인지 파악하여 정확히 분류하세요.
 
-**🚨 핵심 원칙: 증상/조건은 무시하고 사용자의 의도만 파악하세요**
+    **중요: 키워드가 아닌 맥락과 의도로 판단하세요!**
 
-**분류 카테고리:**
+    ## 분류 기준
 
-1. **inquiry**: 장애 내역/목록/리스트를 보고 싶은 의도
-   - 의도 키워드: "내역", "목록", "리스트", "이력", "조회" + "알려줘/보여줘/말해줘"
-   - ✅ 예시: "접속불가 장애내역 알려줘" → inquiry (접속불가는 조건일뿐)
-   - ✅ 예시: "로그인 실패 목록 보여줘" → inquiry (로그인 실패는 조건일뿐)
-   - ✅ 예시: "ERP 장애내역" → inquiry
-   - ✅ 예시: "야간 발생한 내역" → inquiry
+    ### 1. repair (복구/해결 방법 문의)
+    **사용자가 문제를 어떻게 해결할지 알고 싶어함**
+    - "어떻게 해결하나요?", "복구 방법은?", "조치 방법은?"
+    - "왜 이런 문제가 생기나요?", "원인이 뭔가요?"
+    - "~할 때 어떻게 하나요?", "~하려면 어떻게?"
 
-2. **repair**: 복구방법, 해결방법, 원인 파악을 원하는 의도
-   - 의도 키워드: "복구방법", "해결방법", "조치방법", "원인", "왜", "어떻게"
-   - ✅ 예시: "접속불가 복구방법" → repair
-   - ✅ 예시: "로그인 실패 어떻게 해결" → repair
-   - ✅ 예시: "장애 원인 분석" → repair
+    예시:
+    - "스마트신청서 장애발생시 어떻게 해결해야 하나요?" → repair
+    - "로그인 안될 때 어떻게 하나요?" → repair  
+    - "API 연동 오류 해결 방법" → repair
+    - "접속 불가 원인 분석" → repair
 
-3. **statistics**: 건수, 통계, 수치 정보를 원하는 의도
-   - 의도 키워드: "건수", "몇건", "몇개", "얼마나", "통계", "연도별", "월별"
-   - ✅ 예시: "접속불가 몇건" → statistics (접속불가는 조건일뿐)
-   - ✅ 예시: "ERP 장애건수" → statistics
-   - ✅ 예시: "연도별 통계" → statistics
+    ### 2. inquiry (장애 내역/목록 조회)
+    **사용자가 과거 장애 기록이나 목록을 보고 싶어함**
+    - "~한 장애 내역 보여줘", "~한 사례들 알려줘"
+    - "어떤 장애들이 있었나요?", "~한 장애 목록"
+    - "~에서 발생한 장애들"
 
-4. **default**: 위 세 가지 의도가 없는 일반 질문
+    예시:
+    - "ERP 장애 내역 알려줘" → inquiry
+    - "2024년에 발생한 장애 목록" → inquiry
+    - "로그인 실패 사례들 보여줘" → inquiry
+    - "야간에 발생한 장애 이력" → inquiry
 
-**🚨 분류 규칙:**
-- "접속불가", "로그인 실패", "오류 발생" 등은 **조건/증상**이므로 분류에 영향 없음
-- 오직 **사용자가 원하는 결과물의 형태**로만 판단:
-  - 내역/목록을 원함 → inquiry
-  - 해결책/원인을 원함 → repair
-  - 숫자/통계를 원함 → statistics
+    ### 3. statistics (통계/건수 문의)
+    **사용자가 숫자, 개수, 통계를 알고 싶어함**
+    - "몇 건 발생했나요?", "건수는?"
+    - "연도별/월별 통계", "얼마나 발생했나요?"
+    - "비율은?", "추이는?"
 
-**사용자 질문:** {query}
+    예시:
+    - "ERP 장애 몇건?" → statistics
+    - "2024년 장애건수" → statistics
+    - "월별 발생 현황" → statistics
+    - "서비스별 장애 비율" → statistics
 
-**응답 형식:** repair, inquiry, statistics, default 중 하나만 출력하세요."""
+    ### 4. default (일반 질문)
+    **위 세 가지에 해당하지 않는 모든 질문**
+
+    ## 판단 방법
+
+    1. **문장의 종결 형태를 주목하세요**
+    - "어떻게~?", "방법은?", "~하려면?" → repair
+    - "알려줘", "보여줘", "목록", "내역" → inquiry  
+    - "몇건?", "얼마나?", "통계", "건수" → statistics
+
+    2. **사용자의 최종 목적을 파악하세요**
+    - 문제를 해결하고 싶음 → repair
+    - 기록을 보고 싶음 → inquiry
+    - 숫자를 알고 싶음 → statistics
+
+    3. **맥락을 고려하세요**
+    - "스마트신청서 장애발생시 어떻게 해결해야 하나요?"
+        → "장애"라는 단어가 있어도, 의도는 "어떻게 해결"이므로 repair
+
+    **사용자 질문:** {query}
+
+    **응답 형식:** 반드시 다음 중 하나만 출력: repair, inquiry, statistics, default
+
+    **답변:**"""
 
             response = self.azure_openai_client.chat.completions.create(
                 model=self.model_name,
                 messages=[
-                    {"role": "system", "content": "당신은 IT 질문을 의미적으로 분석하여 정확히 분류하는 전문가입니다. 특히 통계 관련 질문을 놓치지 않고 정확히 인식해야 합니다."},
+                    {
+                        "role": "system", 
+                        "content": "당신은 사용자 질문의 진짜 의도를 정확히 파악하는 전문가입니다. 키워드가 아닌 맥락으로 판단하세요."
+                    },
                     {"role": "user", "content": classification_prompt}
                 ],
                 temperature=0.0,
@@ -1322,185 +1349,145 @@ class QueryProcessorLocal:
             
             query_type = response.choices[0].message.content.strip().lower()
             
+            # 유효성 검사
             if query_type not in ['repair', 'inquiry', 'statistics', 'default']:
-                print(f"WARNING: Invalid query type '{query_type}', applying fallback classification")
-                query_type = self._enhanced_fallback_classification(query)
+                print(f"WARNING: Invalid LLM response '{query_type}', extracting valid type")
+                # 응답에서 유효한 타입 추출 시도
+                for valid_type in ['repair', 'inquiry', 'statistics', 'default']:
+                    if valid_type in query_type:
+                        query_type = valid_type
+                        break
+                else:
+                    print(f"ERROR: Cannot extract valid type, using keyword fallback")
+                    return self._keyword_based_fallback_classification(query)
             
-            print(f"DEBUG: LLM semantic classification result: {query_type}")
+            print(f"DEBUG: ✅ LLM classification result: {query_type}")
             
-            confidence_score = self._calculate_enhanced_classification_confidence(query, query_type)
-            print(f"DEBUG: Classification confidence: {confidence_score:.2f}")
+            # 신뢰도 계산 (간소화)
+            confidence_score = self._calculate_llm_classification_confidence(query, query_type)
+            print(f"DEBUG: LLM confidence: {confidence_score:.2f}")
             
-            # 신뢰도가 낮으면 fallback 사용
-            if confidence_score < 0.6:
-                fallback_type = self._enhanced_fallback_classification(query)
-                print(f"DEBUG: Low confidence, using fallback: {fallback_type}")
+            # 신뢰도가 매우 낮을 때만 키워드 fallback
+            if confidence_score < 0.3:  # 0.6에서 0.3으로 낮춤 - LLM을 더 신뢰
+                print(f"WARNING: Very low confidence, using keyword fallback")
+                fallback_type = self._keyword_based_fallback_classification(query)
+                print(f"DEBUG: Keyword fallback result: {fallback_type}")
                 return fallback_type
             
             return query_type
-                
+            
         except Exception as e:
-            print(f"ERROR: LLM semantic classification failed: {e}")
-            return self._enhanced_fallback_classification(query)
+            print(f"ERROR: LLM classification failed: {e}")
+            import traceback
+            traceback.print_exc()
+            print(f"DEBUG: Using keyword fallback due to LLM error")
+            return self._keyword_based_fallback_classification(query)
 
-    def _pre_classify_by_keywords(self, query):
-        """키워드 기반 사전 분류 - 의도만 파악, 증상은 무시"""
-        if not query:
-            return 'unknown'
-        
-        query_lower = query.lower()
-        
-        # 🔥 1순위: inquiry 명시적 의도 체크
-        explicit_inquiry_patterns = [
-            r'(?:내역|목록|리스트|이력).*(?:알려줘|보여줘|말해줘|확인|체크|조회)',
-            r'(?:알려줘|보여줘|말해줘).*(?:내역|목록|리스트|이력)',
-        ]
-        
-        for pattern in explicit_inquiry_patterns:
-            if re.search(pattern, query_lower):
-                print(f"DEBUG: ✅ Explicit inquiry intent detected: {pattern}")
-                return 'inquiry'
-        
-        # 🔥 2순위: 강력한 통계 신호 체크
-        strong_stats_patterns = [
-            r'\b[A-Z가-힣][A-Z0-9가-힣\s]{1,20}\s+(?:연도별|월별|년도별|년별)\s*(?:장애)?\s*건수',
-            r'\b(?:몇건|몇개|얼마나|어느정도|몇번|몇차례)\b',
-            r'(?:건수|개수|수량|통계|현황|분포)\s*(?:알려|보여|말해|확인|체크|조회)',
-            r'\b(?:연도별|년도별|월별|등급별|부서별|서비스별)\s+\w+',
-            r'\b[A-Z]{2,10}\s+(?:연도별|월별|년도별|통계|현황|건수)'
-        ]
-        
-        for pattern in strong_stats_patterns:
-            if re.search(pattern, query_lower):
-                print(f"DEBUG: Strong statistics pattern detected: {pattern}")
-                return 'statistics'
-        
-        # 🔥 3순위: 복합 키워드 점수 - 증상은 제외, 의도만 평가
-        stats_score = 0
-        repair_score = 0
-        inquiry_score = 0
-        
-        # 통계 의도 키워드
-        for category, keywords in self.statistics_keywords.items():
-            for keyword in keywords:
-                if keyword in query_lower:
-                    if category == 'basic_stats':
-                        stats_score += 3
-                    elif category == 'time_keywords':
-                        stats_score += 2
-                    else:
-                        stats_score += 1
-        
-        # 🔥 FIXED: repair는 행동 요청만 (증상 키워드 제거)
-        repair_intent_keywords = ['복구방법', '해결방법', '조치방법', '원인', '왜', '어떻게', '해결', '조치', '대응']
-        for keyword in repair_intent_keywords:
-            if keyword in query_lower:
-                repair_score += 3  # 명확한 의도이므로 높은 점수
-        
-        # 🔥 inquiry 의도 키워드
-        inquiry_intent_keywords = ['내역', '목록', '리스트', '조회', '이력', '건들', '사례들', '발생한것', '있는지']
-        for keyword in inquiry_intent_keywords:
-            if keyword in query_lower:
-                inquiry_score += 3
-        
-        print(f"DEBUG: Intent scores - inquiry: {inquiry_score}, stats: {stats_score}, repair: {repair_score}")
-        
-        # 🔥 CHANGED: 우선순위 명확화
-        if inquiry_score >= 3:
-            return 'inquiry'
-        elif stats_score >= 3:
-            return 'statistics'
-        elif repair_score >= 3:
-            return 'repair'
-        
-        return 'unknown'
-
-    def _enhanced_fallback_classification(self, query):
-        """강화된 fallback 분류 로직 - 의도 중심"""
+    def _keyword_based_fallback_classification(self, query):
+        """키워드 기반 fallback 분류 - LLM 실패 시에만 사용"""
         if not query:
             return 'default'
         
         query_lower = query.lower()
         
-        # 1순위: inquiry 의도
-        inquiry_intent = ['내역', '목록', '리스트', '이력', '조회']
-        inquiry_verbs = ['알려줘', '보여줘', '말해줘', '확인', '체크']
+        print(f"DEBUG: Using keyword-based fallback classification")
         
-        has_inquiry_noun = any(word in query_lower for word in inquiry_intent)
-        has_inquiry_verb = any(word in query_lower for word in inquiry_verbs)
+        # 1순위: repair 패턴
+        repair_patterns = [
+            r'(?:어떻게|어떡하나|어떡해|어찌)\s*(?:해결|조치|복구|대응|하나|하면|해야)',
+            r'(?:해결|조치|복구|대응)\s*(?:방법|방안|해야)',
+            r'복구방법|해결방법|조치방법|대응방법',
+            r'원인.*?(?:뭐|무엇|알려|분석)',
+        ]
         
-        if has_inquiry_noun and has_inquiry_verb:
-            return 'inquiry'
+        for pattern in repair_patterns:
+            if re.search(pattern, query_lower):
+                print(f"DEBUG: Keyword matched repair pattern: {pattern}")
+                return 'repair'
         
-        # 2순위: 통계 의도
-        if any(keyword in query_lower for keyword in ['연도별', '년도별', '월별', '등급별']):
-            return 'statistics'
+        # 2순위: inquiry 패턴
+        inquiry_patterns = [
+            r'(?:내역|목록|리스트|이력).*(?:알려|보여|말해|확인|조회)',
+            r'(?:알려|보여|말해).*(?:내역|목록|리스트|이력)',
+            r'(?:발생한|있었던).*(?:장애|사례|건)',
+        ]
         
-        if any(keyword in query_lower for keyword in ['몇건', '몇개', '얼마나', '건수', '개수']):
-            return 'statistics'
+        for pattern in inquiry_patterns:
+            if re.search(pattern, query_lower):
+                print(f"DEBUG: Keyword matched inquiry pattern: {pattern}")
+                return 'inquiry'
         
-        # 3순위: repair 의도 (행동 요청만)
-        if any(word in query_lower for word in ['복구방법', '해결방법', '조치방법', '원인', '왜', '어떻게']):
+        # 3순위: statistics 패턴  
+        statistics_patterns = [
+            r'(?:몇|얼마나).*?(?:건|개)',
+            r'(?:건수|개수|통계|현황|분포)',
+            r'(?:연도별|월별|년도별|등급별|부서별|서비스별)',
+        ]
+        
+        for pattern in statistics_patterns:
+            if re.search(pattern, query_lower):
+                print(f"DEBUG: Keyword matched statistics pattern: {pattern}")
+                return 'statistics'
+        
+        # 간단한 키워드 카운트
+        repair_count = sum(1 for kw in ['어떻게', '방법', '해결', '복구', '조치', '원인', '왜'] 
+                        if kw in query_lower)
+        inquiry_count = sum(1 for kw in ['내역', '목록', '리스트', '이력', '조회', '사례'] 
+                        if kw in query_lower)
+        stats_count = sum(1 for kw in ['몇건', '건수', '통계', '현황', '개수', '얼마나'] 
+                        if kw in query_lower)
+        
+        print(f"DEBUG: Keyword counts - repair: {repair_count}, inquiry: {inquiry_count}, stats: {stats_count}")
+        
+        if repair_count >= 1:
             return 'repair'
+        elif inquiry_count >= 1:
+            return 'inquiry'
+        elif stats_count >= 1:
+            return 'statistics'
         
-        # 4순위: 기본값
+        print(f"DEBUG: No clear keyword match, returning default")
         return 'default'
 
-    def _calculate_enhanced_classification_confidence(self, query, predicted_type):
-        """강화된 분류 신뢰도 계산"""
+    def _calculate_llm_classification_confidence(self, query, predicted_type):
+        """LLM 분류 신뢰도 계산 - 간소화 버전"""
         try:
             query_lower = query.lower()
             
-            # 각 타입별 강력한 신호
+            # 각 타입별 강력한 신호어
             strong_signals = {
-                'statistics': [
-                    '몇건', '몇개', '얼마나', '건수', '개수', '통계', '현황', '분포',
-                    '연도별', '월별', '등급별', '부서별', '서비스별'
+                'repair': [
+                    '어떻게', '어떡하나', '어떡해', '어찌', '방법',
+                    '해결', '복구', '조치', '대응', '원인', '왜'
                 ],
-                'repair': ['복구방법', '해결방법', '조치방법', '불가', '실패', '원인', '왜'],
-                'inquiry': ['내역', '목록', '리스트', '조회', '보여줘'],
+                'inquiry': [
+                    '내역', '목록', '리스트', '이력', '조회',
+                    '사례', '알려줘', '보여줘', '발생한'
+                ],
+                'statistics': [
+                    '몇건', '몇개', '얼마나', '건수', '개수', '통계',
+                    '연도별', '월별', '현황', '분포', '비율'
+                ],
                 'default': []
             }
             
             predicted_signals = strong_signals.get(predicted_type, [])
+            
+            # 예측된 타입의 신호어가 있으면 신뢰도 높음
             signal_count = sum(1 for signal in predicted_signals if signal in query_lower)
             
-            # 충돌하는 신호 체크
-            conflicting_signals = 0
-            for other_type, signals in strong_signals.items():
-                if other_type != predicted_type:
-                    conflicting_signals += sum(1 for signal in signals if signal in query_lower)
-            
-            # 기본 신뢰도
-            confidence = 0.5
-            
-            # 신호 강도에 따른 가점
             if signal_count > 0:
-                confidence += 0.4 * min(signal_count, 3) / 3
+                # 신호어가 있으면 높은 신뢰도
+                confidence = 0.7 + (signal_count * 0.1)
+                return min(confidence, 1.0)
             
-            # 충돌 신호에 따른 감점
-            if conflicting_signals > 0:
-                confidence -= 0.3 * min(conflicting_signals, 2) / 2
-            
-            # 통계 쿼리의 특별 처리 (우선순위 부여)
-            if predicted_type == 'statistics':
-                # 통계 관련 강력한 패턴이 있으면 신뢰도 증가
-                stats_patterns = [
-                    r'\b[A-Z]{2,10}\s+(?:연도별|월별|통계|현황|건수)',
-                    r'(?:몇건|몇개|얼마나|건수)\b',
-                    r'(?:연도별|월별|등급별)\s+\w+'
-                ]
-                
-                for pattern in stats_patterns:
-                    if re.search(pattern, query_lower):
-                        confidence += 0.2
-                        break
-            
-            return max(0.0, min(1.0, confidence))
-            
-        except Exception:
+            # 신호어가 없어도 LLM 판단을 신뢰 (중간 신뢰도)
             return 0.5
-
+            
+        except Exception as e:
+            print(f"DEBUG: Confidence calculation error: {e}")
+            return 0.5  # 기본값
+        
     def _extract_chart_type_from_query(self, query):
         """쿼리에서 명시적으로 요청된 차트 타입 추출"""
         if not query:
