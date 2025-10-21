@@ -6,8 +6,6 @@ import seaborn as sns
 import numpy as np
 import platform
 import os
-import urllib.request
-import hashlib
 from datetime import datetime, timedelta
 
 # -----------------------------
@@ -34,202 +32,45 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------
-# 🎨 폰트 설정 (한글 지원) - 보안 강화 버전
+# 🎨 폰트 설정 (한글 지원) - 보안 개선 버전
 # -----------------------------
-def verify_file_integrity(file_path, expected_hash):
-    """
-    파일 무결성 검증 함수 - CWE-494, CWE-759 보안 준수
-    
-    ⚠️ 보안 참고사항:
-    이 함수는 다운로드된 파일의 무결성을 검증하여 악성 코드나 변조된 파일을 차단합니다.
-    
-    CWE-494 (Download of Code Without Integrity Check) 대응:
-    - 원격에서 다운로드한 모든 파일은 실행/사용 전 반드시 무결성 검증
-    - SHA256 해시를 사용하여 파일이 신뢰할 수 있는 소스인지 확인
-    - 검증 실패 시 파일을 즉시 삭제하여 악성 파일 사용 방지
-    
-    CWE-759 (Use of a One-Way Hash without a Salt) 오탐 설명:
-    - 이 함수는 '파일 무결성 검증' 용도로 솔트가 필요하지 않음
-    - 비밀번호 저장이 아닌 파일 검증에는 솔트 없는 해시가 표준
-    - 같은 파일은 항상 같은 해시값을 가져야 검증 가능
-    
-    Reference: NIST SP 800-107, ISO/IEC 10118-3, OWASP Secure Coding Practices
-    
-    Args:
-        file_path (str): 검증할 파일 경로
-        expected_hash (str): 신뢰할 수 있는 출처의 예상 SHA256 해시값
-    
-    Returns:
-        bool: 무결성 검증 성공 시 True, 실패 시 False
-    """
-    try:
-        with open(file_path, 'rb') as f:
-            file_data = f.read()
-            # 파일 무결성 검증용 SHA256 해시 계산
-            # 보안: 다운로드한 파일이 변조되지 않았는지 확인 (CWE-494 대응)
-            calculated_hash = hashlib.sha256(file_data).hexdigest()
-            
-            # 해시값 비교를 통한 무결성 검증
-            is_valid = calculated_hash.lower() == expected_hash.lower()
-            
-            if not is_valid:
-                st.error(f"⚠️ 보안 경고: 파일 해시값 불일치! 악성 파일일 수 있습니다.")
-                st.error(f"예상: {expected_hash}")
-                st.error(f"실제: {calculated_hash}")
-            
-            return is_valid
-    except Exception as e:
-        st.warning(f"파일 무결성 검증 실패: {e}")
-        return False
-
-def secure_download_font(url, file_path, expected_hash):
-    """
-    보안 강화된 파일 다운로드 함수 - CWE-494 대응
-    
-    ⚠️ 보안 조치 사항:
-    1. HTTPS 연결만 허용하여 중간자 공격(MITM) 방지
-    2. 타임아웃 설정으로 서비스 거부 공격 방지
-    3. 임시 파일로 다운로드 후 검증 (원본 파일 보호)
-    4. SHA256 해시 무결성 검증 필수 (CWE-494 대응)
-    5. 검증 실패 시 즉시 파일 삭제 (악성 파일 차단)
-    
-    이 함수는 실행 코드가 아닌 폰트 데이터 파일(.ttf)을 다운로드하며,
-    다운로드 후 exec() 또는 eval()로 실행하지 않습니다.
-    
-    Args:
-        url (str): 다운로드 URL (HTTPS만 허용)
-        file_path (str): 저장할 파일 경로
-        expected_hash (str): 신뢰할 수 있는 출처의 SHA256 해시값
-    
-    Returns:
-        bool: 다운로드 및 검증 성공 시 True, 실패 시 False
-    """
-    temp_file_path = None
-    try:
-        # 보안: HTTPS URL만 허용 (중간자 공격 방지)
-        if not url.startswith('https://'):
-            st.error("❌ 보안 오류: HTTPS URL만 허용됩니다.")
-            return False
-        
-        # User-Agent 설정 (정상적인 브라우저 요청으로 위장)
-        req = urllib.request.Request(url)
-        req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
-        
-        # 타임아웃 설정하여 다운로드 (DoS 공격 방지)
-        with urllib.request.urlopen(req, timeout=30) as response:
-            if response.getcode() != 200:
-                raise Exception(f"HTTP {response.getcode()} 에러")
-            
-            # 임시 파일로 다운로드 (원본 파일 보호)
-            temp_file_path = file_path + ".tmp"
-            with open(temp_file_path, 'wb') as f:
-                f.write(response.read())
-        
-        # 🔒 중요: 다운로드된 파일의 무결성 검증 (CWE-494 대응)
-        # 악성 파일이나 변조된 파일을 실행/사용하기 전에 반드시 검증
-        if verify_file_integrity(temp_file_path, expected_hash):
-            # 검증 성공 시에만 원본 파일로 이동
-            os.rename(temp_file_path, file_path)
-            st.info("✅ 파일을 안전하게 다운로드하고 무결성을 검증했습니다.")
-            return True
-        else:
-            # 🚨 검증 실패: 즉시 파일 삭제 (악성 파일 차단)
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path)
-            st.error("❌ 무결성 검증 실패: 다운로드된 파일이 신뢰할 수 없습니다. 파일을 삭제했습니다.")
-            return False
-            
-    except Exception as e:
-        # 예외 발생 시 임시 파일 정리 (보안 강화)
-        if temp_file_path and os.path.exists(temp_file_path):
-            try:
-                os.remove(temp_file_path)
-            except:
-                pass
-        st.warning(f"보안 파일 다운로드 실패: {e}")
-        return False
-
 def setup_korean_font():
     """
-    한글 폰트 설정 함수 - Azure 웹앱 환경 최적화 및 보안 강화
+    한글 폰트 설정 함수 - 시스템 폰트만 사용 (보안 강화)
     
-    보안 취약점 대응:
-    - CWE-494: 다운로드한 파일의 무결성을 SHA256 해시로 검증
-    - CWE-759: 파일 무결성 검증용 해시 사용 (비밀번호 저장 아님)
+    보안 개선 사항:
+    - 원격 파일 다운로드 기능 완전 제거 (CWE-494 해결)
+    - 파일 무결성 검증 로직 제거 (CWE-759 오탐 해결)
+    - 시스템에 설치된 안전한 폰트만 사용
+    - 코드 단순화로 보안 취약점 원천 차단
     
     동작 방식:
-    1. 로컬 폰트 파일 존재 여부 확인
-    2. 없으면 원격에서 HTTPS로 다운로드
-    3. 다운로드 후 즉시 무결성 검증 (악성 파일 차단)
-    4. 검증 실패 시 파일 삭제 및 fallback 폰트 사용
-    
-    주의: 다운로드하는 파일은 실행 코드가 아닌 폰트 데이터 파일(.ttf)입니다.
+    1. 운영체제별 시스템 폰트 경로 확인
+    2. 설치된 한글 폰트 검색 및 사용
+    3. 한글 폰트 없으면 유니코드 지원 폰트로 대체
     """
     try:
-        # 1. 프로젝트 내 fonts 디렉토리 생성
-        fonts_dir = "./fonts"
-        if not os.path.exists(fonts_dir):
-            os.makedirs(fonts_dir)
-        
-        # 2. 나눔고딕 폰트 보안 다운로드 (없는 경우에만)
-        font_file_path = os.path.join(fonts_dir, "NanumGothic.ttf")
-        
-        if not os.path.exists(font_file_path):
-            # 나눔고딕 폰트의 실제 SHA256 해시값
-            # 아래 명령으로 실제 해시값을 확인할 수 있습니다:
-            # curl -sL https://github.com/naver/nanumfont/raw/master/fonts/NanumGothic.ttf | sha256sum
-            # 
-            # ⚠️ 운영 배포 시 반드시 실제 해시값으로 교체하세요!
-            # 현재는 예시 값입니다.
-            expected_font_hash = "c6cffd93f37b43d7a5cf0ce0dc4258e6b9b84a087c7c1e2f6f5a3e4d7c8b9a1d"
-            
-            try:
-                # GitHub에서 나눔고딕 폰트 보안 다운로드
-                font_url = "https://github.com/naver/nanumfont/raw/master/fonts/NanumGothic.ttf"
-                download_success = secure_download_font(font_url, font_file_path, expected_font_hash)
-                
-                if not download_success:
-                    st.warning("⚠️ 보안 검증된 폰트 다운로드에 실패했습니다. 시스템 폰트를 사용합니다.")
-                    
-            except Exception as e:
-                st.warning(f"폰트 다운로드 실패: {e}")
-        
-        # 3. 폰트 파일이 존재하는 경우 설정
-        if os.path.exists(font_file_path):
-            try:
-                # matplotlib 폰트 매니저에 폰트 추가
-                fm.fontManager.addfont(font_file_path)
-                font_prop = fm.FontProperties(fname=font_file_path)
-                font_name = font_prop.get_name()
-                
-                # matplotlib 설정
-                plt.rcParams['font.family'] = font_name
-                plt.rcParams['axes.unicode_minus'] = False
-                
-                return font_name
-            except Exception as e:
-                st.warning(f"다운로드된 폰트 설정 실패: {e}")
-        
-        # 4. 기존 시스템 폰트 시도
+        # 1. 운영체제별 시스템 폰트 경로
         if platform.system() == 'Windows':
             font_paths = [
-                "C:/Windows/Fonts/malgun.ttf",
-                "C:/Windows/Fonts/gulim.ttc",
-                "C:/Windows/Fonts/batang.ttc"
+                "C:/Windows/Fonts/malgun.ttf",      # 맑은 고딕
+                "C:/Windows/Fonts/gulim.ttc",       # 굴림
+                "C:/Windows/Fonts/batang.ttc"       # 바탕
             ]
         elif platform.system() == 'Darwin':  # macOS
             font_paths = [
                 "/System/Library/Fonts/AppleGothic.ttf",
-                "/Library/Fonts/AppleGothic.ttf"
+                "/Library/Fonts/AppleGothic.ttf",
+                "/System/Library/Fonts/AppleSDGothicNeo.ttc"
             ]
         else:  # Linux (Azure 웹앱 포함)
             font_paths = [
                 "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                font_file_path  # 다운로드된 폰트 경로 추가
+                "/usr/share/fonts/truetype/nanum/NanumBarunGothic.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
             ]
         
-        # 사용 가능한 폰트 찾기
+        # 2. 사용 가능한 시스템 폰트 찾기
         for font_path in font_paths:
             if os.path.exists(font_path):
                 try:
@@ -243,10 +84,10 @@ def setup_korean_font():
                 except Exception:
                     continue
         
-        # 5. 설치된 한글 폰트 검색
+        # 3. 설치된 한글 폰트 검색
         korean_fonts = []
         for font in fm.fontManager.ttflist:
-            if any(keyword in font.name.lower() for keyword in ['nanum', 'malgun', 'gothic', 'batang', 'gulim']):
+            if any(keyword in font.name.lower() for keyword in ['nanum', 'malgun', 'gothic', 'batang', 'gulim', 'apple']):
                 korean_fonts.append(font.name)
         
         if korean_fonts:
@@ -255,19 +96,21 @@ def setup_korean_font():
             plt.rcParams['axes.unicode_minus'] = False
             return font_name
         
-        # 6. 최종 fallback - unicode 지원 폰트
+        # 4. 최종 fallback - 유니코드 지원 폰트
         fallback_fonts = ['DejaVu Sans', 'Arial Unicode MS', 'Lucida Grande']
         for font in fallback_fonts:
             try:
                 plt.rcParams['font.family'] = font
                 plt.rcParams['axes.unicode_minus'] = False
+                st.warning(f"⚠️ 한글 폰트를 찾을 수 없어 '{font}' 사용 (한글이 깨질 수 있습니다)")
                 return font
             except:
                 continue
                 
-        # 7. 기본 설정
+        # 5. 기본 설정
         plt.rcParams['font.family'] = 'DejaVu Sans'
         plt.rcParams['axes.unicode_minus'] = False
+        st.warning("⚠️ 기본 폰트 사용 (한글이 깨질 수 있습니다)")
         return 'DejaVu Sans'
         
     except Exception as e:
@@ -861,7 +704,7 @@ for insight in insights:
     st.write(insight)
 
 # -----------------------------
-# 🔥 12. 히트맵 시각화
+# 📥 12. 히트맵 시각화
 # -----------------------------
 st.subheader("🔥 월-일별 오류 발생 히트맵")
 
@@ -929,4 +772,3 @@ with st.expander("🎯 분석 활용 가이드"):
     - 과거 데이터 기반 예측이므로 새로운 변수(시스템 변경, 외부 요인 등)는 고려되지 않음
     - 트렌드 라인은 평활화된 데이터이므로 급격한 변화는 감지하기 어려움
     """)
-
