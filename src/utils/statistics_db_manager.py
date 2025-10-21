@@ -16,9 +16,6 @@ def get_incident_db_path():
 class StatisticsDBManager:
     """SQLite DB 기반 통계 조회 관리자 - 원인유형별 통계 완전 지원"""
     
-    # 클래스 레벨 기본값 설정 (AttributeError 방지)
-    debug_mode = True
-    
     # 자연어 → 실제 원인유형 매핑 맵 (확장)
     CAUSE_TYPE_MAPPING = {
         # 기존 매핑
@@ -77,9 +74,6 @@ class StatisticsDBManager:
     }
     
     def __init__(self, db_path: str = None):
-        # 제일 먼저 debug_mode 설정 (AttributeError 방지)
-        self.debug_mode = True
-        
         # 매칭 통계 초기화
         self.matching_stats = {
             'exact_matches': 0,
@@ -125,19 +119,10 @@ class StatisticsDBManager:
                     
                     # 길이가 긴 서비스명부터 우선 매칭하도록 정렬
                     self.service_names.sort(key=len, reverse=True)
-                    
-                    if getattr(self, 'debug_mode', True):
-                        print(f"✅ Loaded {len(self.service_names)} service names from: {path}")
-                        print(f"   Sample services: {self.service_names[:5]}")
                     return
                     
             except Exception as e:
-                if getattr(self, 'debug_mode', True):
-                    print(f"Failed to load service names from {path}: {e}")
                 continue
-        
-        if getattr(self, 'debug_mode', True):
-            print("⚠️ Service names file not found, using empty list")
         
         self.service_names = []
     
@@ -154,13 +139,8 @@ class StatisticsDBManager:
             if not cursor.fetchone():
                 raise ValueError("Table 'incidents' not found in database")
             conn.close()
-            
-            if getattr(self, 'debug_mode', True):
-                print(f"✅ Database connection successful: {self.db_path}")
                 
         except Exception as e:
-            if getattr(self, 'debug_mode', True):
-                print(f"ERROR: Database validation failed: {e}")
             raise
     
     def _load_actual_cause_types_from_db(self):
@@ -179,23 +159,9 @@ class StatisticsDBManager:
                 actual_types = [row['cause_type'] for row in results if row['cause_type']]
                 if actual_types:
                     self.ACTUAL_CAUSE_TYPES = actual_types
-                    if getattr(self, 'debug_mode', True):
-                        print(f"✅ Loaded {len(self.ACTUAL_CAUSE_TYPES)} cause types from DB:")
-                        for i, result in enumerate(results[:10]):
-                            print(f"   {i+1}. {result['cause_type']} ({result['count']}건)")
-                        if len(results) > 10:
-                            print(f"   ... and {len(results) - 10} more")
-                else:
-                    if getattr(self, 'debug_mode', True):
-                        print("WARNING: No valid cause types found in DB")
-            else:
-                if getattr(self, 'debug_mode', True):
-                    print("WARNING: No cause type data found in DB")
                     
         except Exception as e:
-            if getattr(self, 'debug_mode', True):
-                print(f"WARNING: Failed to load cause types from DB: {e}")
-                print("Using default cause types list")
+            pass
     
     def _execute_query(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
         """SQL 쿼리 실행 및 결과 반환"""
@@ -204,24 +170,11 @@ class StatisticsDBManager:
         cursor = conn.cursor()
         
         try:
-            if getattr(self, 'debug_mode', True) and "SELECT" in query.upper():
-                print(f"📊 Executing SQL: {query}")
-                if params:
-                    print(f"   Parameters: {params}")
-            
             cursor.execute(query, params)
             results = [dict(row) for row in cursor.fetchall()]
-            
-            if getattr(self, 'debug_mode', True):
-                print(f"✅ Query returned {len(results)} rows")
-            
             return results
             
         except Exception as e:
-            print(f"ERROR: Database query failed: {e}")
-            print(f"Query: {query}")
-            if params:
-                print(f"Params: {params}")
             return []
         finally: 
             conn.close()
@@ -233,14 +186,9 @@ class StatisticsDBManager:
         
         query_lower = query_text.lower()
         
-        if getattr(self, 'debug_mode', True):
-            print(f"\n🔍 Matching cause type from query: '{query_text}'")
-        
         # 1단계: 정확한 원인유형이 질의에 포함되어 있는지 확인
         for actual_cause in self.ACTUAL_CAUSE_TYPES:
             if actual_cause in query_text or actual_cause.lower() in query_lower:
-                if getattr(self, 'debug_mode', True):
-                    print(f"✅ [STAGE 1] Exact cause_type match found: '{actual_cause}'")
                 self.matching_stats['exact_matches'] += 1
                 return actual_cause
         
@@ -252,8 +200,6 @@ class StatisticsDBManager:
             # 단어 경계를 고려한 정확한 매칭
             pattern = r'\b' + re.escape(natural_lang) + r'\b'
             if re.search(pattern, query_lower, re.IGNORECASE):
-                if getattr(self, 'debug_mode', True):
-                    print(f"✅ [STAGE 2] Mapped cause_type: '{natural_lang}' → '{mapped_cause}'")
                 self.matching_stats['mapping_matches'] += 1
                 return mapped_cause
         
@@ -265,8 +211,6 @@ class StatisticsDBManager:
             
             # 3자 이상의 키워드가 포함되어 있는지 확인
             if len(cause_normalized) >= 3 and cause_normalized in query_normalized:
-                if getattr(self, 'debug_mode', True):
-                    print(f"✅ [STAGE 3] Partial match cause_type: '{actual_cause}'")
                 self.matching_stats['partial_matches'] += 1
                 return actual_cause
         
@@ -290,14 +234,10 @@ class StatisticsDBManager:
         
         for cause_type, keywords in cause_keywords_mapping.items():
             if any(keyword in query_lower for keyword in keywords):
-                if getattr(self, 'debug_mode', True):
-                    matched_keywords = [k for k in keywords if k in query_lower]
-                    print(f"✅ [STAGE 4] Keyword match cause_type: '{cause_type}' (keywords: {matched_keywords})")
+                matched_keywords = [k for k in keywords if k in query_lower]
                 self.matching_stats['keyword_matches'] += 1
                 return cause_type
         
-        if getattr(self, 'debug_mode', True):
-            print(f"❌ [NO MATCH] No cause_type match found")
         self.matching_stats['no_matches'] += 1
         
         return None
@@ -317,15 +257,11 @@ class StatisticsDBManager:
         # 1차: 직접적인 원인유형 키워드 확인
         for keyword in self.CAUSE_TYPE_KEYWORDS:
             if keyword in normalized_query:
-                if getattr(self, 'debug_mode', True):
-                    print(f"✅ Cause type query detected by keyword: '{keyword}'")
                 return True
         
         # 2차: 원인유형이 매칭되는지 확인
         matched_cause = self._match_cause_type(query)
         if matched_cause:
-            if getattr(self, 'debug_mode', True):
-                print(f"✅ Cause type query detected by matching: '{matched_cause}'")
             return True
         
         # 3차: 원인 관련 패턴 확인
@@ -338,8 +274,6 @@ class StatisticsDBManager:
         
         for pattern in cause_patterns:
             if re.search(pattern, normalized_query):
-                if getattr(self, 'debug_mode', True):
-                    print(f"✅ Cause type query detected by pattern: '{pattern}'")
                 return True
         
         return False
@@ -417,7 +351,7 @@ class StatisticsDBManager:
     def parse_statistics_query(self, query: str) -> Dict[str, Any]:
         """
         자연어 쿼리에서 통계 조건 추출 - 분기/반기 처리 + 자동 연도 설정
-        ⚠️ 핵심 수정: '분' 키워드를 '장애시간' 맥락에서만 인식하도록 개선
+        핵심 수정: '분' 키워드를 '장애시간' 맥락에서만 인식하도록 개선 
         """
         conditions = {
             'year': None, 'months': [], 'service_name': None, 'daynight': None, 'week': None,
@@ -428,22 +362,11 @@ class StatisticsDBManager:
         
         query_lower, original_query = query.lower(), query
         
-        if getattr(self, 'debug_mode', True):
-            print(f"\n{'='*80}")
-            print(f"📊 PARSING STATISTICS QUERY")
-            print(f"{'='*80}")
-            print(f"Original Query: '{query}'")
-            print(f"{'='*80}")
-        
         # 1. 쿼리 정규화 - 동의어 통합
         normalized_query = self._normalize_query_synonyms(query_lower)
-        if getattr(self, 'debug_mode', True) and normalized_query != query_lower:
-            print(f"🔄 Normalized query: '{normalized_query}'")
         
         # 2. 원인유형 쿼리 여부 확인
         conditions['is_cause_type_query'] = self._is_cause_type_query(original_query)
-        if getattr(self, 'debug_mode', True):
-            print(f"🔍 Is cause type query: {conditions['is_cause_type_query']}")
         
         # 3. 연도 추출
         two_digit_year_patterns = [
@@ -461,8 +384,6 @@ class StatisticsDBManager:
                     full_year = f"20{two_digit_year}"
                     conditions['year'] = full_year
                     year_found = True
-                    if getattr(self, 'debug_mode', True):
-                        print(f"✅ Extracted year (2-digit converted): {two_digit_year}년 → {full_year}")
                     break
         
         if not year_found:
@@ -476,8 +397,6 @@ class StatisticsDBManager:
             for pattern in four_digit_year_patterns:
                 if year_match := re.search(pattern, normalized_query):
                     conditions['year'] = self._normalize_year_query(year_match.group(1))
-                    if getattr(self, 'debug_mode', True): 
-                        print(f"✅ Extracted year (4-digit): {conditions['year']}")
                     break
         
         # 4. 장애등급 추출
@@ -495,29 +414,20 @@ class StatisticsDBManager:
                     before_text = normalized_query[max(0, match_pos-4):match_pos]
                     if not re.search(r'20\d{2}', before_text):
                         conditions['incident_grade'] = grade_num
-                        if getattr(self, 'debug_mode', True): 
-                            print(f"✅ Extracted incident_grade: {conditions['incident_grade']}")
                         break
         
-        # 🆕 5. 분기/반기 추출 (우선 처리) + 자동 연도 설정
+        # 5. 분기/반기 추출 (우선 처리) + 자동 연도 설정
         period_months, period_type = self._extract_period_months(original_query)
         
         if period_months:
             conditions['months'] = [str(m) for m in period_months]
             conditions['period_type'] = period_type
             
-            # 🆕 핵심: 연도가 없으면 현재 연도(2025년) 자동 설정
+            # 핵심: 연도가 없으면 현재 연도(2025년) 자동 설정
             if not conditions['year']:
                 current_year = self._get_current_year()
                 conditions['year'] = current_year
                 conditions['auto_year_assigned'] = True
-                
-                if getattr(self, 'debug_mode', True):
-                    print(f"⚠️ Year not specified with period '{period_type}', auto-assigned to current year: {current_year}")
-            
-            if getattr(self, 'debug_mode', True):
-                year_info = f"(Year: {conditions['year']}" + (" - auto-assigned)" if conditions.get('auto_year_assigned') else ")")
-                print(f"✅ Extracted period: {period_type} → months: {conditions['months']} {year_info}")
         
         # 6. 월 범위 추출 (분기/반기가 없는 경우에만)
         if not conditions['months']:
@@ -533,17 +443,12 @@ class StatisticsDBManager:
                     if 1 <= start <= 12 and 1 <= end <= 12 and start <= end:
                         conditions['months'] = [str(m) for m in range(start, end + 1)]
                         
-                        # 🆕 월 범위도 연도 없으면 현재 연도 자동 설정
+                        # 월 범위도 연도 없으면 현재 연도 자동 설정
                         if not conditions['year']:
                             current_year = self._get_current_year()
                             conditions['year'] = current_year
                             conditions['auto_year_assigned'] = True
-                            
-                            if getattr(self, 'debug_mode', True):
-                                print(f"⚠️ Year not specified with month range, auto-assigned to current year: {current_year}")
                         
-                        if getattr(self, 'debug_mode', True): 
-                            print(f"✅ Extracted month range: {conditions['months']}")
                         break
         
         # 개별 월 추출 (분기/반기/월범위가 모두 없는 경우에만)
@@ -554,19 +459,12 @@ class StatisticsDBManager:
                 valid_months = [str(int(m)) for m in month_matches if 1 <= int(m) <= 12]
                 if valid_months:
                     conditions['months'] = valid_months
-                    
-                    if getattr(self, 'debug_mode', True): 
-                        print(f"✅ Extracted months: {conditions['months']}")
         
         # 7. 서비스명 추출
         conditions['service_name'] = self._extract_service_name_enhanced(original_query)
-        if conditions['service_name'] and getattr(self, 'debug_mode', True):
-            print(f"✅ Extracted service_name: '{conditions['service_name']}'")
         
         # 8. 원인유형 추출
         conditions['cause_type'] = self._match_cause_type(original_query)
-        if conditions['cause_type'] and getattr(self, 'debug_mode', True):
-            print(f"✅ Extracted cause_type: '{conditions['cause_type']}'")
         
         # 9. 요일 추출
         week_patterns = {
@@ -582,8 +480,6 @@ class StatisticsDBManager:
         for day_val, day_patterns in week_patterns.items():
             if any(re.search(pattern, normalized_query) for pattern in day_patterns):
                 conditions['week'] = day_val
-                if getattr(self, 'debug_mode', True): 
-                    print(f"✅ Extracted week: {conditions['week']}")
                 break
         
         if re.search(r'\b평일\b', normalized_query): 
@@ -600,15 +496,13 @@ class StatisticsDBManager:
         for daynight_val, patterns in daynight_patterns.items():
             if any(re.search(pattern, normalized_query) for pattern in patterns):
                 conditions['daynight'] = daynight_val
-                if getattr(self, 'debug_mode', True): 
-                    print(f"✅ Extracted daynight: {conditions['daynight']}")
                 break
         
-        # ⚠️ 핵심 수정 11. 장애시간 쿼리 여부 - '분' 키워드 처리 개선
+        # 핵심 수정 11. 장애시간 쿼리 여부 - '분' 키워드 처리 개선
         # '분기'가 포함된 경우는 제외하고, '장애시간'이나 '시간' 맥락에서만 '분'을 인식
         error_time_keywords_strict = [
             '장애시간', '장애 시간', 'error_time', '시간 합계', '시간 합산',
-            '이 시간', '누적 시간', '전체 시간', '합계 시간', '시간통계'
+            '총 시간', '누적 시간', '전체 시간', '합계 시간', '시간통계'
         ]
         
         # 먼저 엄격한 키워드로 체크
@@ -626,12 +520,6 @@ class StatisticsDBManager:
                     if re.search(minute_pattern, normalized_query):
                         conditions['is_error_time_query'] = True
         
-        if conditions['is_error_time_query'] and getattr(self, 'debug_mode', True):
-            matched_keywords = [k for k in error_time_keywords_strict if k in normalized_query]
-            if '분' in normalized_query and not any(quarter_term in normalized_query for quarter_term in ['분기', 'q1', 'q2', 'q3', 'q4']):
-                matched_keywords.append('분 (with context)')
-            print(f"✅ Error time query detected: {matched_keywords}")
-        
         # 12. 그룹화 기준 추출
         groupby_keywords = {
             'year': ['연도별', '년도별', '년별', '연별', '해별'],
@@ -648,16 +536,10 @@ class StatisticsDBManager:
             if any(keyword in normalized_query for keyword in keywords):
                 if group_field not in conditions['group_by']:
                     conditions['group_by'].append(group_field)
-                    if getattr(self, 'debug_mode', True):
-                        matched_keywords = [k for k in keywords if k in normalized_query]
-                        print(f"✅ Added '{group_field}' to group_by (keyword: {matched_keywords})")
         
         # 13. 원인유형 쿼리인 경우 자동 그룹화 설정
         if conditions['is_cause_type_query'] and 'cause_type' not in conditions['group_by']:
             conditions['group_by'].append('cause_type')
-            if getattr(self, 'debug_mode', True):
-                print(f"✅ Auto-added 'cause_type' to group_by (cause type query detected)")
-        
 
         # 14. 기본 그룹화 추론
         if not conditions['group_by']:
@@ -667,13 +549,11 @@ class StatisticsDBManager:
             has_specific_cause = conditions['cause_type'] is not None
             has_period = conditions['period_type'] is not None
             
-            # 🔥 핵심 수정: 분기/반기 쿼리는 명시적으로 "월별"이 없으면 GROUP BY 추가 안 함
+            # 핵심 수정: 분기/반기 쿼리는 명시적으로 "월별"이 없으면 GROUP BY 추가 안 함
             if has_period:
                 # 분기/반기 쿼리인 경우, 전체 합계만 원하는 것으로 간주
                 # "월별" 키워드가 명시되지 않았다면 GROUP BY 추가하지 않음
-                if getattr(self, 'debug_mode', True):
-                    print(f"⚠️ Period query detected ('{conditions['period_type']}'), no auto GROUP BY")
-                # group_by를 빈 리스트로 유지
+                pass
             elif has_specific_cause and not has_specific_year and not has_specific_month:
                 conditions['group_by'] = ['year']
             elif has_specific_grade and not has_specific_year and not has_specific_month:
@@ -686,26 +566,6 @@ class StatisticsDBManager:
             if '월별' in query or '월간' in query or '매월' in query:
                 if 'month' not in conditions['group_by']:
                     conditions['group_by'].append('month')
-                    if getattr(self, 'debug_mode', True):
-                        print(f"✅ Added 'month' to group_by based on explicit keyword")
-            
-            if getattr(self, 'debug_mode', True) and conditions['group_by']:
-                print(f"✅ Auto-assigned default group_by: {conditions['group_by']}")
-        
-        if getattr(self, 'debug_mode', True):
-            print(f"\n📋 FINAL PARSED CONDITIONS:")
-            print(f"  Year: {conditions['year']}" + (" (auto-assigned)" if conditions.get('auto_year_assigned') else ""))
-            print(f"  Months: {conditions['months']}")
-            print(f"  Period Type: {conditions['period_type']}")
-            print(f"  Grade: {conditions['incident_grade']}")
-            print(f"  Week: {conditions['week']}")
-            print(f"  Daynight: {conditions['daynight']}")
-            print(f"  Service: {conditions['service_name']}")
-            print(f"  Cause Type: {conditions['cause_type']}")
-            print(f"  Group By: {conditions['group_by']}")
-            print(f"  Is Error Time Query: {conditions['is_error_time_query']}")
-            print(f"  Is Cause Type Query: {conditions['is_cause_type_query']}")
-            print(f"{'='*80}\n")
         
         return conditions
 
@@ -713,28 +573,20 @@ class StatisticsDBManager:
         """향상된 서비스명 추출 로직 - service_names.txt 파일 참조"""
         if not query:
             return None
-            
-        if getattr(self, 'debug_mode', True):
-            print(f"\n🔍 Enhanced service name extraction from: '{query}'")
         
         # 원인유형 쿼리에서는 서비스명 추출을 더 신중하게
         if self._is_cause_type_query(query):
-            if getattr(self, 'debug_mode', True):
-                print(f"⚠️ Cause type query detected - careful service name extraction")
+            pass
         
         # 1단계: service_names.txt 파일의 서비스명들과 직접 매칭 (길이순 정렬로 긴 이름부터)
         if hasattr(self, 'service_names') and self.service_names:
             for service_name in self.service_names:
                 # 정확한 매칭
                 if service_name in query:
-                    if getattr(self, 'debug_mode', True):
-                        print(f"✅ [EXACT MATCH] Service name found: '{service_name}'")
                     return service_name
                 
                 # 대소문자 무시한 매칭
                 if service_name.lower() in query.lower():
-                    if getattr(self, 'debug_mode', True):
-                        print(f"✅ [CASE INSENSITIVE] Service name found: '{service_name}'")
                     return service_name
             
             # 2단계: 부분 매칭 (3글자 이상)
@@ -745,8 +597,6 @@ class StatisticsDBManager:
                     normalized_query = query.replace(' ', '').replace('-', '').lower()
                     
                     if normalized_service in normalized_query:
-                        if getattr(self, 'debug_mode', True):
-                            print(f"✅ [PARTIAL MATCH] Service name found: '{service_name}'")
                         return service_name
         
         # 3단계: 기존 패턴 매칭 (service_names.txt가 없거나 매칭 실패 시)
@@ -794,17 +644,10 @@ class StatisticsDBManager:
                             not service_name.isdigit() and
                             service_name not in self.ACTUAL_CAUSE_TYPES):
                             
-                            if getattr(self, 'debug_mode', True):
-                                print(f"✅ [PATTERN] Service name found with pattern {i+1}: '{service_name}'")
                             return service_name
                             
             except Exception as e:
-                if getattr(self, 'debug_mode', True):
-                    print(f"Error in pattern {i+1}: {e}")
                 continue
-        
-        if getattr(self, 'debug_mode', True):
-            print(f"❌ No service name found in query")
         
         return None
 
@@ -845,17 +688,13 @@ class StatisticsDBManager:
             if conditions.get('year'):
                 where_clauses.append("year = ?")
                 params.append(conditions['year'])
-                if getattr(self, 'debug_mode', True): 
-                    print(f"WHERE: year = '{conditions['year']}'")
             
-            # 🔥🔥🔥 월 조건 (핵심 수정!) - 정수형 변환 및 조건 강화
+            # 월 조건 (핵심 수정!) - 정수형 변환 및 조건 강화
             if conditions.get('months'):
                 if len(conditions['months']) == 1:
                     # 단일 월: 정수 비교로 통일
                     where_clauses.append("CAST(month AS INTEGER) = ?")
                     params.append(int(conditions['months'][0]))
-                    if getattr(self, 'debug_mode', True): 
-                        print(f"✅ WHERE: month = {conditions['months'][0]} (INTEGER casting)")
                 else:
                     # 여러 월인 경우 (분기/반기 등) - 정수형 변환하여 비교
                     month_placeholders = ','.join(['?' for _ in conditions['months']])
@@ -863,20 +702,11 @@ class StatisticsDBManager:
                     # 정수형으로 변환하여 파라미터 전달
                     int_months = [int(m) for m in conditions['months']]
                     params.extend(int_months)
-                    if getattr(self, 'debug_mode', True): 
-                        print(f"✅ WHERE: month IN ({','.join(conditions['months'])}) - {len(conditions['months'])} months")
-                        print(f"   Period type: {conditions.get('period_type', 'custom range')}")
-                        print(f"   Integer months: {int_months}")
-            else:
-                if getattr(self, 'debug_mode', True):
-                    print(f"⚠️ No month filter applied (all months will be included)")
             
             # 장애등급 조건
             if conditions.get('incident_grade'):
                 where_clauses.append("incident_grade = ?")
                 params.append(conditions['incident_grade'])
-                if getattr(self, 'debug_mode', True): 
-                    print(f"WHERE: incident_grade = '{conditions['incident_grade']}'")
             
             # 원인유형 조건 처리 (대폭 강화)
             if conditions.get('cause_type'):
@@ -905,9 +735,6 @@ class StatisticsDBManager:
                             params.append(f"%{keyword}%")
                 
                 where_clauses.append(f"({' OR '.join(cause_conditions)})")
-                
-                if getattr(self, 'debug_mode', True): 
-                    print(f"WHERE: Complex cause_type matching for '{conditions['cause_type']}'")
             
             # 원인유형 쿼리인 경우 원인유형 필드 필터링
             if conditions.get('is_cause_type_query', False) or 'cause_type' in group_fields:
@@ -917,31 +744,21 @@ class StatisticsDBManager:
                     "cause_type != 'null'"
                 ]
                 where_clauses.extend(cause_filters)
-                if getattr(self, 'debug_mode', True):
-                    print("WHERE: Added cause_type null filters")
             
             # 요일 조건
             if conditions.get('week'):
                 if conditions['week'] == '평일':
                     where_clauses.append("week IN ('월', '화', '수', '목', '금')")
-                    if getattr(self, 'debug_mode', True): 
-                        print(f"WHERE: week IN (평일)")
                 elif conditions['week'] == '주말':
                     where_clauses.append("week IN ('토', '일')")
-                    if getattr(self, 'debug_mode', True): 
-                        print(f"WHERE: week IN (주말)")
                 else:
                     where_clauses.append("week = ?")
                     params.append(conditions['week'])
-                    if getattr(self, 'debug_mode', True): 
-                        print(f"WHERE: week = '{conditions['week']}'")
             
             # 시간대 조건
             if conditions.get('daynight'):
                 where_clauses.append("daynight = ?")
                 params.append(conditions['daynight'])
-                if getattr(self, 'debug_mode', True): 
-                    print(f"WHERE: daynight = '{conditions['daynight']}'")
             
             # 서비스명 조건 (개선)
             if conditions.get('service_name'):
@@ -954,16 +771,11 @@ class StatisticsDBManager:
                     f"%{conditions['service_name']}%"
                 ])
                 where_clauses.append(f"({' OR '.join(service_conditions)})")
-                
-                if getattr(self, 'debug_mode', True): 
-                    print(f"WHERE: service_name exact or like '{conditions['service_name']}'")
             
             # 부서 조건
             if conditions.get('owner_depart'):
                 where_clauses.append("owner_depart LIKE ?")
                 params.append(f"%{conditions['owner_depart']}%")
-                if getattr(self, 'debug_mode', True): 
-                    print(f"WHERE: owner_depart LIKE '%{conditions['owner_depart']}%'")
             
             # 최종 쿼리 조합
             query = f"SELECT {', '.join(select_fields)} FROM incidents"
@@ -991,27 +803,9 @@ class StatisticsDBManager:
                 # GROUP BY가 없는 경우 최신 순 정렬
                 query += " ORDER BY year DESC, month DESC"
             
-            if getattr(self, 'debug_mode', True):
-                print(f"\n{'='*80}")
-                print(f"📊 GENERATED SQL QUERY (DETAILED)")
-                print(f"{'='*80}")
-                print(f"SQL: {query}")
-                print(f"Params ({len(params)}): {params}")
-                print(f"Value Label: {value_label}")
-                print(f"Has GROUP BY: {len(group_fields) > 0}")
-                if group_fields:
-                    print(f"GROUP BY fields: {group_fields}")
-                print(f"WHERE clauses ({len(where_clauses)}):")
-                for i, clause in enumerate(where_clauses, 1):
-                    print(f"  {i}. {clause}")
-                print(f"{'='*80}\n")
-            
             return query, tuple(params), value_label        
             
         except Exception as e:
-            print(f"ERROR in build_sql_query: {e}")
-            import traceback
-            traceback.print_exc()
             # 안전한 기본 쿼리 반환
             return "SELECT COUNT(*) as total_value FROM incidents WHERE incident_id IS NOT NULL", (), 'total_count'    
 
@@ -1026,34 +820,12 @@ class StatisticsDBManager:
         }
         
         try:
-            if getattr(self, 'debug_mode', True):
-                print(f"\n{'='*100}")
-                print(f"📊 STATISTICS QUERY PROCESSING START")
-                print(f"{'='*100}")
-                print(f"User Query: '{query}'")
-                print(f"DB Path: {self.db_path}")
-                print(f"Available Cause Types: {len(getattr(self, 'ACTUAL_CAUSE_TYPES', []))}")
-                print(f"Available Service Names: {len(getattr(self, 'service_names', []))}")
-                print(f"{'='*100}\n")
-            
             # 쿼리 파싱
             conditions = self.parse_statistics_query(query)
             
             # SQL 생성 및 실행
             sql_query, params, value_label = self.build_sql_query(conditions)
             results = self._execute_query(sql_query, params)
-            
-            if getattr(self, 'debug_mode', True):
-                print(f"\n✅ SQL EXECUTION COMPLETE")
-                print(f"   Query returned: {len(results)} rows")
-                if results: 
-                    print(f"   First few results: {results[:3]}")
-                    
-                    # 원인유형 통계인 경우 상세 정보
-                    if conditions['is_cause_type_query'] or 'cause_type' in conditions['group_by']:
-                        cause_types_found = [r.get('cause_type') for r in results if r.get('cause_type')]
-                        print(f"   Cause types in results: {cause_types_found[:5]}")
-                        print(f"   Total unique cause types: {len(set(cause_types_found))}")
             
             # 결과 구조화
             statistics = {
@@ -1085,7 +857,7 @@ class StatisticsDBManager:
                 }
             }
             
-            # 🔥 핵심 수정: GROUP BY 여부에 따라 결과 집계 방식 분기
+            # 핵심 수정: GROUP BY 여부에 따라 결과 집계 방식 분기
             has_group_by = len(conditions.get('group_by', [])) > 0
             
             if has_group_by:
@@ -1104,50 +876,10 @@ class StatisticsDBManager:
                     reverse=True
                 ))
                 statistics['cause_type_stats'] = sorted_cause_stats
-                
-                if getattr(self, 'debug_mode', True):
-                    print(f"\n📈 CAUSE TYPE STATISTICS SUMMARY:")
-                    print(f"   Total cause types: {len(statistics['cause_type_stats'])}")
-                    print(f"   Top 5 cause types:")
-                    for i, (cause_type, count) in enumerate(list(sorted_cause_stats.items())[:5], 1):
-                        print(f"     {i}. {cause_type}: {count}건")
-            
-            if getattr(self, 'debug_mode', True):
-                print(f"\n{'='*100}")
-                print(f"📈 FINAL STATISTICS RESULT")
-                print(f"{'='*100}")
-                print(f"Total Value: {statistics['total_value']}")
-                print(f"Total Count: {statistics['total_count']}")
-                print(f"Has GROUP BY: {has_group_by}")
-                print(f"Is Cause Type Query: {statistics['is_cause_type_query']}")
-                print(f"Value Label: {value_label}")
-                
-                if statistics['yearly_stats']: 
-                    print(f"Yearly Stats: {statistics['yearly_stats']}")
-                if statistics['monthly_stats']: 
-                    print(f"Monthly Stats: {statistics['monthly_stats']}")
-                if statistics['grade_stats']: 
-                    print(f"Grade Stats: {statistics['grade_stats']}")
-                if statistics['cause_type_stats']: 
-                    print(f"Cause Type Stats: {dict(list(statistics['cause_type_stats'].items())[:5])}")
-                    print(f"Cause Type Count: {len(statistics['cause_type_stats'])}")
-                if statistics['service_stats']: 
-                    print(f"Service Stats: {statistics['service_stats']}")
-                if statistics['time_stats']['daynight']: 
-                    print(f"Daynight Stats: {statistics['time_stats']['daynight']}")
-                if statistics['time_stats']['week']: 
-                    print(f"Week Stats: {statistics['time_stats']['week']}")
-                
-                print(f"Matching Stats: {getattr(self, 'matching_stats', {})}")
-                print(f"{'='*100}\n")
             
             return statistics
             
         except Exception as e:
-            print(f"ERROR in get_statistics: {e}")
-            import traceback
-            traceback.print_exc()
-            
             # 안전한 기본 응답 반환
             return {
                 'query_conditions': default_conditions,
@@ -1169,31 +901,25 @@ class StatisticsDBManager:
                 'debug_info': {
                     'parsed_conditions': default_conditions,
                     'error': str(e),
-                    'error_traceback': traceback.format_exc()
+                    'error_traceback': ''
                 },
                 'error': str(e)
             }
 
     def _aggregate_grouped_results(self, results, statistics, conditions):
         """GROUP BY가 있는 경우의 결과 집계 - 조건 검증 강화"""
-        if getattr(self, 'debug_mode', True):
-            print(f"\n📊 Aggregating grouped results with validation")
-            print(f"   Total rows: {len(results)}")
-            print(f"   Filter conditions: year={conditions.get('year')}, months={conditions.get('months')}")
         
         skipped_count = 0
         processed_count = 0
         
         for row in results:
-            # ⚠️ 조건 검증: 월 필터 (정수 변환하여 비교)
+            # 조건 검증: 월 필터 (정수 변환하여 비교)
             if conditions.get('months'):
                 try:
                     row_month_raw = row.get('month', '')
                     # None이나 빈 값 처리
                     if row_month_raw is None or str(row_month_raw).strip() == '':
                         skipped_count += 1
-                        if getattr(self, 'debug_mode', True):
-                            print(f"   ⚠️ SKIPPED: month is None or empty")
                         continue
                     
                     row_month = int(row_month_raw)
@@ -1201,35 +927,27 @@ class StatisticsDBManager:
                     
                     if row_month not in expected_months:
                         skipped_count += 1
-                        if getattr(self, 'debug_mode', True):
-                            print(f"   ⚠️ SKIPPED: month={row_month} not in expected {expected_months}")
                         continue
                 except (ValueError, TypeError) as e:
                     skipped_count += 1
-                    if getattr(self, 'debug_mode', True):
-                        print(f"   ⚠️ SKIPPED: month conversion error - {row.get('month')} ({e})")
                     continue
             
-            # ⚠️ 조건 검증: 연도 필터
+            # 조건 검증: 연도 필터
             if conditions.get('year'):
                 row_year = str(row.get('year', '')).strip()
                 expected_year = str(conditions['year'])
                 
                 if row_year and row_year != expected_year:
                     skipped_count += 1
-                    if getattr(self, 'debug_mode', True):
-                        print(f"   ⚠️ SKIPPED: year={row_year} != expected {expected_year}")
                     continue
             
-            # ⚠️ 조건 검증: 등급 필터
+            # 조건 검증: 등급 필터
             if conditions.get('incident_grade'):
                 row_grade = str(row.get('incident_grade', '')).strip()
                 expected_grade = str(conditions['incident_grade'])
                 
                 if row_grade and row_grade != expected_grade:
                     skipped_count += 1
-                    if getattr(self, 'debug_mode', True):
-                        print(f"   ⚠️ SKIPPED: grade={row_grade} != expected {expected_grade}")
                     continue
             
             # 조건을 통과한 데이터만 집계
@@ -1268,12 +986,6 @@ class StatisticsDBManager:
                 cause_type = str(row['cause_type']).strip()
                 if cause_type and cause_type.lower() not in ['null', 'none', '']:
                     statistics['cause_type_stats'][cause_type] = value
-                    if getattr(self, 'debug_mode', True):
-                        print(f"✅ Added cause_type stat: '{cause_type}' = {value}")
-        
-        if getattr(self, 'debug_mode', True):
-            print(f"   ✅ Processed: {processed_count} rows")
-            print(f"   ⚠️ Skipped: {skipped_count} rows (condition mismatch)")
         
         # 전체 건수 계산
         if conditions.get('is_error_time_query'):
@@ -1286,23 +998,16 @@ class StatisticsDBManager:
     def _aggregate_single_result(self, results, statistics, conditions):
         """GROUP BY가 없는 경우의 결과 집계 - 조건 검증 강화 + 0건 처리"""
         if not results or len(results) == 0:
-            if getattr(self, 'debug_mode', True):
-                print(f"⚠️ No results returned from SQL query")
-                print(f"   Conditions: year={conditions.get('year')}, months={conditions.get('months')}")
-                print(f"   Period: {conditions.get('period_type', 'N/A')}")
-                print(f"   All statistics set to 0 - THIS IS CORRECT for 0 incidents")
-            
             statistics['total_count'] = 0
             statistics['total_value'] = 0
             
-            # 🔥 중요: 0건일 때도 조건이 있으면 해당 조건에 0으로 명시
+            # 중요: 0건일 때도 조건이 있으면 해당 조건에 0으로 명시
             if conditions.get('year'):
                 statistics['yearly_stats'][conditions['year']] = 0
             
             # 분기/반기 조건이 있으면 전체 0으로 표시 (월별로 분해하지 않음)
             if conditions.get('period_type'):
-                if getattr(self, 'debug_mode', True):
-                    print(f"   Period '{conditions['period_type']}' has 0 incidents")
+                pass
             elif conditions.get('months') and len(conditions['months']) == 1:
                 # 단일 월 조건인 경우에만 월별 통계에 0 할당
                 statistics['monthly_stats'][conditions['months'][0]] = 0
@@ -1313,25 +1018,11 @@ class StatisticsDBManager:
         first_result = results[0]
         total_value = first_result.get('total_value', 0) or 0
         
-        if getattr(self, 'debug_mode', True):
-            print(f"\n📊 Single aggregation (no GROUP BY):")
-            print(f"   Total value: {total_value}")
-            print(f"   Year condition: {conditions.get('year')}")
-            print(f"   Month condition: {conditions.get('months')}")
-            print(f"   Period type: {conditions.get('period_type')}")
-        
         statistics['total_count'] = total_value
         statistics['total_value'] = total_value
         
         # 결과가 0인 경우 처리
         if total_value == 0:
-            if getattr(self, 'debug_mode', True):
-                print(f"   ⚠️ Result is 0 - THIS IS CORRECT")
-                if conditions.get('year'):
-                    print(f"   Year {conditions['year']} has 0 incidents")
-                if conditions.get('period_type'):
-                    print(f"   Period '{conditions['period_type']}' has 0 incidents")
-            
             # 0건이어도 조건이 있으면 해당 조건에 0으로 명시
             if conditions.get('year'):
                 statistics['yearly_stats'][conditions['year']] = 0
@@ -1343,26 +1034,17 @@ class StatisticsDBManager:
             # 연도 조건이 명시되었고 결과가 있는 경우
             if conditions.get('year'):
                 statistics['yearly_stats'][conditions['year']] = total_value
-                
-                if getattr(self, 'debug_mode', True):
-                    print(f"   ✅ Assigned to year {conditions['year']}: {total_value}")
             
-            # ⚠️ 중요: 분기/반기 조건의 경우, 전체 합계만 표시하고 월별로 분해하지 않음
+            # 중요: 분기/반기 조건의 경우, 전체 합계만 표시하고 월별로 분해하지 않음
             if conditions.get('period_type'):
-                if getattr(self, 'debug_mode', True):
-                    print(f"   ⚠️ Period query ('{conditions['period_type']}') - total only, no monthly breakdown")
                 # 월별 통계를 만들지 않음 (전체 합계만 의미있음)
+                pass
             
             # 단일 월 조건인 경우에만 월별 통계에 할당
             elif conditions.get('months') and len(conditions['months']) == 1:
                 statistics['monthly_stats'][conditions['months'][0]] = total_value
-                
-                if getattr(self, 'debug_mode', True):
-                    print(f"   ✅ Assigned to month {conditions['months'][0]}: {total_value}")
         
         return statistics
-
-
 
     def get_incident_details(self, conditions: Dict[str, Any], limit: int = 100) -> List[Dict[str, Any]]:
         """조건에 맞는 장애 상세 내역 조회 - 원인유형 조건 완전 강화"""
@@ -1443,15 +1125,9 @@ class StatisticsDBManager:
                 query += f" WHERE {' AND '.join(where_clauses)}"
             query += f" ORDER BY error_date DESC, error_time DESC LIMIT {limit}"
             
-            if getattr(self, 'debug_mode', True):
-                print(f"\n🔎 get_incident_details SQL: {query}")
-                print(f"   Parameters: {params}")
-                print(f"   Limit: {limit}\n")
-            
             return self._execute_query(query, tuple(params))
             
         except Exception as e:
-            print(f"ERROR in get_incident_details: {e}")
             return []
     
     def _normalize_query_synonyms(self, query: str) -> str:
@@ -1468,7 +1144,7 @@ class StatisticsDBManager:
             '말해줘': '알려주세요', '확인해줘': '알려주세요', '체크해줘': '알려주세요',
             '얼마나': '몇', '어느정도': '몇', '어떻게': '몇', '어느': '몇', '어떤': '몇',
             '몇번': '몇건', '몇차례': '몇건', '몇회': '몇건', '수량': '건수', '숫자': '건수',
-            '개수': '건수', '이': '전체', '이합': '전체', '모든': '전체', '모두': '전체',
+            '개수': '건수', '총': '전체', '총합': '전체', '모든': '전체', '모두': '전체',
             '누적': '전체', '상황': '현황', '현재': '현황', '지금까지': '현황', '정도': '현황',
             '수준': '현황', '범위': '현황', '규모': '현황',
             
@@ -1509,14 +1185,6 @@ class StatisticsDBManager:
                 "문제 원인유형별 현황"
             ]
         
-        print(f"\n{'='*100}")
-        print(f"🧪 COMPREHENSIVE CAUSE TYPE MATCHING TEST")
-        print(f"{'='*100}")
-        print(f"DB Path: {self.db_path}")
-        print(f"Available Cause Types: {len(getattr(self, 'ACTUAL_CAUSE_TYPES', []))}")
-        print(f"Available Service Names: {len(getattr(self, 'service_names', []))}")
-        print(f"{'='*100}")
-        
         # 매칭 통계 초기화
         self.matching_stats = {
             'exact_matches': 0,
@@ -1529,35 +1197,23 @@ class StatisticsDBManager:
         test_results = []
         
         for i, query in enumerate(test_queries, 1):
-            print(f"\n🔍 Test {i}: '{query}'")
-            
             # 원인유형 쿼리 여부 확인
             is_cause_query = self._is_cause_type_query(query)
-            print(f"   Is cause type query: {'✅' if is_cause_query else '❌'}")
             
             # 원인유형 매칭
             matched_cause = self._match_cause_type(query)
-            print(f"   Matched cause type: {matched_cause if matched_cause else 'None'}")
             
             # 전체 파싱 결과
             conditions = self.parse_statistics_query(query)
-            print(f"   Group by: {conditions['group_by']}")
-            print(f"   Extracted cause: {conditions['cause_type']}")
-            print(f"   Is cause type query (parsed): {conditions['is_cause_type_query']}")
             
             # 실제 DB 쿼리 테스트
             try:
                 stats_result = self.get_statistics(query)
                 cause_stats = stats_result.get('cause_type_stats', {})
-                print(f"   DB Query Result: {len(cause_stats)} cause types found")
-                if cause_stats:
-                    top_3 = list(cause_stats.items())[:3]
-                    print(f"   Top 3: {top_3}")
             except Exception as e:
-                print(f"   DB Query Error: {e}")
+                pass
             
             success = is_cause_query or matched_cause or conditions['is_cause_type_query']
-            print(f"   Overall Result: {'✅ SUCCESS' if success else '❌ FAILED'}")
             
             test_results.append({
                 'query': query,
@@ -1566,42 +1222,6 @@ class StatisticsDBManager:
                 'parsed_cause': conditions['cause_type'],
                 'success': success
             })
-        
-        # 테스트 결과 요약
-        print(f"\n{'='*100}")
-        print(f"📊 TEST RESULTS SUMMARY")
-        print(f"{'='*100}")
-        
-        successful_tests = sum(1 for r in test_results if r['success'])
-        success_rate = (successful_tests / len(test_results)) * 100
-        
-        print(f"Total Tests: {len(test_results)}")
-        print(f"Successful: {successful_tests}")
-        print(f"Failed: {len(test_results) - successful_tests}")
-        print(f"Success Rate: {success_rate:.1f}%")
-        
-        print(f"\nMatching Statistics:")
-        for match_type, count in getattr(self, 'matching_stats', {}).items():
-            print(f"  {match_type}: {count}")
-        
-        print(f"\nFailed Tests:")
-        for result in test_results:
-            if not result['success']:
-                print(f"  ❌ '{result['query']}'")
-        
-        print(f"\nAvailable Cause Types in DB ({len(getattr(self, 'ACTUAL_CAUSE_TYPES', []))}):")
-        for i, cause_type in enumerate(getattr(self, 'ACTUAL_CAUSE_TYPES', [])[:15], 1):
-            print(f"  {i:2d}. {cause_type}")
-        if len(getattr(self, 'ACTUAL_CAUSE_TYPES', [])) > 15:
-            print(f"  ... and {len(getattr(self, 'ACTUAL_CAUSE_TYPES', [])) - 15} more")
-        
-        print(f"\nAvailable Service Names ({len(getattr(self, 'service_names', []))}):")
-        for i, service_name in enumerate(getattr(self, 'service_names', [])[:10], 1):
-            print(f"  {i:2d}. {service_name}")
-        if len(getattr(self, 'service_names', [])) > 10:
-            print(f"  ... and {len(getattr(self, 'service_names', [])) - 10} more")
-        
-        print(f"\n{'='*100}")
         
         return test_results
     
@@ -1627,18 +1247,9 @@ class StatisticsDBManager:
                 'distribution': results
             }
             
-            if getattr(self, 'debug_mode', True):
-                print(f"\n📊 CAUSE TYPE DISTRIBUTION:")
-                print(f"   Total Incidents: {distribution['total_incidents']}")
-                print(f"   Unique Cause Types: {distribution['unique_cause_types']}")
-                print(f"   Top 10 Cause Types:")
-                for i, result in enumerate(results[:10], 1):
-                    print(f"     {i:2d}. {result['cause_type']}: {result['count']}건 ({result['percentage']}%)")
-            
             return distribution
             
         except Exception as e:
-            print(f"ERROR in get_cause_type_distribution: {e}")
             return {
                 'total_incidents': 0,
                 'unique_cause_types': 0,

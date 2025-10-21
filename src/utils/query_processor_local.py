@@ -22,7 +22,7 @@ except ImportError:
         def log_user_activity(self, *args, **kwargs): pass
 
 class DataIntegrityNormalizer:
-    """🚨 RAG 데이터 무결성 절대 보장 정규화 클래스"""
+    """RAG 데이터 무결성 절대 보장 정규화 클래스"""
     
     @staticmethod
     def normalize_error_time(error_time):
@@ -148,7 +148,7 @@ class ImprovedStatisticsCalculator:
         
         query_lower = query.lower()
         
-        # 연도 추출 - 4자리 연도 우선  
+        # 연도 추출 - 4자리 연도 우선   
         year_match = re.search(r'\b(202[0-9]|201[0-9])년?\b', query_lower)
         if year_match: 
             conditions['year'] = year_match.group(1)
@@ -161,7 +161,7 @@ class ImprovedStatisticsCalculator:
                 if 0 <= short_year <= 99:
                     conditions['year'] = f"20{short_year:02d}"
         
-        # 🆕 분기/반기 처리 (월 범위로 자동 변환)
+        # 분기/반기 처리 (월 범위로 자동 변환)
         quarter_patterns = {
             r'1분기|제1분기|q1|1q': (1, 3),
             r'2분기|제2분기|q2|2q': (4, 6),
@@ -181,11 +181,7 @@ class ImprovedStatisticsCalculator:
                 # 연도가 없으면 현재 연도(2025) 자동 설정
                 if not conditions['year']:
                     conditions['year'] = '2025'
-                    if self.debug_mode:
-                        print(f"DEBUG: 분기/반기 표현 감지, 자동으로 2025년 설정")
                 
-                if self.debug_mode:
-                    print(f"DEBUG: 분기/반기 감지 - {start}~{end}월로 변환")
                 break
         
         # 월 범위 처리 (분기/반기가 없을 때만)
@@ -486,12 +482,11 @@ class QueryProcessorLocal:
         self.normalizer = DataIntegrityNormalizer()
         self.statistics_calculator = ImprovedStatisticsCalculator(remove_duplicates=False)
         
-        # ✅ StatisticsDBManager는 lazy initialization으로 변경
+        # StatisticsDBManager는 lazy initialization으로 변경
         self._statistics_db_manager = None  # 초기에는 None
         
-        self.filter_manager = DocumentFilterManager(debug_mode=True)
+        self.filter_manager = DocumentFilterManager()
         
-        self.debug_mode = True
         self._manual_logging_enabled = True
 
         # 통계 관련 키워드 대폭 확장
@@ -537,15 +532,13 @@ class QueryProcessorLocal:
     
     @property
     def statistics_db_manager(self):
-        """✅ Lazy initialization property for StatisticsDBManager"""
+        """Lazy initialization property for StatisticsDBManager"""
         if self._statistics_db_manager is None:
-            if self.debug_mode:
-                print("📄 Initializing StatisticsDBManager (lazy loading)...")
             self._statistics_db_manager = StatisticsDBManager()
         return self._statistics_db_manager
 
     def _validate_documents_against_query_conditions(self, query, documents):
-        """🚨 핵심 개선: 쿼리 조건과 문서 일치성 검증"""
+        """핵심 개선: 쿼리 조건과 문서 일치성 검증"""
         if not query or not documents:
             return []
         
@@ -553,10 +546,7 @@ class QueryProcessorLocal:
         extracted_service = self.search_manager.extract_service_name_from_query(query)
         extracted_year = self._extract_year_from_query(query)
         extracted_months = self._extract_months_from_query(query)
-        time_conditions = self.extract_time_conditions(query)  # ✅ 추가
-        
-        if self.debug_mode:
-            print(f"DEBUG: Query conditions - Service: {extracted_service}, Year: {extracted_year}, Months: {extracted_months}, TimeConditions: {time_conditions}")
+        time_conditions = self.extract_time_conditions(query)
         
         validated_documents = []
         
@@ -585,14 +575,14 @@ class QueryProcessorLocal:
                     is_valid = False
                     validation_reasons.append(f"Month mismatch: expected {extracted_months}, got '{doc_month}'")
             
-            # ✅ 시간대 검증 추가
+            # 시간대 검증 추가
             if time_conditions.get('is_time_query') and time_conditions.get('daynight'):
                 doc_daynight = doc.get('daynight', '').strip()
                 if not doc_daynight or doc_daynight != time_conditions['daynight']:
                     is_valid = False
                     validation_reasons.append(f"Daynight mismatch: expected '{time_conditions['daynight']}', got '{doc_daynight}'")
             
-            # ✅ 요일 검증 추가
+            # 요일 검증 추가
             if time_conditions.get('is_time_query') and time_conditions.get('week'):
                 doc_week = doc.get('week', '').strip()
                 expected_week = time_conditions['week']
@@ -613,11 +603,6 @@ class QueryProcessorLocal:
             
             if is_valid:
                 validated_documents.append(doc)
-                if self.debug_mode:
-                    print(f"DEBUG: Document {doc.get('incident_id', 'Unknown')} validated successfully")
-            else:
-                if self.debug_mode:
-                    print(f"DEBUG: Document {doc.get('incident_id', 'Unknown')} rejected: {', '.join(validation_reasons)}")
         
         return validated_documents
     
@@ -691,7 +676,7 @@ class QueryProcessorLocal:
         months = []
         query_lower = query.lower()
         
-        # 🆕 분기/반기 패턴 우선 처리
+        # 분기/반기 패턴 우선 처리
         quarter_patterns = {
             r'1분기|제1분기|q1|1q': [1, 2, 3],
             r'2분기|제2분기|q2|2q': [4, 5, 6],
@@ -703,8 +688,6 @@ class QueryProcessorLocal:
         
         for pattern, month_list in quarter_patterns.items():
             if re.search(pattern, query_lower):
-                if self.debug_mode:
-                    print(f"DEBUG: 분기/반기 표현 감지 - {month_list} 반환")
                 return month_list
         
         # 월 범위 패턴 (예: 1~6월, 1월~6월)
@@ -780,18 +763,15 @@ class QueryProcessorLocal:
         return None
 
     def generate_rag_response_with_data_integrity(self, query, documents, query_type="default", time_conditions=None, department_conditions=None, reprompting_info=None):
-        """🚨 RAG 데이터 무결성을 절대 보장하는 응답 생성 - 조건 검증 강화"""
+        """RAG 데이터 무결성을 절대 보장하는 응답 생성 - 조건 검증 강화"""
         if not documents:
             return "검색된 문서가 없어서 답변을 제공할 수 없습니다."
         
         try:
-            # 🚨 원본 데이터 보존을 위한 전처리
+            # 원본 데이터 보존을 위한 전처리
             integrity_documents = [self.normalizer.normalize_document_with_integrity(doc) for doc in documents]
             
-            if self.debug_mode:
-                print(f"DEBUG: Data integrity preserved for {len(integrity_documents)} documents")
-            
-            # ⚠️ 핵심 개선: 조건 매칭 재검증 - 사용자 질문과 문서 일치성 확인
+            # 핵심 개선: 조건 매칭 재검증 - 사용자 질문과 문서 일치성 확인
             validated_documents = self._validate_documents_against_query_conditions(query, integrity_documents)
             
             if not validated_documents:
@@ -808,9 +788,6 @@ class QueryProcessorLocal:
                 else:
                     return "검색된 문서가 요청하신 조건과 일치하지 않습니다."
             
-            if self.debug_mode:
-                print(f"DEBUG: Validated {len(validated_documents)}/{len(integrity_documents)} documents match query conditions")
-            
             # 검증된 문서로 응답 생성 진행
             final_documents = validated_documents
             
@@ -826,42 +803,42 @@ class QueryProcessorLocal:
             
             # 컨텍스트 구성 - 원본 데이터만 사용
             context_parts = [f"""전체 문서 수: {len(processing_documents)}건
-    ⚠️ 중요: 아래 모든 필드값은 원본 RAG 데이터이므로 절대 변경하거나 요약하지 마세요."""]
+⚠️ 중요: 아래 모든 필드값은 원본 RAG 데이터이므로 절대 변경하거나 요약하지 마세요."""]
             
             for i, doc in enumerate(processing_documents[:30]):
                 context_parts.append(f"""문서 {i+1}:
-    장애 ID: {doc.get('incident_id', '')}
-    서비스명: {doc.get('service_name', '')}
-    장애시간: {doc.get('error_time', 0)}분
-    장애현상: {doc.get('symptom', '')}
-    장애원인: {doc.get('root_cause', '')}
-    복구방법: {doc.get('incident_repair', '')}
-    개선계획: {doc.get('incident_plan', '')}
-    처리유형: {doc.get('done_type', '')}
-    발생일자: {doc.get('error_date', '')}
-    장애등급: {doc.get('incident_grade', '')}
-    담당부서: {doc.get('owner_depart', '')}
-    시간대: {doc.get('daynight', '')}
-    요일: {doc.get('week', '')}
-    """)
+장애 ID: {doc.get('incident_id', '')}
+서비스명: {doc.get('service_name', '')}
+장애시간: {doc.get('error_time', 0)}분
+장애현상: {doc.get('symptom', '')}
+장애원인: {doc.get('root_cause', '')}
+복구방법: {doc.get('incident_repair', '')}
+개선계획: {doc.get('incident_plan', '')}
+처리유형: {doc.get('done_type', '')}
+발생일자: {doc.get('error_date', '')}
+장애등급: {doc.get('incident_grade', '')}
+담당부서: {doc.get('owner_depart', '')}
+시간대: {doc.get('daynight', '')}
+요일: {doc.get('week', '')}
+""")
             
             # 데이터 무결성 보장 프롬프트 사용
             integrity_prompt = self._get_data_integrity_prompt(query_type)
             
             user_prompt = f"""{integrity_prompt}
 
-    **원본 RAG 데이터 (절대 변경 금지):**
-    {chr(10).join(context_parts)}
+**원본 RAG 데이터 (절대 변경 금지):**
+{chr(10).join(context_parts)}
 
-    **사용자 질문:** {final_query}
+**사용자 질문:** {final_query}
 
-    **응답 지침:**
-    1. 위 원본 데이터의 모든 필드값을 정확히 그대로 출력하세요
-    2. 절대 요약하거나 변경하지 마세요
-    3. '해당 정보없음' 같은 임의의 값을 생성하지 마세요
-    4. 빈 필드는 빈 상태로 두거나 원본 그대로 출력하세요
+**응답 지침:**
+1. 위 원본 데이터의 모든 필드값을 정확히 그대로 출력하세요
+2. 절대 요약하거나 변경하지 마세요
+3. '해당 정보없음' 같은 임의의 값을 생성하지 마세요
+4. 빈 필드는 빈 상태로 두거나 원본 그대로 출력하세요
 
-    답변:"""
+답변:"""
 
             max_tokens = 2500 if query_type == 'inquiry' else 3000 if query_type == 'repair' else 1500
             response = self.azure_openai_client.chat.completions.create(
@@ -929,28 +906,8 @@ class QueryProcessorLocal:
     def _generate_statistics_response_with_integrity(self, query, documents):
         """데이터 무결성을 보장하는 통계 응답 생성 - 원인유형 처리 강화"""
         try:
-            # ✅ 1. DB 우선 조회 시도 (lazy initialization)
+            # 1. DB 우선 조회 시도 (lazy initialization)
             db_statistics = self.statistics_db_manager.get_statistics(query)
-            
-            if self.debug_mode and db_statistics.get('debug_info'):
-                debug_info = db_statistics['debug_info']
-                
-                with st.expander("🔍 SQL 쿼리 디버그 정보", expanded=False):
-                    st.markdown("### 🔍 파싱된 조건")
-                    st.json(debug_info['parsed_conditions'])
-                    
-                    st.markdown("### 💾 실행된 SQL 쿼리")
-                    st.code(debug_info['sql_query'], language='sql')
-                    
-                    st.markdown("### 📢 SQL 파라미터")
-                    st.json(list(debug_info['sql_params']))
-                    
-                    st.markdown("### 📊 쿼리 결과")
-                    st.info(f"총 {debug_info['result_count']}개의 결과 반환")
-                    
-                    if db_statistics.get('results'):
-                        st.markdown("#### 결과 샘플 (최대 5개)")
-                        st.json(db_statistics['results'][:5])
             
             # 2. DB에서 통계 결과가 있는지 확인
             if (db_statistics and 
@@ -963,12 +920,9 @@ class QueryProcessorLocal:
                 return self._format_db_statistics_with_chart_support(db_statistics, query)
             else:
                 # 3. DB에서 결과가 없으면 문서 기반 통계로 fallback
-                if self.debug_mode:
-                    print("DB statistics returned no results, falling back to document-based statistics")
                 return self._calculate_statistics_with_chart_support(documents, query)
                 
         except Exception as e:
-            print(f"ERROR: 통계 응답 생성 실패: {e}")
             import traceback
             traceback.print_exc()
             return f"통계 조회 중 오류가 발생했습니다: {str(e)}"
@@ -1005,9 +959,7 @@ class QueryProcessorLocal:
                                 'query': query,
                                 'is_error_time_query': stats.get('is_error_time_query', False)
                             }
-                            print(f"DEBUG: Chart created successfully - type: {chart_type}")
                     except Exception as e:
-                        print(f"DEBUG: Chart creation failed: {e}")
                         chart_info = None
             
             # 통계 응답 생성
@@ -1017,21 +969,21 @@ class QueryProcessorLocal:
             value_type = "장애시간(분)" if is_error_time else "발생건수"
             
             response_lines.append(f"## 📊 통계 요약")
-            response_lines.append(f"**총 {value_type}: {total_count}**")
+            response_lines.append(f"**이 {value_type}: {total_count}**")
             
             # 각종 통계 추가 (기존 로직 유지)
             if stats.get('yearly_stats'):
                 response_lines.append(f"\n## 📈 연도별 통계")
                 for year, count in sorted(stats['yearly_stats'].items()):
                     response_lines.append(f"* **{year}: {count}건**")
-                response_lines.append(f"\n**💡 총 합계: {sum(stats['yearly_stats'].values())}건**")
+                response_lines.append(f"\n**💡 이 합계: {sum(stats['yearly_stats'].values())}건**")
             
             if stats.get('monthly_stats'):
                 response_lines.append(f"\n## 📈 월별 통계")
                 sorted_months = sorted(stats['monthly_stats'].items(), key=lambda x: int(x[0].replace('월', '')))
                 for month, count in sorted_months:
                     response_lines.append(f"* **{month}: {count}건**")
-                response_lines.append(f"\n**💡 총 합계: {sum(stats['monthly_stats'].values())}건**")
+                response_lines.append(f"\n**💡 이 합계: {sum(stats['monthly_stats'].values())}건**")
             
             # 기타 통계들도 동일하게 추가...
             
@@ -1043,7 +995,6 @@ class QueryProcessorLocal:
             return final_answer
             
         except Exception as e:
-            print(f"ERROR: 문서 기반 통계 계산 실패: {e}")
             import traceback
             traceback.print_exc()
             return f"통계 계산 중 오류가 발생했습니다: {str(e)}"
@@ -1077,9 +1028,7 @@ class QueryProcessorLocal:
                                 'query': query,
                                 'is_error_time_query': db_stats['is_error_time_query']
                             }
-                            print(f"DEBUG: Chart created successfully - type: {chart_type}")
                     except Exception as e:
-                        print(f"DEBUG: Chart creation failed: {e}")
                         chart_info = None
             
             # 통계 응답 생성 (원인유형 특별 처리)
@@ -1091,7 +1040,7 @@ class QueryProcessorLocal:
             
             # 기본 요약
             response_lines.append(f"## 📊 통계 요약")
-            response_lines.append(f"**총 {value_type}: {total_value}**")
+            response_lines.append(f"**이 {value_type}: {total_value}**")
             
             # 원인유형별 통계 (우선 표시)
             if is_cause_type_query and db_stats.get('cause_type_stats'):
@@ -1101,15 +1050,15 @@ class QueryProcessorLocal:
                 for cause_type, count in cause_stats.items():
                     response_lines.append(f"* **{cause_type}: {count}건**")
                 
-                response_lines.append(f"\n**💡 총 원인유형 수: {len(cause_stats)}개**")
-                response_lines.append(f"**💡 총 합계: {sum(cause_stats.values())}건**")
+                response_lines.append(f"\n**💡 이 원인유형 수: {len(cause_stats)}개**")
+                response_lines.append(f"**💡 이 합계: {sum(cause_stats.values())}건**")
             
             # 연도별 통계
             if db_stats.get('yearly_stats'):
                 response_lines.append(f"\n## 📈 연도별 통계")
                 for year, count in sorted(db_stats['yearly_stats'].items()):
                     response_lines.append(f"* **{year}: {count}건**")
-                response_lines.append(f"\n**💡 총 합계: {sum(db_stats['yearly_stats'].values())}건**")
+                response_lines.append(f"\n**💡 이 합계: {sum(db_stats['yearly_stats'].values())}건**")
             
             # 월별 통계
             if db_stats.get('monthly_stats'):
@@ -1117,7 +1066,7 @@ class QueryProcessorLocal:
                 sorted_months = sorted(db_stats['monthly_stats'].items(), key=lambda x: int(x[0].replace('월', '')))
                 for month, count in sorted_months:
                     response_lines.append(f"* **{month}: {count}건**")
-                response_lines.append(f"\n**💡 총 합계: {sum(db_stats['monthly_stats'].values())}건**")
+                response_lines.append(f"\n**💡 이 합계: {sum(db_stats['monthly_stats'].values())}건**")
             
             # 등급별 통계
             if db_stats.get('grade_stats'):
@@ -1129,7 +1078,7 @@ class QueryProcessorLocal:
                     if grade in grade_stats:
                         response_lines.append(f"* **{grade}: {grade_stats[grade]}건**")
                 
-                response_lines.append(f"\n**💡 총 합계: {sum(grade_stats.values())}건**")
+                response_lines.append(f"\n**💡 이 합계: {sum(grade_stats.values())}건**")
             
             # 서비스별 통계 (상위 10개)
             if db_stats.get('service_stats'):
@@ -1152,14 +1101,14 @@ class QueryProcessorLocal:
                 response_lines.append(f"\n## 🕘 시간대별 통계")
                 for time, count in db_stats['time_stats']['daynight'].items():
                     response_lines.append(f"* **{time}: {count}건**")
-                response_lines.append(f"\n**💡 총 합계: {sum(db_stats['time_stats']['daynight'].values())}건**")
+                response_lines.append(f"\n**💡 이 합계: {sum(db_stats['time_stats']['daynight'].values())}건**")
             
             # 요일별 통계
             if db_stats.get('time_stats', {}).get('week'):
                 response_lines.append(f"\n## 📅 요일별 통계")
                 for day, count in db_stats['time_stats']['week'].items():
                     response_lines.append(f"* **{day}: {count}건**")
-                response_lines.append(f"\n**💡 총 합계: {sum(db_stats['time_stats']['week'].values())}건**")
+                response_lines.append(f"\n**💡 이 합계: {sum(db_stats['time_stats']['week'].values())}건**")
             
             final_answer = '\n'.join(response_lines)
             
@@ -1181,8 +1130,7 @@ class QueryProcessorLocal:
         
         try:
             if force_replaced_query != user_query:
-                if not self.debug_mode:
-                    st.success("✅ 맞춤형 프롬프트를 적용하여 더 정확한 답변을 제공합니다.")
+                st.success("✅ 맞춤형 프롬프트를 적용하여 더 정확한 답변을 제공합니다.")
                 return {
                     'transformed': True, 
                     'original_query': user_query, 
@@ -1194,8 +1142,7 @@ class QueryProcessorLocal:
             
             exact_result = self.reprompting_db_manager.check_reprompting_question(user_query)
             if exact_result['exists']:
-                if not self.debug_mode:
-                    st.success("✅ 맞춤형 프롬프트를 적용하여 더 정확한 답변을 제공합니다.")
+                st.success("✅ 맞춤형 프롬프트를 적용하여 더 정확한 답변을 제공합니다.")
                 return {
                     'transformed': True, 
                     'original_query': user_query, 
@@ -1214,7 +1161,7 @@ class QueryProcessorLocal:
                     transformed_query = user_query.replace(best_match['question'], best_match['custom_prompt'])
                 
                 is_transformed = transformed_query != user_query
-                if is_transformed and not self.debug_mode:
+                if is_transformed:
                     st.info("📋 유사 질문 패턴을 감지하여 질문을 최적화했습니다.")
                 return {
                     'transformed': is_transformed, 
@@ -1262,77 +1209,75 @@ class QueryProcessorLocal:
         if not query:
             return 'default'
         
-        print(f"DEBUG: Starting LLM-first query classification for: '{query}'")
-        
         try:
-            # 🔥 개선된 분류 프롬프트 - 의도 중심
+            # 개선된 분류 프롬프트 - 의도 중심
             classification_prompt = f"""당신은 IT 장애 관리 시스템의 질문 분석 전문가입니다.
-    사용자의 질문을 읽고 **진짜 의도**가 무엇인지 파악하여 정확히 분류하세요.
+사용자의 질문을 읽고 **진짜 의도**가 무엇인지 파악하여 정확히 분류하세요.
 
-    **중요: 키워드가 아닌 맥락과 의도로 판단하세요!**
+**중요: 키워드가 아닌 맥락과 의도로 판단하세요!**
 
-    ## 분류 기준
+## 분류 기준
 
-    ### 1. repair (복구/해결 방법 문의)
-    **사용자가 문제를 어떻게 해결할지 알고 싶어함**
-    - "어떻게 해결하나요?", "복구 방법은?", "조치 방법은?"
-    - "왜 이런 문제가 생기나요?", "원인이 뭔가요?"
-    - "~할 때 어떻게 하나요?", "~하려면 어떻게?"
+### 1. repair (복구/해결 방법 문의)
+**사용자가 문제를 어떻게 해결할지 알고 싶어함**
+- "어떻게 해결하나요?", "복구 방법은?", "조치 방법은?"
+- "왜 이런 문제가 생기나요?", "원인이 뭔가요?"
+- "~할 때 어떻게 하나요?", "~하려면 어떻게?"
 
-    예시:
-    - "스마트신청서 장애발생시 어떻게 해결해야 하나요?" → repair
-    - "로그인 안될 때 어떻게 하나요?" → repair  
-    - "API 연동 오류 해결 방법" → repair
-    - "접속 불가 원인 분석" → repair
+예시:
+- "스마트신청서 장애발생시 어떻게 해결해야 하나요?" → repair
+- "로그인 안 될 때 어떻게 하나요?" → repair  
+- "API 연동 오류 해결 방법" → repair
+- "접속 불가 원인 분석" → repair
 
-    ### 2. inquiry (장애 내역/목록 조회)
-    **사용자가 과거 장애 기록이나 목록을 보고 싶어함**
-    - "~한 장애 내역 보여줘", "~한 사례들 알려줘"
-    - "어떤 장애들이 있었나요?", "~한 장애 목록"
-    - "~에서 발생한 장애들"
+### 2. inquiry (장애 내역/목록 조회)
+**사용자가 과거 장애 기록이나 목록을 보고 싶어함**
+- "~한 장애 내역 보여줘", "~한 사례들 알려줘"
+- "어떤 장애들이 있었나요?", "~한 장애 목록"
+- "~에서 발생한 장애들"
 
-    예시:
-    - "ERP 장애 내역 알려줘" → inquiry
-    - "2024년에 발생한 장애 목록" → inquiry
-    - "로그인 실패 사례들 보여줘" → inquiry
-    - "야간에 발생한 장애 이력" → inquiry
+예시:
+- "ERP 장애 내역 알려줘" → inquiry
+- "2024년에 발생한 장애 목록" → inquiry
+- "로그인 실패 사례들 보여줘" → inquiry
+- "야간에 발생한 장애 이력" → inquiry
 
-    ### 3. statistics (통계/건수 문의)
-    **사용자가 숫자, 개수, 통계를 알고 싶어함**
-    - "몇 건 발생했나요?", "건수는?"
-    - "연도별/월별 통계", "얼마나 발생했나요?"
-    - "비율은?", "추이는?"
+### 3. statistics (통계/건수 문의)
+**사용자가 숫자, 개수, 통계를 알고 싶어함**
+- "몇 건 발생했나요?", "건수는?"
+- "연도별/월별 통계", "얼마나 발생했나요?"
+- "비율은?", "추이는?"
 
-    예시:
-    - "ERP 장애 몇건?" → statistics
-    - "2024년 장애건수" → statistics
-    - "월별 발생 현황" → statistics
-    - "서비스별 장애 비율" → statistics
+예시:
+- "ERP 장애 몇건?" → statistics
+- "2024년 장애건수" → statistics
+- "월별 발생 현황" → statistics
+- "서비스별 장애 비율" → statistics
 
-    ### 4. default (일반 질문)
-    **위 세 가지에 해당하지 않는 모든 질문**
+### 4. default (일반 질문)
+**위 세 가지에 해당하지 않는 모든 질문**
 
-    ## 판단 방법
+## 판단 방법
 
-    1. **문장의 종결 형태를 주목하세요**
-    - "어떻게~?", "방법은?", "~하려면?" → repair
-    - "알려줘", "보여줘", "목록", "내역" → inquiry  
-    - "몇건?", "얼마나?", "통계", "건수" → statistics
+1. **문장의 종결 형태를 주목하세요**
+- "어떻게~?", "방법은?", "~하려면?" → repair
+- "알려줘", "보여줘", "목록", "내역" → inquiry  
+- "몇건?", "얼마나?", "통계", "건수" → statistics
 
-    2. **사용자의 최종 목적을 파악하세요**
-    - 문제를 해결하고 싶음 → repair
-    - 기록을 보고 싶음 → inquiry
-    - 숫자를 알고 싶음 → statistics
+2. **사용자의 최종 목적을 파악하세요**
+- 문제를 해결하고 싶음 → repair
+- 기록을 보고 싶음 → inquiry
+- 숫자를 알고 싶음 → statistics
 
-    3. **맥락을 고려하세요**
-    - "스마트신청서 장애발생시 어떻게 해결해야 하나요?"
-        → "장애"라는 단어가 있어도, 의도는 "어떻게 해결"이므로 repair
+3. **맥락을 고려하세요**
+- "스마트신청서 장애발생시 어떻게 해결해야 하나요?"
+    → "장애"라는 단어가 있어도, 의도는 "어떻게 해결"이므로 repair
 
-    **사용자 질문:** {query}
+**사용자 질문:** {query}
 
-    **응답 형식:** 반드시 다음 중 하나만 출력: repair, inquiry, statistics, default
+**응답 형식:** 반드시 다음 중 하나만 출력: repair, inquiry, statistics, default
 
-    **답변:**"""
+**답변:**"""
 
             response = self.azure_openai_client.chat.completions.create(
                 model=self.model_name,
@@ -1351,36 +1296,27 @@ class QueryProcessorLocal:
             
             # 유효성 검사
             if query_type not in ['repair', 'inquiry', 'statistics', 'default']:
-                print(f"WARNING: Invalid LLM response '{query_type}', extracting valid type")
                 # 응답에서 유효한 타입 추출 시도
                 for valid_type in ['repair', 'inquiry', 'statistics', 'default']:
                     if valid_type in query_type:
                         query_type = valid_type
                         break
                 else:
-                    print(f"ERROR: Cannot extract valid type, using keyword fallback")
                     return self._keyword_based_fallback_classification(query)
-            
-            print(f"DEBUG: ✅ LLM classification result: {query_type}")
             
             # 신뢰도 계산 (간소화)
             confidence_score = self._calculate_llm_classification_confidence(query, query_type)
-            print(f"DEBUG: LLM confidence: {confidence_score:.2f}")
             
             # 신뢰도가 매우 낮을 때만 키워드 fallback
             if confidence_score < 0.3:  # 0.6에서 0.3으로 낮춤 - LLM을 더 신뢰
-                print(f"WARNING: Very low confidence, using keyword fallback")
                 fallback_type = self._keyword_based_fallback_classification(query)
-                print(f"DEBUG: Keyword fallback result: {fallback_type}")
                 return fallback_type
             
             return query_type
             
         except Exception as e:
-            print(f"ERROR: LLM classification failed: {e}")
             import traceback
             traceback.print_exc()
-            print(f"DEBUG: Using keyword fallback due to LLM error")
             return self._keyword_based_fallback_classification(query)
 
     def _keyword_based_fallback_classification(self, query):
@@ -1389,8 +1325,6 @@ class QueryProcessorLocal:
             return 'default'
         
         query_lower = query.lower()
-        
-        print(f"DEBUG: Using keyword-based fallback classification")
         
         # 1순위: repair 패턴
         repair_patterns = [
@@ -1402,7 +1336,6 @@ class QueryProcessorLocal:
         
         for pattern in repair_patterns:
             if re.search(pattern, query_lower):
-                print(f"DEBUG: Keyword matched repair pattern: {pattern}")
                 return 'repair'
         
         # 2순위: inquiry 패턴
@@ -1414,7 +1347,6 @@ class QueryProcessorLocal:
         
         for pattern in inquiry_patterns:
             if re.search(pattern, query_lower):
-                print(f"DEBUG: Keyword matched inquiry pattern: {pattern}")
                 return 'inquiry'
         
         # 3순위: statistics 패턴  
@@ -1426,7 +1358,6 @@ class QueryProcessorLocal:
         
         for pattern in statistics_patterns:
             if re.search(pattern, query_lower):
-                print(f"DEBUG: Keyword matched statistics pattern: {pattern}")
                 return 'statistics'
         
         # 간단한 키워드 카운트
@@ -1437,8 +1368,6 @@ class QueryProcessorLocal:
         stats_count = sum(1 for kw in ['몇건', '건수', '통계', '현황', '개수', '얼마나'] 
                         if kw in query_lower)
         
-        print(f"DEBUG: Keyword counts - repair: {repair_count}, inquiry: {inquiry_count}, stats: {stats_count}")
-        
         if repair_count >= 1:
             return 'repair'
         elif inquiry_count >= 1:
@@ -1446,7 +1375,6 @@ class QueryProcessorLocal:
         elif stats_count >= 1:
             return 'statistics'
         
-        print(f"DEBUG: No clear keyword match, returning default")
         return 'default'
 
     def _calculate_llm_classification_confidence(self, query, predicted_type):
@@ -1485,7 +1413,6 @@ class QueryProcessorLocal:
             return 0.5
             
         except Exception as e:
-            print(f"DEBUG: Confidence calculation error: {e}")
             return 0.5  # 기본값
         
     def _extract_chart_type_from_query(self, query):
@@ -1505,7 +1432,6 @@ class QueryProcessorLocal:
         for chart_type, keywords in chart_type_keywords.items():
             for keyword in keywords:
                 if keyword in query_lower:
-                    print(f"DEBUG: Detected chart type '{chart_type}' from keyword '{keyword}'")
                     return chart_type
         
         return None
@@ -1545,8 +1471,6 @@ class QueryProcessorLocal:
         chart_type = requested_chart_type or default_chart_type
         if default_chart_type == 'line' and len(data) == 1:
             chart_type = 'bar'
-        
-        print(f"DEBUG: Using {'user-requested' if requested_chart_type else 'default'} chart type: {chart_type}")
         
         return data, chart_type
 
@@ -1629,10 +1553,6 @@ class QueryProcessorLocal:
         
         response_text, chart_info = response if isinstance(response, tuple) else (response, chart_info)
         
-        print(f"PROCESSOR_DEBUG: Query type 전달: {query_type}")
-        print(f"PROCESSOR_DEBUG: Response 길이: {len(response_text)}")
-        print(f"PROCESSOR_DEBUG: REPAIR_BOX 포함 여부: {'[REPAIR_BOX_START]' in response_text}")
-        
         self.ui_components.display_response_with_query_type_awareness(
             response, 
             query_type=query_type, 
@@ -1640,7 +1560,7 @@ class QueryProcessorLocal:
         )
 
     def process_query(self, query, query_type=None):
-        """🚨 메인 쿼리 처리 - RAG 데이터 무결성 절대 보장"""
+        """메인 쿼리 처리 - RAG 데이터 무결성 절대 보장"""
 
         if not hasattr(st.session_state, 'embedding_cache'):
             st.session_state.embedding_cache = {}
@@ -1665,8 +1585,6 @@ class QueryProcessorLocal:
                 force_replaced_query = self.force_replace_problematic_queries(query)
                 
                 if force_replaced_query != original_query:
-                    if self.debug_mode:
-                        st.info(f"🔄 쿼리 강제 치환: '{original_query}' → '{force_replaced_query}'")
                     query = force_replaced_query
                 
                 reprompting_info = self.check_and_transform_query_with_reprompting(query)
@@ -1679,9 +1597,6 @@ class QueryProcessorLocal:
                     with st.spinner("🔍 질문 분석 중..."):
                         query_type = self.classify_query_type_with_llm(processing_query)
                 
-                if self.debug_mode and query_type.lower() == 'inquiry':
-                    st.info("📋 장애 내역 조회 모드로 분기되었습니다. 복구방법 박스 없이 깔끔한 목록을 제공합니다.")
-                
                 target_service_name = self.search_manager.extract_service_name_from_query(processing_query)
                 
                 with st.spinner("📄 문서 검색 중..."):
@@ -1693,7 +1608,7 @@ class QueryProcessorLocal:
                             self.ui_components.display_documents_with_quality_info(documents)
                         
                         with st.spinner("🤖 AI 답변 생성 중..."):
-                            # 🚨 무결성 보장 응답 생성 메서드만 사용
+                            # 무결성 보장 응답 생성 메서드만 사용
                             response = self.generate_rag_response_with_data_integrity(
                                 query, documents, query_type, time_conditions, department_conditions, reprompting_info
                             )
@@ -1719,7 +1634,7 @@ class QueryProcessorLocal:
                             document_count = len(fallback_documents)
                             
                             if fallback_documents:
-                                # 🚨 무결성 보장 응답 생성 메서드만 사용
+                                # 무결성 보장 응답 생성 메서드만 사용
                                 response = self.generate_rag_response_with_data_integrity(
                                     query, fallback_documents, query_type, time_conditions, department_conditions, reprompting_info
                                 )
@@ -1832,17 +1747,14 @@ class QueryProcessorLocal:
         statistics_indicators = ['건수', '통계', '현황', '분포', '연도별', '월별', '차트']
         statistics_count = sum(1 for indicator in statistics_indicators if indicator in response_lower)
         
-        print(f"DEBUG RAG 판단: rag_markers={rag_marker_count}, rag_patterns={rag_pattern_count}, general_patterns={general_pattern_count}, non_rag_keywords={non_rag_keyword_count}")
-        
         if rag_marker_count >= 3 or rag_pattern_count >= 2:
             return True
         
-        if statistics_count >= 2 and any(word in response_lower for word in ['차트', '표', '총', '합계']):
+        if statistics_count >= 2 and any(word in response_lower for word in ['차트', '표', '이', '합계']):
             return True
         
         if general_pattern_count >= 2 or non_rag_keyword_count >= 3:
             if rag_marker_count == 0 and rag_pattern_count == 0:
-                print(f"DEBUG: 일반적 답변으로 판단됨 (general_pattern_count={general_pattern_count}, non_rag_keyword_count={non_rag_keyword_count})")
                 return False
         
         if rag_marker_count > 0 or rag_pattern_count > 0:
@@ -1852,7 +1764,6 @@ class QueryProcessorLocal:
             if non_rag_keyword_count < 2:
                 return True
         
-        print(f"DEBUG: 기본적으로 일반 답변으로 판단됨")
         return False
 
     def _get_failure_reason(self, response_text: str, document_count: int) -> str:
@@ -1888,11 +1799,9 @@ class QueryProcessorLocal:
         """쿼리 활동 로깅"""
         try:
             if hasattr(self, '_manual_logging_enabled') and not self._manual_logging_enabled:
-                print(f"DEBUG: 수동 로깅이 비활성화되어 로깅을 건너뜁니다.")
                 return
             
             if hasattr(st.session_state, 'current_query_logged') and st.session_state.current_query_logged:
-                print(f"DEBUG: 현재 쿼리가 이미 로깅되어 중복 로깅을 방지합니다.")
                 return
                 
             if self.monitoring_manager:
@@ -1912,11 +1821,9 @@ class QueryProcessorLocal:
                 
                 if hasattr(st.session_state, 'current_query_logged'):
                     st.session_state.current_query_logged = True
-                    
-                print(f"DEBUG: 쿼리 로깅 완료 - Query: {query[:50]}..., Success: {success}")
                 
         except Exception as e:
-            print(f"모니터링 로그 실패: {str(e)}")
+            pass
 
     def force_replace_problematic_queries(self, query):
         """문제 쿼리 치환 로직 단순화"""

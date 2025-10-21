@@ -21,8 +21,8 @@ class VectorEmbeddingClient:
             st.session_state.embedding_cache = {}
     
     def _get_cache_key(self, text):
-        """텍스트에 대한 캐시 키 생성"""
-        return hashlib.md5(f"{text}_{self.embedding_model}".encode()).hexdigest()
+        """텍스트에 대한 캐시 키 생성 - SHA-256 사용으로 보안 강화"""
+        return hashlib.sha256(f"{text}_{self.embedding_model}".encode('utf-8')).hexdigest()
     
     def _is_cache_valid(self, cache_entry):
         """캐시 항목이 유효한지 확인"""

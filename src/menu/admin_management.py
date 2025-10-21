@@ -218,7 +218,6 @@ def add_new_admin(auth_manager, current_admin):
             with st.spinner("관리자를 추가하는 중..."):
                 if auth_manager.add_admin(new_username, new_password, new_name, new_role):
                     st.success(f"✅ 관리자 '{new_username}'가 성공적으로 추가되었습니다.")
-                    st.balloons()
                     
                     # 추가된 정보 표시
                     st.info(f"""

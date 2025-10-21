@@ -3,6 +3,8 @@ import streamlit as st
 import bcrypt
 import sqlite3
 import os
+import secrets
+import string
 from typing import Dict, List, Optional
 from pathlib import Path
 from datetime import datetime
@@ -19,6 +21,32 @@ class AuthManager:
         self.db_path = os.path.join(self.db_base_path, 'admin.db')
         self.ensure_database()
         self.initialize_default_admin()
+    
+    def _generate_secure_password(self, length: int = 12) -> str:
+        """보안이 강화된 랜덤 비밀번호 생성"""
+        # 비밀번호에 사용할 문자들 정의
+        lowercase = string.ascii_lowercase
+        uppercase = string.ascii_uppercase
+        digits = string.digits
+        special_chars = "!@#$%^&*"
+        
+        # 각 카테고리에서 최소 1개씩 포함
+        password = [
+            secrets.choice(lowercase),
+            secrets.choice(uppercase),
+            secrets.choice(digits),
+            secrets.choice(special_chars)
+        ]
+        
+        # 나머지 길이만큼 랜덤하게 채우기
+        all_chars = lowercase + uppercase + digits + special_chars
+        for _ in range(length - 4):
+            password.append(secrets.choice(all_chars))
+        
+        # 리스트를 섞어서 순서를 랜덤화
+        secrets.SystemRandom().shuffle(password)
+        
+        return ''.join(password)
     
     def ensure_database(self):
         """데이터베이스 및 테이블 생성"""
@@ -106,8 +134,23 @@ class AuthManager:
         
         if count == 0:
             default_username = 'admin'
-            default_password = 'admin123!'
             default_name = '시스템 관리자'
+            
+            # 환경변수에서 기본 비밀번호 확인, 없으면 보안 랜덤 비밀번호 생성
+            default_password = os.getenv('DEFAULT_ADMIN_PASSWORD')
+            if not default_password:
+                default_password = self._generate_secure_password()
+                print("=" * 60)
+                print("⚠️  보안 알림: 기본 관리자 계정이 생성되었습니다")
+                print("=" * 60)
+                print(f"사용자명: {default_username}")
+                print(f"비밀번호: {default_password}")
+                print("=" * 60)
+                print("⚠️  보안을 위해 첫 로그인 후 반드시 비밀번호를 변경하세요!")
+                print("⚠️  이 정보는 다시 표시되지 않습니다!")
+                print("=" * 60)
+            else:
+                print(f"환경변수에서 기본 관리자 비밀번호를 읽어왔습니다: {default_username}")
             
             password_hash = self._hash_password(default_password)
             
@@ -118,7 +161,6 @@ class AuthManager:
                   datetime.now().isoformat(), 1))
             
             conn.commit()
-            print(f"기본 관리자 계정이 생성되었습니다: {default_username} / {default_password}")
         
         conn.close()
     
@@ -446,9 +488,13 @@ class AuthManager:
                     print(f"관리자 '{username}'는 이미 존재합니다. 건너뜁니다.")
                     continue
                 
-                # JSON의 SHA256 해시를 bcrypt로 재해싱할 수 없으므로
-                # 기본 비밀번호로 설정하고 변경하도록 안내
-                temp_password = 'changeMe123!'
+                # 환경변수에서 마이그레이션용 임시 비밀번호 확인, 없으면 보안 랜덤 비밀번호 생성
+                temp_password = os.getenv('MIGRATION_TEMP_PASSWORD')
+                if not temp_password:
+                    temp_password = self._generate_secure_password()
+                    print(f"관리자 '{username}' 마이그레이션용 임시 비밀번호: {temp_password}")
+                    print("⚠️  보안을 위해 첫 로그인 후 반드시 비밀번호를 변경하세요!")
+                
                 password_hash = self._hash_password(temp_password)
                 
                 cursor.execute('''
@@ -463,8 +509,6 @@ class AuthManager:
                     info.get('last_login'),
                     1 if info.get('is_active', True) else 0
                 ))
-                
-                print(f"관리자 '{username}' 마이그레이션 완료. 임시 비밀번호: {temp_password}")
             
             conn.commit()
             conn.close()

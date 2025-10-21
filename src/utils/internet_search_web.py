@@ -4,13 +4,12 @@ from typing import List, Dict, Optional
 import re
 
 class InternetSearchManager:
-    """SerpApi를 사용한 인터넷 검색 관리 클래스 (웹 검색 전용, DEBUG 모드 지원)"""
+    """SerpApi를 사용한 인터넷 검색 관리 클래스 (웹 검색 전용)"""
     
     def __init__(self, config):
         self.config = config
         self.serpapi_key = config.serpapi_key
         self.base_url = "https://serpapi.com/search"
-        self.debug_mode = getattr(config, 'debug_mode', False)
     
     def is_available(self) -> bool:
         """SerpApi 사용 가능 여부 확인"""
@@ -61,7 +60,7 @@ class InternetSearchManager:
         return search_query
     
     def search_google(self, query: str, service_name: str = None, num_results: int = 6) -> List[Dict]:
-        """Google 검색 실행 (웹 검색 전용, DEBUG 모드 지원)"""
+        """Google 검색 실행 (웹 검색 전용)"""
         if not self.is_available():
             st.error("🌐 SerpApi 키가 설정되지 않았습니다. 웹 검색을 사용할 수 없습니다.")
             return []
@@ -69,10 +68,6 @@ class InternetSearchManager:
         try:
             # 검색 키워드 최적화
             search_query = self.extract_search_keywords(query, service_name)
-            
-            # DEBUG 모드에서만 검색 키워드 표시
-            if self.debug_mode:
-                st.info(f"🔍 Google 검색 중: {search_query}")
             
             # SerpApi 요청 파라미터
             params = {
@@ -235,10 +230,6 @@ class InternetSearchManager:
             # 신뢰성 평가 실행
             reliability_assessment = self.assess_search_reliability(search_results, query)
             
-            # DEBUG 모드에서만 신뢰성 평가 표시
-            if self.debug_mode:
-                st.info(f"📊 신뢰성 평가: {reliability_assessment['reliability_level'].upper()} ({reliability_assessment['reliability_score']}/100점)")
-            
             # 검색 결과 포맷팅
             search_context = self.format_search_results_for_llm(search_results)
             
@@ -290,22 +281,8 @@ class InternetSearchManager:
             else:
                 final_response = llm_response
             
-            # 신뢰성 정보를 답변 하단에 추가 (DEBUG 모드가 아닐 때는 간소화)
-            if self.debug_mode:
-                reliability_info = f"""
-
----
-**🔍 검색 결과 신뢰성 평가**
-- **신뢰성 수준**: {reliability_assessment['reliability_level'].upper()} ({reliability_assessment['reliability_score']}/100점)
-- **평가 근거**: {reliability_assessment['assessment_reason']}
-- **권장사항**: {'신뢰할 만한 결과로 참고 가능' if reliability_assessment['reliability_level'] == 'high' 
-                    else '추가 확인 및 전문가 상담 권장' if reliability_assessment['reliability_level'] == 'medium'
-                    else '일반적 접근법으로 활용, 구체적 환경에서 재검증 필요' if reliability_assessment['reliability_level'] == 'low'
-                    else '참고용으로만 활용, 전문가 상담 필수'}
-"""
-            else:
-                # 운영 모드에서는 간단한 신뢰성 정보만 표시
-                reliability_info = f"""
+            # 운영 모드에서는 간단한 신뢰성 정보만 표시
+            reliability_info = f"""
 
 ---
 **📋 참고사항**: 이 답변은 웹 검색을 통해 수집된 정보를 바탕으로 생성되었습니다. 실제 적용 시에는 해당 환경의 특성을 고려하시기 바랍니다.

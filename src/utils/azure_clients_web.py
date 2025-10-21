@@ -18,15 +18,6 @@ class AzureClientManager:
                 api_version=_self.config.azure_openai_api_version
             )
             
-            # 연결 테스트 (DEBUG 모드에서만 표시)
-            if hasattr(_self.config, 'debug_mode') and _self.config.debug_mode:
-                test_response = azure_openai_client.chat.completions.create(
-                    model=_self.config.azure_openai_model,
-                    messages=[{"role": "user", "content": "Hello"}],
-                    max_tokens=10
-                )
-                st.success("🤖 Azure OpenAI 연결 성공!")
-            
             return azure_openai_client, True
             
         except Exception as e:

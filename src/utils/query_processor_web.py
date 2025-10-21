@@ -6,7 +6,7 @@ from utils.ui_components_web import UIComponents
 from utils.internet_search_web import InternetSearchManager
 
 class QueryProcessor:
-    """웹 검색 기반 쿼리 처리 관리 클래스 (DEBUG 모드 지원, IT 관련 질문만 처리, 세션 분리 지원)"""
+    """웹 검색 기반 쿼리 처리 관리 클래스 (IT 관련 질문만 처리, 세션 분리 지원)"""
     
     def __init__(self, azure_openai_client, model_name, config=None, session_key="web_chatbot"):
         self.azure_openai_client = azure_openai_client
@@ -15,7 +15,6 @@ class QueryProcessor:
         self.config = config if config else AppConfig()
         self.ui_components = UIComponents()
         self.internet_search = InternetSearchManager(self.config)
-        self.debug_mode = getattr(config, 'debug_mode', False)
         
         # 웹 버전 전용 세션 키 설정
         self.session_key = session_key
@@ -65,16 +64,9 @@ class QueryProcessor:
             )
             
             result = response.choices[0].message.content.strip().upper()
-            
-            # DEBUG 모드에서만 판단 결과 표시
-            if self.debug_mode:
-                st.info(f"🔍 DEBUG: IT 관련성 판단 결과 - {result}")
-            
             return result == "YES"
             
         except Exception as e:
-            if self.debug_mode:
-                st.warning(f"IT 관련성 판단 실패, 기본값 사용: {str(e)}")
             # 판단 실패 시 안전하게 IT 관련으로 간주
             return True
 
@@ -151,8 +143,6 @@ IT 기술 관련 질문으로 다시 문의해주시기 바랍니다.
             return query_type
             
         except Exception as e:
-            if self.debug_mode:
-                st.warning(f"쿼리 분류 실패, 기본값 사용: {str(e)}")
             return 'default'
 
     def extract_service_name_from_query(self, query):
@@ -202,11 +192,10 @@ IT 기술 관련 질문으로 다시 문의해주시기 바랍니다.
         return True
 
     def _generate_web_search_response(self, query, target_service_name, query_type, type_labels):
-        """웹 검색 기반 응답 생성 (DEBUG 모드 지원)"""
+        """웹 검색 기반 응답 생성"""
         try:
             # 웹 검색 수행
-            search_spinner_text = "🔍 웹에서 관련 정보 검색 중..." if not self.debug_mode else "🔍 DEBUG: 웹에서 관련 정보 검색 중..."
-            with st.spinner(search_spinner_text):
+            with st.spinner("🔍 웹에서 관련 정보 검색 중..."):
                 # 쿼리 타입별 검색 설정 가져오기
                 search_settings = self.config.get_search_quality_settings(query_type)
                 
@@ -221,24 +210,8 @@ IT 기술 관련 질문으로 다시 문의해주시기 바랍니다.
                     # 검색 결과 품질 검증
                     reliability_assessment = self.internet_search.assess_search_reliability(search_results, query)
                     
-                    # DEBUG 모드에서만 검색 결과 상세 표시
-                    if self.debug_mode:
-                        with st.expander(f"🔍 웹 검색 결과 ({len(search_results)}개)", expanded=False):
-                            st.info(f"🎯 검색 키워드: {self.internet_search.extract_search_keywords(query, target_service_name)}")
-                            st.markdown("---")
-                            
-                            for i, result in enumerate(search_results, 1):
-                                st.markdown(f"#### 🔗 검색 결과 {i}")
-                                st.markdown(f"**제목**: {result['title']}")
-                                st.markdown(f"**출처**: {result['source']}")
-                                st.markdown(f"**내용**: {result['snippet']}")
-                                st.markdown(f"**링크**: [바로가기]({result['link']})")
-                                if i < len(search_results):
-                                    st.divider()
-                    
                     # AI 답변 생성 및 표시
-                    answer_spinner_text = "🤖 웹 검색 정보를 바탕으로 AI 답변 생성 중..." if not self.debug_mode else "🤖 DEBUG: AI 답변 생성 중..."
-                    with st.spinner(answer_spinner_text):
+                    with st.spinner("🤖 웹 검색 정보를 바탕으로 AI 답변 생성 중..."):
                         internet_response = self.internet_search.generate_internet_search_response(
                             self.azure_openai_client, query, target_service_name, 
                             search_results, self.model_name, query_type
@@ -271,10 +244,7 @@ IT 기술 관련 질문으로 다시 문의해주시기 바랍니다.
                         
                 else:
                     # 검색 결과 없을 때
-                    if self.debug_mode:
-                        st.warning("🌐 DEBUG: 관련 웹 정보를 찾을 수 없습니다.")
-                    else:
-                        st.info("🌐 관련 웹 정보를 찾을 수 없어 일반적인 IT 지식으로 답변드립니다.")
+                    st.info("🌐 관련 웹 정보를 찾을 수 없어 일반적인 IT 지식으로 답변드립니다.")
                     
                     # 검색 결과 없음에도 일반적인 답변 제공
                     with st.spinner("🤖 일반적인 IT 지식으로 답변 생성 중..."):
@@ -300,10 +270,7 @@ IT 기술 관련 질문으로 다시 문의해주시기 바랍니다.
                     st.session_state[self.messages_key].append({"role": "assistant", "content": no_results_response})
                     
         except Exception as e:
-            if self.debug_mode:
-                st.error(f"🌐 DEBUG: 웹 검색 중 오류가 발생했습니다: {str(e)}")
-            else:
-                st.error("🌐 웹 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해보세요.")
+            st.error("🌐 웹 검색 중 오류가 발생했습니다. 잠시 후 다시 시도해보세요.")
             
             # 오류 발생 시에도 일반적인 답변 시도
             try:
@@ -377,10 +344,9 @@ IT 기술 관련 질문으로 다시 문의해주시기 바랍니다.
             return response.choices[0].message.content
             
         except Exception as e:
-            error_detail = str(e) if self.debug_mode else "처리 중 오류가 발생했습니다"
             return f"""⚠️ **일반적인 IT 문제 해결 접근법:**
 
-죄송합니다. 답변 생성 중 오류가 발생했습니다: {error_detail}
+죄송합니다. 답변 생성 중 오류가 발생했습니다.
 
 **기본적인 문제 해결 단계:**
 1. **문제 상황 파악**: 정확한 오류 메시지와 발생 조건 확인
@@ -402,24 +368,18 @@ IT 기술 관련 질문으로 다시 문의해주시기 바랍니다.
         return purposes.get(query_type, purposes['default'])
 
     def process_query(self, query, query_type=None):
-        """웹 검색 기반 쿼리 처리 (IT 관련 질문만 처리, DEBUG 모드 지원, 세션 분리)"""
+        """웹 검색 기반 쿼리 처리 (IT 관련 질문만 처리, 세션 분리)"""
         with st.chat_message("assistant"):
             # 1단계: IT 관련 질문인지 먼저 확인
-            validation_spinner_text = "🔍 질문 유형 검증 중..." if not self.debug_mode else "🔍 DEBUG: IT 관련성 검증 중..."
-            with st.spinner(validation_spinner_text):
+            with st.spinner("🔍 질문 유형 검증 중..."):
                 if not self.is_it_related_query(query):
                     # IT 관련이 아닌 경우 거부 메시지 표시 후 처리 중단
                     self.show_non_it_response(query)
                     return
             
-            # IT 관련 질문으로 확인됨 - 기존 처리 로직 계속 진행
-            if self.debug_mode:
-                st.success("✅ DEBUG: IT 관련 질문으로 확인됨")
-
             # LLM 기반 쿼리 타입 자동 분류
             if query_type is None:
-                classify_spinner_text = "🤖 질문 유형 분석 중..." if not self.debug_mode else "🤖 DEBUG: 질문 유형 분석 중..."
-                with st.spinner(classify_spinner_text):
+                with st.spinner("🤖 질문 유형 분석 중..."):
                     query_type = self.classify_query_type_with_llm(query)
                     
                     # 분류 결과 표시
@@ -429,10 +389,6 @@ IT 기술 관련 질문으로 다시 문의해주시기 바랍니다.
                         'similar': '📄 유사사례 참조', 
                         'default': '📋 일반 문의'
                     }
-                    
-                    # DEBUG 모드에서만 상세 분류 정보 표시
-                    if self.debug_mode:
-                        st.info(f"📋 DEBUG: 질문 유형 분석 결과 - **{type_labels.get(query_type, '📋 일반 문의')}**")
             else:
                 type_labels = {
                     'repair': '🔧 문제 해결방법',
@@ -443,10 +399,6 @@ IT 기술 관련 질문으로 다시 문의해주시기 바랍니다.
             
             # 서비스명 추출
             target_service_name = self.extract_service_name_from_query(query)
-            
-            if target_service_name:
-                if self.debug_mode:
-                    st.success(f"🎯 DEBUG: 감지된 대상 서비스 - **{target_service_name}**")
             
             # SerpApi 설정 확인
             if not self.internet_search.is_available():
