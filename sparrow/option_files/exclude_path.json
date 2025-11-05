@@ -1,9 +1,0 @@
-[ {
-  "excludedPathId" : 1,
-  "excludedPath" : "/usr/include/*\n/inculde/*\n*icrosoft*include*\n*icrosoft*vc98*\n*icrosoft*sdks\\*\n*indows*kits\\*\n*\\mingw\\*\n*jquery*.js\n*node_modules*",
-  "excludedComment" : "-",
-  "updateUserId" : "82229670",
-  "updateDateTime" : 1683701039058,
-  "checkerIds" : [ ],
-  "updateUserName" : null
-} ]

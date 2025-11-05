@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<option>
-    <category name="DYNAMIC_CODE_MANIPULATION.JS">
-        <item name="forbidden_operator" type="string" required="false" variable="true" regexp="true">
-            <value>$where</value>
-        </item>
-    </category>
-</option>

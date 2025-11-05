@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<option>
-    <category name="EXCESSIVE_SESSION_TIMEOUT.CAKEPHP.PHP">
-        <item name="min_timeout" type="string" required="true" variable="false">
-            <value>medium</value>
-        </item>
-    </category>
-</option>
-

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<option>
-    <category name="BAD_INI.PERSISTENT_COOKIE.PHP">
-        <item name="max_lifetime" type="decimal" required="true" variable="false">
-            <value>3600</value>
-        </item>
-    </category>
-</option>
-

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<option>
-    <category name="HASH.INSECURE_HASH_ITERATION_COUNT.CSHARP">
-        <item name="iter_num" type="decimal" required="false" variable="true" regexp="false">
-            <value>10000</value>
-        </item>
-    </category>
-</option>

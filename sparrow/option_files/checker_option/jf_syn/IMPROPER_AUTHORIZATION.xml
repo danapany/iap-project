@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<option>
-    <category name="IMPROPER_AUTHORIZATION">
-        <item name="class_name_to_be_authorized" type="string" required="true" variable="true" regexp="true">
-            <value>(.+\.)?KrdMessage</value>
-        </item>
-    </category>
-</option>
-

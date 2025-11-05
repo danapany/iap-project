@@ -1,8 +1,0 @@
-{
-  "sources" : [ "D:\\workspace\\iap-project\\src" ],
-  "exts" : [ "abap", "as", "ascx", "asp", "aspx", "c", "cbl", "cc", "cls", "cob", "config", "cp", "cpp", "cs", "cshtml", "cxx", "dart", "dbio", "ec", "gc", "go", "h", "hh", "hpp", "htm", "html", "inc", "ini", "inl", "java", "js", "json", "jsp", "jspf", "jspx", "jsx", "kt", "lua", "m", "map", "mm", "mxml", "page", "pc", "php", "pl", "properties", "py", "rs", "sass", "sc", "scn", "scss", "sh", "sql", "sqx", "swift", "tbc", "tbco", "tcc", "tgr", "tld", "toml", "ts", "tsx", "txt", "vb", "vbs", "vue", "xadl", "xfdl", "xhtml", "xjs", "xml", "xsl", "xsql" ],
-  "language" : "all,c",
-  "excludeIssue" : null,
-  "excludeExtract" : null,
-  "tempPath" : null
-}

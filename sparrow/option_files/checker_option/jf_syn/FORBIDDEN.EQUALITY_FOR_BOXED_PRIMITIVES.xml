@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<option>
-    <category name="FORBIDDEN.EQUALITY_FOR_BOXED_PRIMITIVES">
-        <item name="boxed_type" type="string" required="true" variable="true" regexp="true">
-            <value>Boolean</value>
-            <value>Integer</value>
-        </item>
-    </category>
-</option>

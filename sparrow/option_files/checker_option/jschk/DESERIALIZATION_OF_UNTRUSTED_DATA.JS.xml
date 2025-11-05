@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<option>
-    <category name="DESERIALIZATION_OF_UNTRUSTED_DATA.JS">
-        <item name="forbidden_method" type="string" required="false" variable="true" regexp="true">
-            <value>__sparrow_required__js-yaml.load</value>
-        </item>
-    </category>
-</option>
