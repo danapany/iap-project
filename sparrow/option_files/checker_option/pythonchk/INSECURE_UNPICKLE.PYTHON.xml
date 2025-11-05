@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?><option>
+    <category name="INSECURE_UNPICKLE.PYTHON">
+        <item name="taint_source" type="string" required="true" variable="true" regexp="true">
+            <!--src general-->
+<value>return of fqn("read")</value>
+<value>return of fqn("open")</value>
+<value>return of fqn("os.open")</value>
+<value>return of fqn("os.getenv")</value>
+<!-- ___ -->
+            <!--src django-->
+<value>variable of fqn("django.http.HttpRequest.GET")</value>
+<value>return of fqn("django.http.HttpRequest.field")</value>
+<value>variable of fqn(reg(".*\.GET"))</value>
+<value>return of fqn(reg(".*\.field"))</value>
+<!-- ___ -->
+            <!--src flask-->
+<value>variable of fqn("flask.request")</value>
+<value>variable of name("flask.request")</value>
+<value>variable of name("request")</value>
+<!-- ___ -->
+        </item>
+        <item name="taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value>param(*) of fqn("yaml.load")</value>
+        </item>
+        <item name="taint_propagator" type="string" required="false" variable="true" regexp="true">
+            <value>operand(*) of "." to return</value>
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+
+        </item>
+        <item name="taint_filter_function_fqn" type="string" required="false" variable="true" regexp="true">
+            <value>sparrow.my.filter.utils.is_safe()</value>
+        </item>
+        <item name="custom_taint_sink" type="string" required="false" variable="true" regexp="true">
+            <value>param(*) of fqn("pickle.load")</value>
+            <value>param(*) of fqn("pickle.loads")</value>
+            <value>param(*) of fqn("cPickle.load")</value>
+            <value>param(*) of fqn("cPickle.loads")</value>
+        </item>
+    </category>
+</option>
+

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="KEY_MANAGEMENT.HARDCODED_HMAC_KEY.CSHARP">
+        <item name="hmac_algorithm" type="string" required="false" variable="true" regexp="true">
+            <value>HMACMD5</value>
+            <value>HMACRIPEMD160</value>
+            <value>HMACSHA1</value>
+            <value>HMACSHA256</value>
+            <value>HMACSHA384</value>
+            <value>HMACSHA512</value>
+        </item>
+    </category>
+</option>

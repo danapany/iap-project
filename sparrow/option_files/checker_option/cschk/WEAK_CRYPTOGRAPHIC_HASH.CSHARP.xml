@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="WEAK_CRYPTOGRAPHIC_HASH.CSHARP">
+        <item name="weak_cryptographic_hash" type="string" required="false" variable="true" regexp="true">
+            <value>System.Security.Cryptography.MD5CryptoServiceProvider</value>
+            <value>System.Security.Cryptography.SHA1CryptoServiceProvider</value>
+        </item>
+    </category>
+</option>

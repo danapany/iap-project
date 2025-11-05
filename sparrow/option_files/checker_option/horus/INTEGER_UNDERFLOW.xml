@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+	<category name="INTEGER_UNDERFLOW">
+		<item name="source_call" type="string" required="false" variable="true" description="List of functions which return sensitive information">
+       	</item>
+	</category>
+</option>
+

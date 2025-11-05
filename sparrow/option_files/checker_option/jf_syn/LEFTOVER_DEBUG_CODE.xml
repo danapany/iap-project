@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<option>
+    <category name="LEFTOVER_DEBUG_CODE">
+        <item name="exclude_class" type="string" required="false" variable="true" regexp="true">
+            <value></value>
+        </item>
+        <item name="check_class_type" type="string" required="false" variable="true" regexp="false">
+            <value>HttpServletRequest</value> <!-- class name in case of cannot find FQN of class name -->
+            <value>javax.servlet.http.HttpServletRequest</value> <!-- FQN class name -->
+        </item>
+        <item name="check_method" type="string" required="false" variable="true" regexp="false">
+            <value>getParameter</value>
+        </item>
+        <item name="method_param_value" type="string" required="false" variable="true" regexp="true">
+            <value>debug</value>
+        </item>
+        <item name="debug_message_pattern" type="string" required="false" variable="true" regexp="true">
+            <value>.*debug.*</value>
+            <value>.*Debug.*</value>
+            <value>.*DEBUG.*</value>
+        </item>
+        <item name="exclude_extend_class" type="string" required="false" variable="true" regexp="true">
+        </item>
+		<item name="main_class" type="string" required="false" variable="true" regexp="true">
+			<value></value>
+		</item>
+    </category>
+</option>

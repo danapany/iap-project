@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="PREVENT_DESERIALIZATION_OF_UNTRUSTED_DATA">
+        <item name="exclude_path" type="string" required="false" variable="true" regexp="true">
+            <!--value>.*\\test\\.*</value-->
+            <value></value>
+        </item>
+        <item name="exclude_method" type="string" required="false" variable="true" regexp="true">
+            <!--value>.*Print</value-->
+            <value></value>
+        </item>
+    </category>
+</option>
+

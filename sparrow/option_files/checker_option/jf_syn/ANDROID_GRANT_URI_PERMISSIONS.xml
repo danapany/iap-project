@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<option>
+    <category name="ANDROID_GRANT_URI_PERMISSIONS">
+        <item name="class_fqn" type="string" required="true" variable="true">
+            <value>android.content.Intent</value>
+        </item>
+        <item name="method_name" type="string" required="true" variable="true">
+            <value>addFlags</value>
+        </item>
+        <item name="forbidden_flag" type="string" required="true" variable="true">
+            <value>android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION</value>
+            <value>android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION</value>
+            <value>Intent.FLAG_GRANT_READ_URI_PERMISSION</value>
+            <value>Intent.FLAG_GRANT_WRITE_URI_PERMISSION</value>
+            <value>FLAG_GRANT_READ_URI_PERMISSION</value>
+            <value>FLAG_GRANT_WRITE_URI_PERMISSION</value>
+        </item>
+    </category>
+</option>

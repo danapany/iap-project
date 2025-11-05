@@ -1,0 +1,78 @@
+# C / C++
+C=c, cc, cpp, pc, sc, ec, cxx, cc, tbc, cp, h, hpp, inl, hh, tcc, pc, sc, ec, gc, cp
+CPP=cpp, ii, ipp
+HEADER=h, hpp, inl, hh, tcc
+PROC=pc, sc, ec, gc, cp
+
+
+
+# Language
+JAVA=java
+JSP=jsp, jspx, jspf
+JS=js, xml, xfdl, xadl, xjs, xhtml, scn, ts, jsx, tsx, vue, json
+SQL=pc, sql, xml, sh, sqx, pl, properties, tld, cbl, cob, mxml, as, config, xsql, tbco, dbio, txt
+HTML=htm, html, scss, sass
+OBJC=m, mm
+PHP=php, ini, inc
+CS=cs
+ASP=asp, aspx, ascx, cshtml, cs
+ABAP=abap
+VB=vb, vbs, map
+SWIFT=swift
+PYTHON=py
+APEX=cls, tgr
+VF=page
+XSL=xsl
+KT=kt
+GO=go
+RUST=rs, toml
+DART=dart
+LUA=lua
+CLASS=class
+
+#Engine exts
+JSPCONV=${JSP}
+JSP_RES=tld, xml
+ASPCONV=asp, aspx, ascx, cshtml
+JF_SEM=java, ${JSP}, xml, dbio, config
+JF_SYN=java, ${JSP}
+JSCHK=${JS}, ${JSP}, ${ASP}, ${HTML}
+SQLCHK=pc, sql, xml, sh, sqx, pl, properties, tld, xsql, dbio
+STRCHK=*
+PMD_JAVA=java, ${APEX}, ${VF}, ${XSL}
+PMD_JSP=jsp, js
+PHPCHK=php, ini, inc
+ABAPCHK=abap
+COMCHK_J=${JAVA}
+COMCHK_C=${C}
+COMCHK_SWIFT=${SWIFT}
+OBJCHK=m, mm
+CONFIGCHK=xml, properties, xsql, json, toml
+CSCHK=cs, ${ASPCONV}
+CSREX=cs, ${ASPCONV}
+HTMLCHK=htm, html
+VBSCHK=vbs, asp, map, aspx, vb
+VBNETCHK=vb
+PYTHONCHK=py
+SWIFTCHK=swift
+KOTLINCHK=kt
+GOCHK=go
+RUSTCHK=rs, toml
+MUSE=dart,lua
+EDGPOG=${C}
+CRULECHK=${C}
+HORUS=${C}
+
+
+SQLCC=xml, sql, java, xsql
+
+CPPCHECK=c, cpp
+
+# Legacy engine exts
+COMCHK=${JAVA}, ${C}, ${SWIFT}
+
+# Exclude Ctags (in Java/Others)
+EXCLUDE_CTAGS=class, i, ii, xml, sql, m, mm, jsp, jspx, jspf, js, ini, vbs, abap, properties, cshtml, vb, map, swift, mxml
+
+# Prep files (in Prebuilder)
+PREP=i, ii, ipp, pre, pp, mi, mii

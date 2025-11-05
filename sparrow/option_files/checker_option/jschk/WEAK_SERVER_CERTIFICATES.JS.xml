@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="WEAK_SERVER_CERTIFICATES.JS">
+        <item name="check_function_params" type="string" required="false" variable="true" regexp="true">
+            <value>__sparrow_required__https.request:0</value>
+            <value>__sparrow_required__tls.connect:2</value>
+            <value>__sparrow_required__request.get:0</value>
+        </item>
+    </category>
+</option>

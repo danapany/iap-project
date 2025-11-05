@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="SQL_INJECTION.PHP">
+        <item name="taint_source" type="string" required="true" variable="true" regexp="true">
+            <value><![CDATA[variable of name("$_GET")]]></value>
+            <value><![CDATA[variable of name("$_POST")]]></value>
+            <value><![CDATA[variable of name("$_FILES")]]></value>
+            <value><![CDATA[variable of name("$_SERVER")]]></value>
+            <value><![CDATA[variable of name("$CONFIG_TXT")]]></value>
+            <value><![CDATA[variable of name("$HTTP_GET_VARS")]]></value>
+            <value><![CDATA[variable of name("$HTTP_POST_VARS")]]></value>
+        </item>
+        <item name="taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value><![CDATA[param(*) of name("mysql_query")]]></value>
+            <value><![CDATA[param(*) of name("mysqli_query")]]></value>
+        </item>
+        <item name="taint_propagator" type="string" required="false" variable="true" regexp="true">
+            <value><![CDATA[operand(*) of name(".") to return]]></value>
+            <value><![CDATA[operand(*) of name("quote") to return]]></value>
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+            <value><![CDATA[return of name("mysql_real_escape_string")]]></value>
+        </item>
+        <item name="taint_filter_function_fqn" type="string" required="false" variable="true" regexp="true">
+        </item>
+    </category>
+</option>

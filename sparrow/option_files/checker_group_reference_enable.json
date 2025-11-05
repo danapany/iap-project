@@ -1,0 +1,265 @@
+[ {
+  "complianceId" : 250,
+  "complianceName" : "국정원 취약점",
+  "checkerCount" : 41,
+  "enableCheckerCount" : 40,
+  "disableCheckerCount" : 1
+}, {
+  "complianceId" : 230,
+  "complianceName" : "PCI DSS",
+  "checkerCount" : 239,
+  "enableCheckerCount" : 178,
+  "disableCheckerCount" : 61
+}, {
+  "complianceId" : 290,
+  "complianceName" : "전자금융감독규정",
+  "checkerCount" : 189,
+  "enableCheckerCount" : 139,
+  "disableCheckerCount" : 50
+}, {
+  "complianceId" : 120,
+  "complianceName" : "JPL",
+  "checkerCount" : 15,
+  "enableCheckerCount" : 11,
+  "disableCheckerCount" : 4
+}, {
+  "complianceId" : 10072,
+  "complianceName" : "행안부 보안약점 2022(Python)",
+  "checkerCount" : 38,
+  "enableCheckerCount" : 25,
+  "disableCheckerCount" : 13
+}, {
+  "complianceId" : 295,
+  "complianceName" : "행안부 보안약점 2021",
+  "checkerCount" : 515,
+  "enableCheckerCount" : 333,
+  "disableCheckerCount" : 182
+}, {
+  "complianceId" : 300,
+  "complianceName" : "행안부 보안약점 2019",
+  "checkerCount" : 466,
+  "enableCheckerCount" : 287,
+  "disableCheckerCount" : 179
+}, {
+  "complianceId" : 260,
+  "complianceName" : "모바일 보안 약점 점검",
+  "checkerCount" : 98,
+  "enableCheckerCount" : 58,
+  "disableCheckerCount" : 40
+}, {
+  "complianceId" : 220,
+  "complianceName" : "OWASP",
+  "checkerCount" : 565,
+  "enableCheckerCount" : 318,
+  "disableCheckerCount" : 247
+}, {
+  "complianceId" : 10074,
+  "complianceName" : "행안부 보안약점 2022(Javascript)",
+  "checkerCount" : 18,
+  "enableCheckerCount" : 9,
+  "disableCheckerCount" : 9
+}, {
+  "complianceId" : 60,
+  "complianceName" : "CWE",
+  "checkerCount" : 759,
+  "enableCheckerCount" : 357,
+  "disableCheckerCount" : 402
+}, {
+  "complianceId" : 10073,
+  "complianceName" : "무기체계 소프트웨어 보안약점 점검 목록",
+  "checkerCount" : 154,
+  "enableCheckerCount" : 72,
+  "disableCheckerCount" : 82
+}, {
+  "complianceId" : 100,
+  "complianceName" : "HIC++ 2.2",
+  "checkerCount" : 28,
+  "enableCheckerCount" : 13,
+  "disableCheckerCount" : 15
+}, {
+  "complianceId" : 190,
+  "complianceName" : "MISRA-C:2004",
+  "checkerCount" : 29,
+  "enableCheckerCount" : 13,
+  "disableCheckerCount" : 16
+}, {
+  "complianceId" : 310,
+  "complianceName" : "행안부 안드로이드 보안약점",
+  "checkerCount" : 29,
+  "enableCheckerCount" : 12,
+  "disableCheckerCount" : 17
+}, {
+  "complianceId" : 10054,
+  "complianceName" : "IEC 61508-Exida C/C++",
+  "checkerCount" : 5,
+  "enableCheckerCount" : 2,
+  "disableCheckerCount" : 3
+}, {
+  "complianceId" : 200,
+  "complianceName" : "MISRA-C:2012 Amendment 2",
+  "checkerCount" : 33,
+  "enableCheckerCount" : 11,
+  "disableCheckerCount" : 22
+}, {
+  "complianceId" : 205,
+  "complianceName" : "MISRA-C:2012 Amendment 3",
+  "checkerCount" : 33,
+  "enableCheckerCount" : 11,
+  "disableCheckerCount" : 22
+}, {
+  "complianceId" : 10055,
+  "complianceName" : ".NET framework design guideline",
+  "checkerCount" : 3,
+  "enableCheckerCount" : 1,
+  "disableCheckerCount" : 2
+}, {
+  "complianceId" : 10080,
+  "complianceName" : " .NET Framework Design Guideline(Microsoft) : 2023 ",
+  "checkerCount" : 3,
+  "enableCheckerCount" : 1,
+  "disableCheckerCount" : 2
+}, {
+  "complianceId" : 10056,
+  "complianceName" : "CERT-C 2016 Edition",
+  "checkerCount" : 62,
+  "enableCheckerCount" : 19,
+  "disableCheckerCount" : 43
+}, {
+  "complianceId" : 270,
+  "complianceName" : "방위사업청 코딩규칙",
+  "checkerCount" : 14,
+  "enableCheckerCount" : 4,
+  "disableCheckerCount" : 10
+}, {
+  "complianceId" : 40,
+  "complianceName" : "CERT-C++",
+  "checkerCount" : 72,
+  "enableCheckerCount" : 20,
+  "disableCheckerCount" : 52
+}, {
+  "complianceId" : 10057,
+  "complianceName" : "CERT-C++ 2016 Edition",
+  "checkerCount" : 45,
+  "enableCheckerCount" : 12,
+  "disableCheckerCount" : 33
+}, {
+  "complianceId" : 10076,
+  "complianceName" : "CWE 658(4.14)",
+  "checkerCount" : 76,
+  "enableCheckerCount" : 19,
+  "disableCheckerCount" : 57
+}, {
+  "complianceId" : 110,
+  "complianceName" : "HIS 1.0.3",
+  "checkerCount" : 8,
+  "enableCheckerCount" : 2,
+  "disableCheckerCount" : 6
+}, {
+  "complianceId" : 180,
+  "complianceName" : "MISRA-C:1998",
+  "checkerCount" : 8,
+  "enableCheckerCount" : 2,
+  "disableCheckerCount" : 6
+}, {
+  "complianceId" : 10070,
+  "complianceName" : "CWE-659(4.7)",
+  "checkerCount" : 75,
+  "enableCheckerCount" : 18,
+  "disableCheckerCount" : 57
+}, {
+  "complianceId" : 10069,
+  "complianceName" : "CWE 658(4.7)",
+  "checkerCount" : 70,
+  "enableCheckerCount" : 17,
+  "disableCheckerCount" : 53
+}, {
+  "complianceId" : 30,
+  "complianceName" : "CERT-C",
+  "checkerCount" : 102,
+  "enableCheckerCount" : 24,
+  "disableCheckerCount" : 78
+}, {
+  "complianceId" : 10077,
+  "complianceName" : "CWE 659(4.14)",
+  "checkerCount" : 82,
+  "enableCheckerCount" : 19,
+  "disableCheckerCount" : 63
+}, {
+  "complianceId" : 80,
+  "complianceName" : "CWE 659 List",
+  "checkerCount" : 77,
+  "enableCheckerCount" : 18,
+  "disableCheckerCount" : 59
+}, {
+  "complianceId" : 70,
+  "complianceName" : "CWE 658 List",
+  "checkerCount" : 71,
+  "enableCheckerCount" : 17,
+  "disableCheckerCount" : 54
+}, {
+  "complianceId" : 170,
+  "complianceName" : "MISRA-C++:2008",
+  "checkerCount" : 10,
+  "enableCheckerCount" : 2,
+  "disableCheckerCount" : 8
+}, {
+  "complianceId" : 50,
+  "complianceName" : "CERT-JAVA",
+  "checkerCount" : 149,
+  "enableCheckerCount" : 24,
+  "disableCheckerCount" : 125
+}, {
+  "complianceId" : 10078,
+  "complianceName" : "CWE 660(4.14)",
+  "checkerCount" : 59,
+  "enableCheckerCount" : 8,
+  "disableCheckerCount" : 51
+}, {
+  "complianceId" : 90,
+  "complianceName" : "CWE 660 List",
+  "checkerCount" : 50,
+  "enableCheckerCount" : 6,
+  "disableCheckerCount" : 44
+}, {
+  "complianceId" : 10071,
+  "complianceName" : "CWE-660(4.7)",
+  "checkerCount" : 48,
+  "enableCheckerCount" : 6,
+  "disableCheckerCount" : 42
+}, {
+  "complianceId" : 10,
+  "complianceName" : "BSSC C/C++ 2000",
+  "checkerCount" : 11,
+  "enableCheckerCount" : 1,
+  "disableCheckerCount" : 10
+}, {
+  "complianceId" : 10053,
+  "complianceName" : "ISO26262",
+  "checkerCount" : 17,
+  "enableCheckerCount" : 1,
+  "disableCheckerCount" : 16
+}, {
+  "complianceId" : 10075,
+  "complianceName" : "Rust ANSSI guide v1.0",
+  "checkerCount" : 13,
+  "enableCheckerCount" : 0,
+  "disableCheckerCount" : 13
+}, {
+  "complianceId" : 350,
+  "complianceName" : "전자정부 프레임워크 표준 Inspection",
+  "checkerCount" : 2,
+  "enableCheckerCount" : 0,
+  "disableCheckerCount" : 2
+}, {
+  "complianceId" : 240,
+  "complianceName" : "Visual Studio 2015 Code Warnings",
+  "checkerCount" : 1,
+  "enableCheckerCount" : 0,
+  "disableCheckerCount" : 1
+}, {
+  "complianceId" : 340,
+  "complianceName" : "Oracle",
+  "checkerCount" : 1,
+  "enableCheckerCount" : 0,
+  "disableCheckerCount" : 1
+} ]

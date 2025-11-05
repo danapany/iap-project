@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="INSECURE_TEMPORARY_FILE.PYTHON">
+        <item name="temp_file_name" type="string" required="true" variable="true" regexp="true">
+            <value>.*temp.*</value>
+            <value>.*tmp.*</value>
+        </item>
+    </category>
+</option>

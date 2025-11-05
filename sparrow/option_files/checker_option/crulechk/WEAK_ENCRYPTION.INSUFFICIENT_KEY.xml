@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+	<category name="WEAK_ENCRYPTION.INSUFFICIENT_KEY">
+		<item name="call_param_target_in_function" type="string" required="true" variable="true" description="A target parameter in a function call">
+			<value>1:RSA_generate_key</value>
+			<value>2:opensslcrypt</value>
+		</item>
+		<item name="min_value" type="decimal" required="true" variable="false" description="Minimum decimal value of the parameter">
+			<value>2048</value>
+		</item>
+	</category>
+</option>
+

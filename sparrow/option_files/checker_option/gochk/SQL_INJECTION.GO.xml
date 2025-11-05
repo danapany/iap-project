@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><option>
+    <category name="SQL_INJECTION.GO">
+        <item name="taint_source" type="string" required="true" variable="true" regexp="true">
+            <!--src input-->
+            <value>return of fqn(fmt.Scan)</value>
+            <value>return of fqn(fmt.Scanf)</value>
+            <value>return of fqn(fmt.Scanln)</value>
+            <value>return of fqn(fmt.Sprint)</value>
+            <value>return of fqn(fmt.Sprintf)</value>
+            <value>return of fqn(fmt.Sscan)</value>
+            <value>return of fqn(fmt.Sscanln)</value>
+            <value>return of fqn(fmt.Sscanf)</value>
+            <value>return of fqn(fmt.Fscanf)</value>
+            <value>return of fqn(flag.StringVar)</value>
+            <value>return of fqn(flag.IntVar)</value>
+            <value>return of fqn(flag.BoolVar)</value>
+            <value>return of fqn(flag.DurationVar)</value>
+            <value>return of fqn(flag.Float64Var)</value>
+            <value>return of fqn(flag.Int64Var)</value>
+            <value>return of fqn(flag.Uint64Var)</value>
+            <value>return of fqn(flag.UintVar)</value>
+            <value>return of fqn(flag.TextVar)</value>
+            <value>return of fqn(json.Unmarshal)</value>
+            <value>return of fqn(xml.Unmarshal)</value>
+            <value>return of fqn(csv.Unmarshal)</value>
+            <value>return of fqn(html.Unmarshal)</value>
+            <value>return of fqn("gin.Context.PostForm")</value>
+            <value>return of fqn(reg(".*\\.PostForm"))</value>
+            <!-- ___ -->
+        </item>
+        <item name="custom_taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value>param(1) of fqn(reg(".*\\.Query(?:\..+)?"))</value>
+            <value>param(1) of fqn(reg(".*\\.Exec(?:\..+)?"))</value>
+            <value>param(1) of fqn(reg(".*\\.QueryRow(?:\..+)?"))</value>
+            <value>param(2) of fqn(reg(".*\\.QueryContext(?:\..+)?"))</value>
+            <value>param(2) of fqn(reg(".*\\.ExecContext(?:\..+)?"))</value>
+            <value>param(2) of fqn(reg(".*\\.QueryRowContext(?:\..+)?"))</value>
+        </item>
+        <item name="taint_propagator" type="string" required="false" variable="true" regexp="true">
+            <!--propagate string-->
+            <value>operand(*) of "+" to return</value>
+            <value>param(*) of fqn(reg("strings\.Builder\.WriteString.*")) to return</value>
+            <value>param(*) of fqn(reg("bytes\.Buffer\.WriteString.*")) to return</value>
+            <!-- ___ -->
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+            <!--filter string-->
+        </item>
+        <item name="taint_filter_function_fqn" type="string" required="false" variable="true" regexp="true">
+            <value>sparrow.my.filter.utils.is_safe()</value>
+        </item>
+    </category>
+</option>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="COMMAND_INJECTION.JS">
+        <item name="taint_source" type="string" required="true" variable="true" regexp="true">
+            <value>variable of fqn("__sparrow_node_js_request__.url")</value>
+            <value>variable of fqn("__sparrow_node_js_request__.query")</value>
+            <value>variable of fqn("__sparrow_node_js_request__.baseUrl")</value>
+            <value>variable of fqn("__sparrow_node_js_request__.originalUrl")</value>
+        </item>
+        <item name="taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value>param(1) of fqn("__sparrow_required__child_process.exec")</value>
+            <value>param(1) of fqn("__sparrow_required__child_process.execSync")</value>
+        </item>
+        <item name="taint_propagator" type="string" required="false" variable="true" regexp="true">
+            <value>operand(*) of name("+") to return</value>
+            <value>base of name("substring") to return</value>
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+            <value></value>
+        </item>
+        <item name="taint_filter_function_fqn" type="string" required="false" variable="true" regexp="true">
+            <value></value>
+        </item>
+    </category>
+</option>
+

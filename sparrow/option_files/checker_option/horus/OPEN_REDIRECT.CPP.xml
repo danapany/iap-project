@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+  <category name="OPEN_REDIRECT.CPP">
+    <item name="source_call" type="string" required="true" variable="true" regexp="false" description="List of functions which return sensitive information">
+      <value>getenv</value>
+      <value>_wgetenv</value>
+      <value>wgetenv</value>
+      <value>fgetws</value>
+    </item>
+    <item name="sink_call" type="string" required="true" variable="true" regexp="false" description="List of functions which trigger alarms when parameters contain sensitive information">
+       <value>QUrl</value>
+    </item>
+    <item name="clear_call" type="string" required="false" variable="true" description="List of functions which make the source information valid">
+         <value>urlchecker</value>
+    </item>
+  </category>
+</option>

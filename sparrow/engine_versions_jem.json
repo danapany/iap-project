@@ -1,0 +1,9 @@
+{
+  "versions" : [ {
+    "engineName" : "pythonchk",
+    "version" : "1.7.9"
+  }, {
+    "engineName" : "strchk",
+    "version" : "1.5.6"
+  } ]
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="OVERRUN.STATIC.STRCPY.OBJC">
+        <item name="string_function" type="string" required="false" variable="true" regexp="true">
+            <value>strcpy</value>
+            <value>strcat</value>
+        </item>
+    </category>
+</option>

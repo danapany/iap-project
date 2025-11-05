@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="WEAK_ENCRYPTION.INSUFFICIENT_KEY_SIZE.CSHARP">
+        <item name="weak_encryption" type="string" required="false" variable="true" regexp="true">
+            <value>System.Security.Cryptography.RSACryptoServiceProvider</value>
+        </item>
+        <item name="minimum_key_size" type="decimal" required="false" variable="false" regexp="false">
+            <value>1024</value>
+        </item>
+    </category>
+</option>

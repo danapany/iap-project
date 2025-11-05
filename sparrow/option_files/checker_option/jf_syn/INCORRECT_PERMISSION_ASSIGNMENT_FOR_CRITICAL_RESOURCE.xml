@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="INCORRECT_PERMISSION_ASSIGNMENT_FOR_CRITICAL_RESOURCE">
+        <item name="critical_resource" type="string" required="false" variable="true" regexp="true">
+            <value>.+</value>
+        </item>
+    </category>
+</option>
+

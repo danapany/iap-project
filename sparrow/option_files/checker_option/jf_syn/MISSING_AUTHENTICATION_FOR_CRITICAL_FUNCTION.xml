@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<option>
+    <category name="MISSING_AUTHENTICATION_FOR_CRITICAL_FUNCTION">
+        <item name="critical_class" type="string" required="true" variable="true" regexp="true">
+            <value>MissingAuthenticationForCriticalFunction.AccountManager</value>
+            <value>.*\.BankAccount</value>
+        </item>
+        <item name="critical_function" type="string" required="true" variable="true" regexp="true">
+            <value>send</value>
+            <value>sendAccount</value>
+        </item>
+        <item name="argument_type_for_critical_function" type="string" required="true" variable="true" regexp="true">
+            <value>MissingAuthenticationForCriticalFunction\.BankAccount</value>
+        </item>
+        <item name="authenticated_block" type="string" required="true" variable="true" regexp="false">
+            <value>if</value>
+            <value>switch</value>
+            <value>ternary</value>
+            <value>while</value>
+            <value>for</value>
+        </item>
+        <item name="authentication_function" type="string" required="true" variable="true" regexp="true">
+            <value>(java\.lang\.)?String\.equals</value>
+        </item>
+        <item name="check_argument_type" type="boolean" required="true" variable="false">
+            <value>false</value>
+        </item>
+    </category>
+</option>
+

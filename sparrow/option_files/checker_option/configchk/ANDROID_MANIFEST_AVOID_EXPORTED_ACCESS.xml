@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="ANDROID_MANIFEST_AVOID_EXPORTED_ACCESS">
+        <item name="is_activity" type="boolean" required="true" variable="true" regexp="false">
+            <value>true</value>
+        </item>
+        <item name="is_service" type="boolean" required="true" variable="true" regexp="false">
+            <value>true</value>
+        </item>
+        <item name="is_receiver" type="boolean" required="true" variable="true" regexp="false">
+            <value>true</value>
+        </item>
+        <item name="is_provider" type="boolean" required="true" variable="true" regexp="false">
+            <value>true</value>
+        </item>
+    </category>
+</option>

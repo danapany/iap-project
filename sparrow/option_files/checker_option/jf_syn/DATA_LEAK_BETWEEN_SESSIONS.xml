@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+  <category name="DATA_LEAK_BETWEEN_SESSIONS">
+    <item name="target_parent_class" type="string" required="false" variable="true" regexp="true">
+      <value>(javax.servlet.http.)?HttpServlet</value>
+      <value>(org.apache.jasper.runtime.)?HttpJspBase</value>
+    </item>
+    <item name="target_annotation" type="string" required="false" variable="true" regexp="true">
+      <value>(org.springframework.stereotype.)?Controller</value>
+      <value>(org.springframework.stereotype.)?Service</value>
+    </item>
+    <item name="excluded_field_name" type="string" required="false" variable="true" regexp="true">
+      <value></value>
+    </item>
+    <item name="excluded_field_type" type="string" required="false" variable="true" regexp="true">
+      <value>org\.apache\.log4j\.Logger</value>
+    </item>
+    <item name="excluded_field_annotation" type="string" required="false" variable="true" regexp="true">
+      <value>Autowired</value>
+    </item>
+    <item name="excluded_class_name" type="string" required="false" variable="true" regexp="true">
+      <value></value>
+    </item>
+  </category>
+</option>

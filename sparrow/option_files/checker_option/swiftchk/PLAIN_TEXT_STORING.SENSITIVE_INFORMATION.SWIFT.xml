@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="PLAIN_TEXT_STORING.SENSITIVE_INFORMATION.SWIFT">
+        <item name="taint_source" type="string" required="true" variable="true" regexp="true">
+            <value>getImportantInformation$return</value>
+        </item>
+        <item name="taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value>base of name("write")</value>
+        </item>
+        <item name="taint_propagator" type="string" required="false" variable="true" regexp="true">
+            <value>strcpy$param(2)->param(1)</value>
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+            <value></value>
+        </item>
+        <item name="taint_filter_function_fqn" type="string" required="false" variable="true" regexp="true">
+        </item>
+    </category>
+</option>
+

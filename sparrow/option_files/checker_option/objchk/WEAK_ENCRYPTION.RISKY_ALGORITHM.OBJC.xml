@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="WEAK_ENCRYPTION.RISKY_ALGORITHM.OBJC">
+        <item name="risky_algorithm" type="string" required="false" variable="true" regexp="true">
+            <value>kCCAlgorithmDES</value>
+        </item>
+    </category>
+</option>
+

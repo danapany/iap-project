@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="OS_COMMAND_INJECTION.JS">
+        <item name="taint_source" type="string" required="true" variable="true" regexp="true">
+            <value><![CDATA[return of name(reg("\\S+\\.body.*"))]]></value>
+            <value><![CDATA[return of name(reg("\\S+\\.params.*"))]]></value>
+            <value><![CDATA[return of name(reg("\\S+\\.param.*"))]]></value>
+            <value><![CDATA[return of name(reg("\\S+\\.query.*"))]]></value>
+            <value><![CDATA[variable of fqn("__sparrow_node_js_request__.url")]]></value>
+            <value><![CDATA[variable of fqn("__sparrow_node_js_request__.query")]]></value>
+            <value><![CDATA[variable of fqn("__sparrow_node_js_request__.baseUrl")]]></value>
+            <value><![CDATA[variable of fqn("__sparrow_node_js_request__.originalUrl")]]></value>
+        </item>
+        <item name="taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value><![CDATA[param(1) of fqn("__sparrow_required__child_process.exec")]]></value>
+            <value><![CDATA[param(1) of fqn("__sparrow_required__child_process.execSync")]]></value>
+            <value><![CDATA[param(1) of name("exec")]]></value>
+            <value><![CDATA[param(1) of name("execSync")]]></value>
+            <value><![CDATA[param(1) of fqn("__sparrow_required__child_process.spawn")]]></value>
+            <value><![CDATA[param(1) of fqn("__sparrow_required__child_process.spawnSync")]]></value>
+        </item>
+        <item name="taint_propagator" type="string" required="false" variable="true" regexp="true">
+            <value><![CDATA[operand(*) of name("+") to return]]></value>
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+        </item>
+        <item name="taint_filter_function_fqn" type="string" required="false" variable="true" regexp="true">
+        </item>
+        <item name="custom_taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value><![CDATA[param(1) of fqn("__sparrow_required__child_process.spawn")]]></value>
+            <value><![CDATA[param(1) of fqn("__sparrow_required__child_process.spawnSync")]]></value>
+            <value><![CDATA[param(1) of fqn("__sparrow_required__child_process.execFile")]]></value>
+            <value><![CDATA[param(1) of fqn("__sparrow_required__child_process.execFileSync")]]></value>
+        </item>
+    </category>
+</option>

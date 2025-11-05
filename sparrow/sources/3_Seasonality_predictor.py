@@ -7,8 +7,6 @@ import numpy as np
 import platform
 import os
 import urllib.request
-import hashlib
-import ssl
 from datetime import datetime, timedelta
 
 # -----------------------------
@@ -35,88 +33,25 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------
-# 🎨 폰트 설정 (한글 지원) - Azure 웹앱 최적화 및 보안 강화
+# 🎨 폰트 설정 (한글 지원) - Azure 웹앱 최적화
 # -----------------------------
-def verify_file_integrity(file_path, expected_hash):
-    """파일 무결성 검증 함수"""
-    try:
-        with open(file_path, 'rb') as f:
-            file_data = f.read()
-            calculated_hash = hashlib.sha256(file_data).hexdigest()
-            return calculated_hash.lower() == expected_hash.lower()
-    except Exception as e:
-        st.warning(f"파일 무결성 검증 실패: {e}")
-        return False
-
-def secure_download_font(url, file_path, expected_hash):
-    """보안 강화된 폰트 다운로드 함수"""
-    try:
-        # HTTPS 연결 보안 설정
-        context = ssl.create_default_context()
-        context.check_hostname = True
-        context.verify_mode = ssl.CERT_REQUIRED
-        
-        # 사용자 에이전트 설정 (봇 차단 우회)
-        req = urllib.request.Request(url)
-        req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
-        
-        # 보안 연결로 다운로드
-        with urllib.request.urlopen(req, context=context, timeout=30) as response:
-            if response.getcode() != 200:
-                raise Exception(f"HTTP {response.getcode()} 에러")
-            
-            # 임시 파일로 다운로드
-            temp_file_path = file_path + ".tmp"
-            with open(temp_file_path, 'wb') as f:
-                f.write(response.read())
-        
-        # 다운로드된 파일의 무결성 검증
-        if verify_file_integrity(temp_file_path, expected_hash):
-            # 검증 성공 시 원본 파일로 이동
-            os.rename(temp_file_path, file_path)
-            st.info("✅ 한글 폰트를 안전하게 다운로드했습니다.")
-            return True
-        else:
-            # 검증 실패 시 임시 파일 삭제
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path)
-            st.error("❌ 폰트 파일 무결성 검증 실패: 다운로드된 파일이 신뢰할 수 없습니다.")
-            return False
-            
-    except Exception as e:
-        # 임시 파일 정리
-        temp_file_path = file_path + ".tmp"
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
-        st.warning(f"보안 폰트 다운로드 실패: {e}")
-        return False
-
 def setup_korean_font():
-    """한글 폰트 설정 함수 - Azure 웹앱 환경 최적화 및 보안 강화"""
+    """한글 폰트 설정 함수 - Azure 웹앱 환경 최적화"""
     try:
         # 1. 프로젝트 내 fonts 디렉토리 생성
         fonts_dir = "./fonts"
         if not os.path.exists(fonts_dir):
             os.makedirs(fonts_dir)
         
-        # 2. 나눔고딕 폰트 보안 다운로드 (없는 경우에만)
+        # 2. 나눔고딕 폰트 다운로드 (없는 경우에만)
         font_file_path = os.path.join(fonts_dir, "NanumGothic.ttf")
         
         if not os.path.exists(font_file_path):
-            # 나눔고딕 폰트의 예상 SHA256 해시값
-            # 주의: 실제 운영 시에는 정확한 해시값으로 교체 필요
-            # 다음 명령으로 실제 해시값을 확인할 수 있습니다:
-            # curl -s https://github.com/naver/nanumfont/raw/master/fonts/NanumGothic.ttf | sha256sum
-            expected_font_hash = "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"  # 실제 해시값으로 교체 필요
-            
             try:
-                # GitHub에서 나눔고딕 폰트 보안 다운로드
+                # GitHub에서 나눔고딕 폰트 다운로드
                 font_url = "https://github.com/naver/nanumfont/raw/master/fonts/NanumGothic.ttf"
-                download_success = secure_download_font(font_url, font_file_path, expected_font_hash)
-                
-                if not download_success:
-                    st.warning("⚠️ 보안 검증된 폰트 다운로드에 실패했습니다. 시스템 폰트를 사용합니다.")
-                    
+                urllib.request.urlretrieve(font_url, font_file_path)
+                st.info("한글 폰트를 다운로드했습니다.")
             except Exception as e:
                 st.warning(f"폰트 다운로드 실패: {e}")
         
@@ -314,10 +249,10 @@ def get_moving_average_info(window):
     }
 
 # -----------------------------
-# 🔥 1. 데이터 업로드 / 로드
+# 📥 1. 데이터 업로드 / 로드
 # -----------------------------
 st.title("📊 서비스별 오류 시즌성 분석기")
-st.write("서비스별 오류 발생 데이터를 분석해 현재 월/일 기준 시즌드리티 정보를 제공합니다.")
+st.write("서비스별 오류 발생 데이터를 분석해 현재 월/일 기준 시즌딜리티 정보를 제공합니다.")
 
 # 업로드 대신 정해진 경로의 파일을 자동 로드
 csv_path = "./data/csv/seasonality.csv"
@@ -885,9 +820,4 @@ with st.expander("🔢 이동평균 계산 방법"):
     - 총 데이터 건수: {len(df):,}건
     - 분석 기간: {df['year'].min()}년 ~ {df['year'].max()}년
     - 서비스 수: {len(df['service'].unique())}개
-    
-    **⚠️ 보안 개선 사항:**
-    - 폰트 다운로드 시 SHA256 해시 무결성 검증 적용
-    - HTTPS 보안 연결 및 인증서 검증 강화
-    - 악의적 파일 다운로드 방지를 위한 보안 조치 구현
     """)

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="KEY_MANAGEMENT.HARDCODED_ENCRYPTION_KEY.CSHARP">
+        <item name="sym_crypto_class" type="string" required="false" variable="true" regexp="false">
+            <value>DESCryptoServiceProvider</value>
+            <value>AesCryptoServiceProvider</value>
+            <value>RC2CryptoServiceProvider</value>
+            <value>TripleDESCryptoServiceProvider</value>
+        </item>
+    </category>
+</option>

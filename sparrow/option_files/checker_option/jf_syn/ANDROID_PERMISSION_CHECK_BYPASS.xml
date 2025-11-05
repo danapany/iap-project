@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<option>
+    <category name="ANDROID_PERMISSION_CHECK_BYPASS">
+        <item name="method_name" type="string" required="true" variable="true">
+            <value>android.content.Context.checkCallingOrSelfPermission</value>
+            <value>android.content.Context.checkCallingOrSelfUriPermission</value>
+        </item>
+        <item name="check_only_method_name" type="boolean" required="true" variable="true">
+            <value>true</value>
+        </item>
+    </category>
+</option>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><option>
+    <category name="PLAIN_TEXT_STORING.SENSITIVE_INFORMATION.PYTHON">
+        <item name="taint_source" type="string" required="true" variable="true" regexp="true">
+            <value>variable of fqn(reg(".*[pP]assw(or)?d"))</value>
+            <value>variable of fqn(reg(".*[pP]wd?"))</value>
+        </item>
+        <item name="taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value>param(*) of name("write")</value>
+        </item>
+        <item name="taint_propagator" type="string" required="false" variable="true" regexp="true">
+            <!--propagate string-->
+<value>operand(*) of "+" to return</value>
+<value>param(*) of name("join") to return</value>
+<value>operand(2) of "%" to return</value>
+<!-- ___ -->
+            <value>operand(*) of "," to return</value>
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+            <value>return of fqn(reg("hashlib.*"))</value>
+            <value>return of fqn(reg("Crypto.Hash.*"))</value>
+            <value>return of fqn(reg(".*update"))</value>
+        </item>
+        <item name="taint_filter_function_fqn" type="string" required="false" variable="true" regexp="true">
+            <value>sparrow.my.filter.utils.is_safe()</value>
+        </item>
+    </category>
+</option>

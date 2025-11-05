@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="HARD_CODED.CRYPTOGRAPHIC_KEY.KOTLIN">
+        <item name="secret_key_as_argument" type="string" required="true" variable="true" regexp="true">
+            <value>javax\.crypto\.spec\.SecretKeySpec\(.*\):1</value>
+        </item>
+    </category>
+</option>

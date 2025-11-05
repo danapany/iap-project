@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="UNSAFE_XSTREAM_DESERIALIZATION">
+        <item name="target_method_switch" type="boolean" required="true" variable="true">
+            <value>true</value>
+        </item>
+    </category>
+</option>
+

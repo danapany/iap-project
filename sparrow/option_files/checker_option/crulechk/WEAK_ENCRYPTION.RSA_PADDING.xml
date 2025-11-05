@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="WEAK_ENCRYPTION.RSA_PADDING">
+        <item name="call_param_target_in_function" type="string" required="true" variable="true" description="Risky encryption algorithms">
+            <value>RSA_public_encrypt</value>
+        </item>
+        <item name="call_param_should_not_be_name" type="string" required="true" variable="true" description="Safe encryption algorithms">
+            <value>RSA_NO_PADDING</value>
+            <value>3</value>
+        </item>
+    </category>
+</option>
+

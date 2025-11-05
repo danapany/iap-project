@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+<category name="LEFTOVER_DEBUG_CODE.PYTHON">
+    <item name="debug_method" type="string" required="true" variable="true" regexp="true">
+        <value>pdb(\..*)?</value>
+        <value>.*(?i)(debug).*</value>
+    </item>
+</category>
+</option>

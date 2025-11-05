@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="XSS.DOM.JS">
+        <item name="taint_source" type="string" required="true" variable="true" regexp="true">
+            <value><![CDATA[variable of fqn("document.URL")]]></value>
+            <value><![CDATA[variable of fqn("document.forms")]]></value>
+            <value><![CDATA[variable of fqn("document.cookie")]]></value>
+            <value><![CDATA[variable of fqn("document.baseURI")]]></value>
+            <value><![CDATA[variable of fqn("document.location")]]></value>
+            <value><![CDATA[variable of fqn("document.referrer")]]></value>
+            <value><![CDATA[variable of fqn("document.documentURI")]]></value>
+            <value><![CDATA[variable of fqn("document.URLUnencoded")]]></value>
+            <value><![CDATA[variable of fqn("location.hash")]]></value>
+            <value><![CDATA[variable of fqn("location.href")]]></value>
+            <value><![CDATA[variable of fqn(reg(".+\\.location\\.hash"))]]></value>
+            <value><![CDATA[variable of fqn(reg(".+\\.location\\.href"))]]></value>
+            <value><![CDATA[return of fqn(reg("document\\.URL\\..+"))]]></value>
+            <value><![CDATA[return of fqn(reg("document\\.forms\\..+"))]]></value>
+            <value><![CDATA[return of fqn(reg("document\\.cookie\\..+"))]]></value>
+            <value><![CDATA[return of fqn(reg("document\\.baseURI\\..+"))]]></value>
+            <value><![CDATA[return of fqn(reg("document\\.location\\..+"))]]></value>
+            <value><![CDATA[return of fqn(reg("document\\.referrer\\..+"))]]></value>
+            <value><![CDATA[return of fqn(reg("document\\.documentURI\\..+"))]]></value>
+            <value><![CDATA[return of fqn(reg("document\\.URLUnencoded\\..+"))]]></value>
+            <value><![CDATA[return of fqn(reg("location\\.hash\\..+"))]]></value>
+            <value><![CDATA[return of fqn(reg("location\\.href\\..+"))]]></value>
+            <value><![CDATA[return of fqn(reg(".+\\.location\\.hash\\..+"))]]></value>
+            <value><![CDATA[return of fqn(reg(".+\\.location\\.href\\..+"))]]></value>
+            <value><![CDATA[variable of fqn(reg("taint_.*XSS\\.DOM\\.JS.*P_A_[0-9]+"))]]></value>
+            <value><![CDATA[return of name("decodeURIComponent")]]></value>
+            <value><![CDATA[return of fqn(reg("new@XMLHttpRequest\\.getResponseHeader.*"))]]></value>
+        </item>
+        <item name="taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value><![CDATA[param(*) of fqn("eval")]]></value>
+            <value><![CDATA[param(*) of fqn("Function")]]></value>
+            <value><![CDATA[param(*) of fqn("setTimeout")]]></value>
+            <value><![CDATA[param(1) of fqn("location.assign")]]></value>
+            <value><![CDATA[param(1) of fqn("location.replace")]]></value>
+            <value><![CDATA[param(*) of fqn("document.write")]]></value>
+            <value><![CDATA[param(*) of fqn("document.writeln")]]></value>
+            <value><![CDATA[param(*) of fqn("document.location.replace")]]></value>
+            <value><![CDATA[param(1) of name("exec")]]></value>
+            <value><![CDATA[param(*) of fqn("alert")]]></value>
+            <value><![CDATA[param(5) of fqn("crypto.generateCRMFRequest")]]></value>
+            <value><![CDATA[param(1) of fqn("__sparrow_node_js_response__.end")]]></value>
+            <value><![CDATA[param(1) of name("createContextualFragment")]]></value>
+            <value><![CDATA[operand(2) of name("=") if operand(1) == fqn("top.location"))]]></value>
+            <value><![CDATA[operand(2) of name("=") if operand(1) == fqn("top.location.href"))]]></value>
+            <value><![CDATA[operand(2) of name("=") if operand(1) == fqn(reg(".+\.innerHTML"))]]></value>
+            <value><![CDATA[operand(2) of name("=") if operand(1) == fqn(reg(".+\.outerHTML"))]]></value>
+        </item>
+        <item name="taint_propagator" type="string" required="false" variable="true" regexp="true">
+            <value><![CDATA[operand(*) of name("+") to return]]></value>
+            <value><![CDATA[base of name("substring") to return]]></value>
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+            <value><![CDATA[return of name("encodeURIComponent")]]></value>
+        </item>
+        <item name="taint_filter_function_fqn" type="string" required="false" variable="true" regexp="true">
+        </item>
+    </category>
+</option>

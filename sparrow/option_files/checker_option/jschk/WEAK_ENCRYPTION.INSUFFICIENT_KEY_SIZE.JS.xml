@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="WEAK_ENCRYPTION.INSUFFICIENT_KEY_SIZE.JS">
+        <item name="namedCurve" type="string" required="false" variable="true" regexp="false">
+            <value>secp112r1</value>
+            <value>secp112r2</value>
+            <value>secp128r1</value>
+            <value>secp128r2</value>
+            <value>secp160k1</value>
+            <value>secp160r1</value>
+            <value>secp160r2</value>
+            <value>secp192k1</value>
+            <value>secp224k1</value>
+            <value>secp224r1</value>
+            <value>prime192v1</value>
+            <value>prime192v2</value>
+            <value>prime192v3</value>
+            <value>prime239v1</value>
+            <value>prime239v2</value>
+            <value>prime239v3</value>
+            <value>P-192</value>
+            <value>P-239</value>
+            <value>sect113r1</value>
+            <value>sect113r2</value>
+            <value>sect131r1</value>
+            <value>sect131r2</value>
+            <value>sect163k1</value>
+            <value>sect163r1</value>
+            <value>sect163r2</value>
+            <value>sect193r1</value>
+            <value>sect193r2</value>
+            <value>sect233k1</value>
+            <value>sect233r1</value>
+            <value>sect239k1</value>
+            <value>c2pnb163v1</value>
+            <value>c2pnb163v2</value>
+            <value>c2pnb163v3</value>
+            <value>c2pnb176v1</value>
+            <value>c2tnb191v1</value>
+            <value>c2tnb191v2</value>
+            <value>c2tnb191v3</value>
+            <value>c2pnb208w1</value>
+            <value>c2tnb239v1</value>
+            <value>c2tnb239v2</value>
+            <value>c2tnb239v3</value>
+            <value>wap-wsg-idm-ecid-wtls1</value>
+            <value>wap-wsg-idm-ecid-wtls3</value>
+            <value>wap-wsg-idm-ecid-wtls4</value>
+            <value>wap-wsg-idm-ecid-wtls5</value>
+            <value>wap-wsg-idm-ecid-wtls6</value>
+            <value>wap-wsg-idm-ecid-wtls7</value>
+            <value>wap-wsg-idm-ecid-wtls8</value>
+            <value>wap-wsg-idm-ecid-wtls9</value>
+            <value>wap-wsg-idm-ecid-wtls10</value>
+            <value>wap-wsg-idm-ecid-wtls11</value>
+            <value>wap-wsg-idm-ecid-wtls12</value>
+            <value>Oakley-EC2N-3</value>
+            <value>Oakley-EC2N-4</value>
+            <value>brainpoolP160r1</value>
+            <value>brainpoolP160t1</value>
+            <value>brainpoolP192r1</value>
+            <value>brainpoolP192t1</value>
+            <value>brainpoolP224r1</value>
+            <value>brainpoolP224t1</value>
+        </item>
+    </category>
+</option>

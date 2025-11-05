@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="OPEN_REDIRECT.SWIFT">
+        <item name="taint_source" type="string" required="false" variable="true" regexp="true">
+
+
+            <value>URL$return</value>
+
+        </item>
+        <item name="taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value>UIApplication\.shared\.openURL$param(1)</value>
+            <value>UIApplication\.shared\.open$param(1)</value>
+            <!--<value>*\.openURL:$param(*)</value>-->
+        </item>
+        <item name="taint_propagator" type="string" required="false" variable="true" regexp="true">
+
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+
+        </item>
+    </category>
+</option>
+

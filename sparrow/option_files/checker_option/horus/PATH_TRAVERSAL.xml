@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+	<category name="PATH_TRAVERSAL">
+		<item name="source_call" type="string" required="true" variable="true" regexp="false" description="List of functions which return sensitive information">
+			<value>getenv</value>
+                        <value>_wgetenv</value>
+                        <value>wgetenv</value>
+                        <value>fgetws</value>
+		</item>
+		<item name="sink_call" type="string" required="true" variable="true" regexp="false" description="List of functions which trigger alarms when parameters contain sensitive information">
+			<value>unlink</value>
+                        <value>fopen</value>
+                        <value>open</value>
+                        <value>_open</value>
+                        <value>_wfopen</value>
+                        <value>wopen</value>
+                        <value>_wopen</value>
+                        <value>CreateFileA</value>
+                        <value>CreateFileW</value>
+                        <value>_popen</value>
+                        <value>popen</value>
+		</item>
+	</category>	
+</option>
+

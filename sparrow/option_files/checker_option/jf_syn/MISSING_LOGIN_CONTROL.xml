@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="MISSING_LOGIN_CONTROL">
+        <item name="login_method" type="string" required="false" variable="true" regexp="true">
+            <value>.+\..*login</value>
+        </item>
+        <item name="check_outer_control" type="boolean" required="true" variable="true">
+            <value>true</value>
+        </item>
+        <item name="check_inner_control" type="boolean" required="true" variable="true">
+            <value>true</value>
+        </item>
+    </category>
+</option>
+

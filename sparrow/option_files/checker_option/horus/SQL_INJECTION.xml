@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+	<category name="SQL_INJECTION">
+		<item name="source_call" type="string" required="true" variable="true" description="List of functions which return sensitive information">
+			<value>getenv</value>
+                        <value>GetParameter</value>
+         	</item>
+		<item name="clear_call" type="string" required="false" variable="true" description="List of functions which make the source information valid">
+			<value>makeSecureString</value>
+		</item>
+		<item name="sink_call" type="string" required="true" variable="true" description="List of functions which trigger alarms when parameters contain sensitive information">
+			<value>SQLExecDirect</value>
+                        <value>PQexec</value>
+                        <value>OCIStmtExecute</value>
+                        <value>mysql_query</value>
+		</item>
+        	<item name="param_on_sql_injection" type="boolean" required="false" variable="false" description="Check whether any parameters are tainted or not">
+		  <value>false</value>
+		</item>
+	</category>
+</option>

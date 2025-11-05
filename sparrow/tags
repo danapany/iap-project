@@ -1,0 +1,1190 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	0	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+st	D:\workspace\iap-project\src\utils\ui_components_local.py	/^import streamlit as st$/;"	namespace	line:1
+re	D:\workspace\iap-project\src\utils\ui_components_local.py	/^import re$/;"	namespace	line:2
+UIComponentsLocal	D:\workspace\iap-project\src\utils\ui_components_local.py	/^class UIComponentsLocal:$/;"	class	line:4
+__init__	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def __init__(self):$/;"	member	line:7	class:UIComponentsLocal
+ChartManager	D:\workspace\iap-project\src\utils\ui_components_local.py	/^            from utils.chart_utils import ChartManager$/;"	namespace	line:12
+e	D:\workspace\iap-project\src\utils\ui_components_local.py	/^            print(f"ChartManager import 실패: {e}")$/;"	namespace	line:16
+_parse_cause_content	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def _parse_cause_content(self, cause_content):$/;"	member	line:20	class:UIComponentsLocal
+_create_info_box	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def _create_info_box(self, content, title, emoji, icon):$/;"	member	line:36	class:UIComponentsLocal
+convert_cause_box_to_html	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def convert_cause_box_to_html(self, text):$/;"	function	line:43
+convert_repair_box_to_html	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def convert_repair_box_to_html(self, text):$/;"	function	line:47
+_convert_box_to_html	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def _convert_box_to_html(self, text, box_type, title, icon, parse_causes):$/;"	function	line:51
+_remove_patterns	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def _remove_patterns(self, text, patterns):$/;"	function	line:74
+_remove_box_markers_enhanced	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def _remove_box_markers_enhanced(self, text):$/;"	function	line:83
+_remove_html_boxes_enhanced	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def _remove_html_boxes_enhanced(self, text):$/;"	function	line:92
+_remove_repair_text_sections	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def _remove_repair_text_sections(self, text):$/;"	function	line:102
+_clean_inquiry_response	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def _clean_inquiry_response(self, text):$/;"	function	line:134
+_emergency_remove_green_boxes	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def _emergency_remove_green_boxes(self, text, query_type):$/;"	function	line:149
+_remove_box_markers	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def _remove_box_markers(self, text):$/;"	function	line:190
+display_response_with_query_type_awareness	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def display_response_with_query_type_awareness(self, response, query_type="default", chart_info=None):$/;"	function	line:194
+ExcelDownloadManager	D:\workspace\iap-project\src\utils\ui_components_local.py	/^                from utils.excel_utils import ExcelDownloadManager$/;"	namespace	line:256
+render_main_ui	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def render_main_ui(self):$/;"	function	line:264
+show_config_error	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def show_config_error(self, env_status):$/;"	function	line:318
+show_connection_error	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def show_connection_error(self):$/;"	function	line:342
+display_chat_messages	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def display_chat_messages(self):$/;"	function	line:354
+display_documents_with_quality_info	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def display_documents_with_quality_info(self, documents):$/;"	function	line:377
+display_processing_mode_info	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def display_processing_mode_info(self, query_type, processing_mode):$/;"	function	line:465
+display_performance_metrics	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def display_performance_metrics(self, metrics):$/;"	function	line:480
+show_query_optimization_tips	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def show_query_optimization_tips(self, query_type):$/;"	function	line:490
+display_time_filter_info	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def display_time_filter_info(self, time_conditions):$/;"	function	line:578
+display_validation_results	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def display_validation_results(self, validation_result):$/;"	function	line:593
+remove_text_charts_from_response	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def remove_text_charts_from_response(self, response_text):$/;"	function	line:611
+_get_stats	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def _get_stats(self, documents, field, label_map=None):$/;"	function	line:629
+_display_stats	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def _display_stats(self, stats, label, emoji_map=None, sort_key=None):$/;"	function	line:637
+show_time_statistics	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def show_time_statistics(self, documents):$/;"	function	line:647
+show_department_statistics	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def show_department_statistics(self, documents):$/;"	function	line:665
+show_comprehensive_statistics	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def show_comprehensive_statistics(self, documents):$/;"	function	line:674
+show_repair_plan_distinction_info	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def show_repair_plan_distinction_info(self):$/;"	function	line:697
+show_chart_feature_info	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def show_chart_feature_info(self):$/;"	function	line:725
+show_inquiry_feature_info	D:\workspace\iap-project\src\utils\ui_components_local.py	/^    def show_inquiry_feature_info(self):$/;"	function	line:758
+json	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^import json$/;"	namespace	line:2
+os	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^import os$/;"	namespace	line:3
+sqlite3	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^import sqlite3$/;"	namespace	line:4
+datetime	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^from datetime import datetime, timedelta$/;"	namespace	line:5
+timedelta	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^from datetime import datetime, timedelta$/;"	namespace	line:5
+defaultdict	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^from collections import defaultdict, Counter$/;"	namespace	line:6
+Counter	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^from collections import defaultdict, Counter$/;"	namespace	line:6
+List	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^from typing import List, Dict, Any, Optional$/;"	namespace	line:7
+Dict	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^from typing import List, Dict, Any, Optional$/;"	namespace	line:7
+Any	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^from typing import List, Dict, Any, Optional$/;"	namespace	line:7
+Optional	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^from typing import List, Dict, Any, Optional$/;"	namespace	line:7
+re	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^import re$/;"	namespace	line:8
+Path	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^from pathlib import Path$/;"	namespace	line:9
+load_dotenv	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^from dotenv import load_dotenv$/;"	namespace	line:10
+get_monitoring_db_path	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^def get_monitoring_db_path():$/;"	function	line:14
+MonitoringManager	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^class MonitoringManager:$/;"	class	line:19
+__init__	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def __init__(self, db_path: str = None):$/;"	member	line:22	class:MonitoringManager
+ensure_db_directory	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def ensure_db_directory(self):$/;"	member	line:39	class:MonitoringManager
+init_database	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def init_database(self):$/;"	member	line:43	class:MonitoringManager
+_determine_response_success	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def _determine_response_success(self, response_content: str = None, error_message: str = None, document_count: int = None) -> tuple:$/;"	member	line:99	class:MonitoringManager
+_is_rag_based_response	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def _is_rag_based_response(self, response_content: str, document_count: int = None) -> bool:$/;"	member	line:124	class:MonitoringManager
+_classify_failure_reason	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def _classify_failure_reason(self, response_content: str, document_count: int) -> str:$/;"	member	line:163	class:MonitoringManager
+log_user_activity	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def log_user_activity(self, ip_address: str, question: str, query_type: str = None, $/;"	member	line:191	class:MonitoringManager
+_update_ip_stats	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def _update_ip_stats(self, cursor, ip_address: str, response_time: float = None, success: bool = True):$/;"	member	line:227	class:MonitoringManager
+_update_daily_stats	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def _update_daily_stats(self, cursor, query_type: str = None, response_time: float = None):$/;"	member	line:262	class:MonitoringManager
+get_logs_in_range	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_logs_in_range(self, start_date, end_date) -> List[Dict[str, Any]]:$/;"	member	line:300	class:MonitoringManager
+get_daily_statistics	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_daily_statistics(self, logs_data: List[Dict]) -> List[Dict]:$/;"	member	line:325	class:MonitoringManager
+get_weekly_statistics	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_weekly_statistics(self, logs_data: List[Dict]) -> List[Dict]:$/;"	member	line:333	class:MonitoringManager
+get_monthly_statistics	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_monthly_statistics(self, logs_data: List[Dict]) -> List[Dict]:$/;"	member	line:345	class:MonitoringManager
+get_hourly_statistics	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_hourly_statistics(self, logs_data: List[Dict]) -> List[Dict]:$/;"	member	line:354	class:MonitoringManager
+get_daily_ip_statistics	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_daily_ip_statistics(self, logs_data: List[Dict]) -> List[Dict]:$/;"	member	line:362	class:MonitoringManager
+get_weekly_ip_statistics	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_weekly_ip_statistics(self, logs_data: List[Dict]) -> List[Dict]:$/;"	member	line:370	class:MonitoringManager
+get_monthly_ip_statistics	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_monthly_ip_statistics(self, logs_data: List[Dict]) -> List[Dict]:$/;"	member	line:382	class:MonitoringManager
+get_ip_statistics	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_ip_statistics(self, logs_data: List[Dict]) -> Dict[str, Dict]:$/;"	member	line:391	class:MonitoringManager
+get_ip_activity_patterns	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_ip_activity_patterns(self, logs_data: List[Dict]) -> Dict:$/;"	member	line:429	class:MonitoringManager
+detect_suspicious_ips	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def detect_suspicious_ips(self, logs_data: List[Dict], threshold: int = 100) -> Dict[str, Dict]:$/;"	member	line:453	class:MonitoringManager
+get_query_type_statistics	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_query_type_statistics(self, logs_data: List[Dict]) -> Dict[str, int]:$/;"	member	line:488	class:MonitoringManager
+extract_popular_keywords	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def extract_popular_keywords(self, logs_data: List[Dict], top_n: int = 50) -> List[tuple]:$/;"	member	line:492	class:MonitoringManager
+get_question_length_statistics	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_question_length_statistics(self, logs_data: List[Dict]) -> Dict[str, int]:$/;"	member	line:510	class:MonitoringManager
+get_response_time_statistics	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_response_time_statistics(self, logs_data: List[Dict]) -> Dict[str, int]:$/;"	member	line:529	class:MonitoringManager
+get_success_rate_statistics	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_success_rate_statistics(self, logs_data: List[Dict]) -> Dict[str, Any]:$/;"	member	line:548	class:MonitoringManager
+calculate_daily_average	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def calculate_daily_average(self, logs_data: List[Dict]) -> float:$/;"	member	line:563	class:MonitoringManager
+get_top_query_type	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_top_query_type(self, logs_data: List[Dict]) -> str:$/;"	member	line:571	class:MonitoringManager
+get_growth_rate	D:\workspace\iap-project\src\utils\monitoring_manager.py	/^    def get_growth_rate(self, logs_data: List[Dict], metric_type: str) -> int:$/;"	member	line:576	class:MonitoringManager
+st	D:\workspace\iap-project\src\utils\ui_components_web.py	/^import streamlit as st$/;"	namespace	line:1
+UIComponents	D:\workspace\iap-project\src\utils\ui_components_web.py	/^class UIComponents:$/;"	class	line:3
+render_main_ui	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def render_main_ui(self):$/;"	member	line:6	class:UIComponents
+show_config_error	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def show_config_error(self, env_status):$/;"	member	line:287	class:UIComponents
+show_connection_error	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def show_connection_error(self):$/;"	member	line:321	class:UIComponents
+display_chat_messages	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def display_chat_messages(self, messages_key="messages"):$/;"	member	line:337	class:UIComponents
+display_search_results	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def display_search_results(self, search_results, query_type="default"):$/;"	member	line:353	class:UIComponents
+show_web_search_status	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def show_web_search_status(self, status_type, message=""):$/;"	member	line:383	class:UIComponents
+show_serpapi_setup_guide	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def show_serpapi_setup_guide(self):$/;"	member	line:396	class:UIComponents
+display_reliability_assessment	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def display_reliability_assessment(self, assessment):$/;"	member	line:424	class:UIComponents
+show_session_info	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def show_session_info(self, session_key, debug_mode=False):$/;"	member	line:450	class:UIComponents
+show_web_search_improvements	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def show_web_search_improvements(self, debug_mode=False):$/;"	member	line:473	class:UIComponents
+clear_web_session	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def clear_web_session(self, session_key):$/;"	member	line:506	class:UIComponents
+show_clear_session_button	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def show_clear_session_button(self, session_key, debug_mode=False):$/;"	member	line:526	class:UIComponents
+show_query_validation_info	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def show_query_validation_info(self, validation_result, debug_mode=False):$/;"	member	line:536	class:UIComponents
+show_search_metrics	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def show_search_metrics(self, search_metrics, debug_mode=False):$/;"	member	line:556	class:UIComponents
+show_advanced_debug_info	D:\workspace\iap-project\src\utils\ui_components_web.py	/^    def show_advanced_debug_info(self, debug_info, debug_mode=False):$/;"	member	line:582	class:UIComponents
+st	D:\workspace\iap-project\src\utils\azure_clients.py	/^import streamlit as st$/;"	namespace	line:1
+hashlib	D:\workspace\iap-project\src\utils\azure_clients.py	/^import hashlib$/;"	namespace	line:2
+json	D:\workspace\iap-project\src\utils\azure_clients.py	/^import json$/;"	namespace	line:3
+datetime	D:\workspace\iap-project\src\utils\azure_clients.py	/^from datetime import datetime, timedelta$/;"	namespace	line:4
+timedelta	D:\workspace\iap-project\src\utils\azure_clients.py	/^from datetime import datetime, timedelta$/;"	namespace	line:4
+AzureOpenAI	D:\workspace\iap-project\src\utils\azure_clients.py	/^from openai import AzureOpenAI$/;"	namespace	line:5
+SearchClient	D:\workspace\iap-project\src\utils\azure_clients.py	/^from azure.search.documents import SearchClient$/;"	namespace	line:6
+AzureKeyCredential	D:\workspace\iap-project\src\utils\azure_clients.py	/^from azure.core.credentials import AzureKeyCredential$/;"	namespace	line:7
+VectorEmbeddingClient	D:\workspace\iap-project\src\utils\azure_clients.py	/^class VectorEmbeddingClient:$/;"	class	line:9
+__init__	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def __init__(self, azure_openai_client, config):$/;"	member	line:12	class:VectorEmbeddingClient
+_get_cache_key	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def _get_cache_key(self, text):$/;"	member	line:23	class:VectorEmbeddingClient
+_is_cache_valid	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def _is_cache_valid(self, cache_entry):$/;"	member	line:27	class:VectorEmbeddingClient
+_clean_expired_cache	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def _clean_expired_cache(self):$/;"	member	line:36	class:VectorEmbeddingClient
+get_embedding	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def get_embedding(self, text, use_cache=True):$/;"	member	line:50	class:VectorEmbeddingClient
+get_batch_embeddings	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def get_batch_embeddings(self, texts, use_cache=True, batch_size=100):$/;"	member	line:92	class:VectorEmbeddingClient
+get_cache_stats	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def get_cache_stats(self):$/;"	member	line:158	class:VectorEmbeddingClient
+clear_cache	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def clear_cache(self):$/;"	member	line:175	class:VectorEmbeddingClient
+AzureClientManager	D:\workspace\iap-project\src\utils\azure_clients.py	/^class AzureClientManager:$/;"	class	line:181
+__init__	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def __init__(self, config):$/;"	member	line:184	class:AzureClientManager
+init_clients	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def init_clients(_self):$/;"	member	line:188	class:AzureClientManager
+_test_connections	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def _test_connections(self, openai_client, search_client, embedding_client):$/;"	member	line:217	class:AzureClientManager
+get_client_status	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def get_client_status(self):$/;"	member	line:241	class:AzureClientManager
+HybridSearchClient	D:\workspace\iap-project\src\utils\azure_clients.py	/^class HybridSearchClient:$/;"	class	line:268
+__init__	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def __init__(self, search_client, embedding_client, config):$/;"	member	line:271	class:HybridSearchClient
+execute_hybrid_search	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def execute_hybrid_search(self, query_text, query_vector=None, search_mode="hybrid_balanced", **kwargs):$/;"	member	line:276	class:HybridSearchClient
+_get_search_params	D:\workspace\iap-project\src\utils\azure_clients.py	/^    def _get_search_params(self, search_mode, **kwargs):$/;"	member	line:309	class:HybridSearchClient
+st	D:\workspace\iap-project\src\utils\chart_utils.py	/^import streamlit as st$/;"	namespace	line:1
+pd	D:\workspace\iap-project\src\utils\chart_utils.py	/^import pandas as pd$/;"	namespace	line:2
+matplotlib	D:\workspace\iap-project\src\utils\chart_utils.py	/^import matplotlib.pyplot as plt$/;"	namespace	line:3
+plt	D:\workspace\iap-project\src\utils\chart_utils.py	/^import matplotlib.pyplot as plt$/;"	namespace	line:3
+matplotlib	D:\workspace\iap-project\src\utils\chart_utils.py	/^import matplotlib.font_manager as fm$/;"	namespace	line:4
+fm	D:\workspace\iap-project\src\utils\chart_utils.py	/^import matplotlib.font_manager as fm$/;"	namespace	line:4
+np	D:\workspace\iap-project\src\utils\chart_utils.py	/^import numpy as np$/;"	namespace	line:5
+os	D:\workspace\iap-project\src\utils\chart_utils.py	/^import os$/;"	namespace	line:6
+urllib	D:\workspace\iap-project\src\utils\chart_utils.py	/^import urllib.request$/;"	namespace	line:7
+request	D:\workspace\iap-project\src\utils\chart_utils.py	/^import urllib.request$/;"	namespace	line:7
+platform	D:\workspace\iap-project\src\utils\chart_utils.py	/^import platform$/;"	namespace	line:8
+datetime	D:\workspace\iap-project\src\utils\chart_utils.py	/^from datetime import datetime$/;"	namespace	line:9
+re	D:\workspace\iap-project\src\utils\chart_utils.py	/^import re$/;"	namespace	line:10
+setup_korean_font	D:\workspace\iap-project\src\utils\chart_utils.py	/^def setup_korean_font():$/;"	function	line:12
+ChartManager	D:\workspace\iap-project\src\utils\chart_utils.py	/^class ChartManager:$/;"	class	line:75
+__init__	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def __init__(self):$/;"	member	line:78	class:ChartManager
+_test_korean_font	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _test_korean_font(self):$/;"	member	line:110	class:ChartManager
+_sort_chart_data	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _sort_chart_data(self, data, title=""):$/;"	member	line:121	class:ChartManager
+_is_year_data	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _is_year_data(self, data, title):$/;"	member	line:170	class:ChartManager
+_is_month_data	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _is_month_data(self, data, title):$/;"	member	line:186	class:ChartManager
+_is_weekday_data	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _is_weekday_data(self, data, title):$/;"	member	line:202	class:ChartManager
+create_chart	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def create_chart(self, chart_type, chart_data, title="장애 통계", color_palette=None):$/;"	member	line:218	class:ChartManager
+traceback	D:\workspace\iap-project\src\utils\chart_utils.py	/^            import traceback$/;"	namespace	line:274
+_get_chart_unit	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _get_chart_unit(self, title, values):$/;"	member	line:279	class:ChartManager
+_style_axis	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _style_axis(self, ax, title, xlabel, ylabel, categories):$/;"	member	line:284	class:ChartManager
+_create_bar_chart	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _create_bar_chart(self, data, title):$/;"	member	line:296	class:ChartManager
+traceback	D:\workspace\iap-project\src\utils\chart_utils.py	/^            import traceback$/;"	namespace	line:340
+_create_line_chart	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _create_line_chart(self, data, title):$/;"	member	line:344	class:ChartManager
+_create_horizontal_bar_chart	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _create_horizontal_bar_chart(self, data, title):$/;"	member	line:371	class:ChartManager
+traceback	D:\workspace\iap-project\src\utils\chart_utils.py	/^            import traceback$/;"	namespace	line:416
+_create_pie_chart	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _create_pie_chart(self, data, title):$/;"	member	line:420	class:ChartManager
+make_autopct	D:\workspace\iap-project\src\utils\chart_utils.py	/^            def make_autopct(values):$/;"	function	line:455	function:ChartManager._create_pie_chart
+my_autopct	D:\workspace\iap-project\src\utils\chart_utils.py	/^                def my_autopct(pct):$/;"	function	line:456	function:ChartManager._create_pie_chart.make_autopct
+traceback	D:\workspace\iap-project\src\utils\chart_utils.py	/^            import traceback$/;"	namespace	line:480
+_create_no_data_chart	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _create_no_data_chart(self, title):$/;"	member	line:484	class:ChartManager
+_create_simple_chart	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def _create_simple_chart(self, data, title):$/;"	member	line:506	class:ChartManager
+display_chart_with_data	D:\workspace\iap-project\src\utils\chart_utils.py	/^    def display_chart_with_data(self, chart, chart_data, chart_type, query=""):$/;"	member	line:568	class:ChartManager
+os	D:\workspace\iap-project\src\utils\db_utils.py	/^import os$/;"	namespace	line:2
+load_dotenv	D:\workspace\iap-project\src\utils\db_utils.py	/^from dotenv import load_dotenv$/;"	namespace	line:3
+get_base_db_path	D:\workspace\iap-project\src\utils\db_utils.py	/^def get_base_db_path():$/;"	function	line:8
+get_qa_pairs_db_path	D:\workspace\iap-project\src\utils\db_utils.py	/^def get_qa_pairs_db_path():$/;"	function	line:12
+get_eml_reports_db_path	D:\workspace\iap-project\src\utils\db_utils.py	/^def get_eml_reports_db_path():$/;"	function	line:17
+get_incident_db_path	D:\workspace\iap-project\src\utils\db_utils.py	/^def get_incident_db_path():$/;"	function	line:22
+get_reprompting_db_path	D:\workspace\iap-project\src\utils\db_utils.py	/^def get_reprompting_db_path():$/;"	function	line:27
+get_monitoring_db_path	D:\workspace\iap-project\src\utils\db_utils.py	/^def get_monitoring_db_path():$/;"	function	line:32
+ensure_db_directory	D:\workspace\iap-project\src\utils\db_utils.py	/^def ensure_db_directory():$/;"	function	line:37
+get_all_db_paths	D:\workspace\iap-project\src\utils\db_utils.py	/^def get_all_db_paths():$/;"	function	line:44
+SystemPrompts	D:\workspace\iap-project\src\config\prompts.py	/^class SystemPrompts:$/;"	class	line:1
+_PROMPT_MAP	D:\workspace\iap-project\src\config\prompts.py	/^    _PROMPT_MAP = {$/;"	variable	line:584	class:SystemPrompts
+get_prompt	D:\workspace\iap-project\src\config\prompts.py	/^    def get_prompt(cls, query_type):$/;"	member	line:592	class:SystemPrompts
+get_cot_prompt	D:\workspace\iap-project\src\config\prompts.py	/^    def get_cot_prompt(cls, query_type):$/;"	member	line:596	class:SystemPrompts
+get_sorting_instructions	D:\workspace\iap-project\src\config\prompts.py	/^    def get_sorting_instructions(cls):$/;"	member	line:600	class:SystemPrompts
+get_flexible_matching_instructions	D:\workspace\iap-project\src\config\prompts.py	/^    def get_flexible_matching_instructions(cls):$/;"	member	line:604	class:SystemPrompts
+get_data_integrity_rules	D:\workspace\iap-project\src\config\prompts.py	/^    def get_data_integrity_rules(cls):$/;"	member	line:608	class:SystemPrompts
+_validate_instruction	D:\workspace\iap-project\src\config\prompts.py	/^    def _validate_instruction(cls, instruction_name, instruction_content, prompt_names):$/;"	member	line:612	class:SystemPrompts
+validate_prompt_consistency	D:\workspace\iap-project\src\config\prompts.py	/^    def validate_prompt_consistency(cls):$/;"	member	line:627	class:SystemPrompts
+validate_flexible_matching_consistency	D:\workspace\iap-project\src\config\prompts.py	/^    def validate_flexible_matching_consistency(cls):$/;"	member	line:632	class:SystemPrompts
+validate_data_integrity_consistency	D:\workspace\iap-project\src\config\prompts.py	/^    def validate_data_integrity_consistency(cls):$/;"	member	line:637	class:SystemPrompts
+validate_all_consistency	D:\workspace\iap-project\src\config\prompts.py	/^    def validate_all_consistency(cls):$/;"	member	line:642	class:SystemPrompts
+st	D:\workspace\iap-project\src\utils\azure_clients_web.py	/^import streamlit as st$/;"	namespace	line:1
+AzureOpenAI	D:\workspace\iap-project\src\utils\azure_clients_web.py	/^from openai import AzureOpenAI$/;"	namespace	line:2
+AzureClientManager	D:\workspace\iap-project\src\utils\azure_clients_web.py	/^class AzureClientManager:$/;"	class	line:4
+__init__	D:\workspace\iap-project\src\utils\azure_clients_web.py	/^    def __init__(self, config):$/;"	member	line:7	class:AzureClientManager
+init_clients	D:\workspace\iap-project\src\utils\azure_clients_web.py	/^    def init_clients(_self):$/;"	member	line:11	class:AzureClientManager
+st	D:\workspace\iap-project\src\utils\internet_search.py	/^import streamlit as st$/;"	namespace	line:1
+requests	D:\workspace\iap-project\src\utils\internet_search.py	/^import requests$/;"	namespace	line:2
+List	D:\workspace\iap-project\src\utils\internet_search.py	/^from typing import List, Dict, Optional$/;"	namespace	line:3
+Dict	D:\workspace\iap-project\src\utils\internet_search.py	/^from typing import List, Dict, Optional$/;"	namespace	line:3
+Optional	D:\workspace\iap-project\src\utils\internet_search.py	/^from typing import List, Dict, Optional$/;"	namespace	line:3
+re	D:\workspace\iap-project\src\utils\internet_search.py	/^import re$/;"	namespace	line:4
+InternetSearchManager	D:\workspace\iap-project\src\utils\internet_search.py	/^class InternetSearchManager:$/;"	class	line:6
+__init__	D:\workspace\iap-project\src\utils\internet_search.py	/^    def __init__(self, config):$/;"	member	line:9	class:InternetSearchManager
+is_available	D:\workspace\iap-project\src\utils\internet_search.py	/^    def is_available(self) -> bool:$/;"	member	line:14	class:InternetSearchManager
+extract_search_keywords	D:\workspace\iap-project\src\utils\internet_search.py	/^    def extract_search_keywords(self, query: str, service_name: str = None) -> str:$/;"	member	line:18	class:InternetSearchManager
+search_google	D:\workspace\iap-project\src\utils\internet_search.py	/^    def search_google(self, query: str, service_name: str = None, num_results: int = 5) -> List[Dict]:$/;"	member	line:57	class:InternetSearchManager
+format_search_results_for_llm	D:\workspace\iap-project\src\utils\internet_search.py	/^    def format_search_results_for_llm(self, search_results: List[Dict]) -> str:$/;"	member	line:109	class:InternetSearchManager
+assess_search_reliability	D:\workspace\iap-project\src\utils\internet_search.py	/^    def assess_search_reliability(self, search_results: List[Dict], query: str) -> Dict:$/;"	member	line:126	class:InternetSearchManager
+should_use_internet_search	D:\workspace\iap-project\src\utils\internet_search.py	/^    def should_use_internet_search(self, query_type: str, documents: List[Dict], query: str) -> bool:$/;"	member	line:206	class:InternetSearchManager
+generate_reliability_disclaimer	D:\workspace\iap-project\src\utils\internet_search.py	/^    def generate_reliability_disclaimer(self, reliability_assessment: Dict, query_type: str) -> str:$/;"	member	line:220	class:InternetSearchManager
+generate_internet_search_response	D:\workspace\iap-project\src\utils\internet_search.py	/^    def generate_internet_search_response(self, azure_openai_client, query: str, service_name: str, search_results: List[Dict], model_name: str, query_type: str) -> str:$/;"	member	line:238	class:InternetSearchManager
+sqlite3	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^import sqlite3$/;"	namespace	line:1
+pd	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^import pandas as pd$/;"	namespace	line:2
+logging	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^import logging$/;"	namespace	line:3
+datetime	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^from datetime import datetime$/;"	namespace	line:4
+Path	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^from pathlib import Path$/;"	namespace	line:5
+difflib	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^import difflib$/;"	namespace	line:6
+os	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^import os$/;"	namespace	line:7
+load_dotenv	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^from dotenv import load_dotenv$/;"	namespace	line:8
+get_reprompting_db_path	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^def get_reprompting_db_path():$/;"	function	line:12
+RepromptingDBManager	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^class RepromptingDBManager:$/;"	class	line:17
+__init__	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def __init__(self, db_path=None):$/;"	member	line:20	class:RepromptingDBManager
+_execute_query	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def _execute_query(self, query, params=None, fetch_one=False, fetch_all=False):$/;"	member	line:24	class:RepromptingDBManager
+init_database	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def init_database(self):$/;"	member	line:43	class:RepromptingDBManager
+find_similar_questions_enhanced	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def find_similar_questions_enhanced(self, user_query, similarity_threshold=0.6, limit=5):$/;"	member	line:96	class:RepromptingDBManager
+check_and_transform_query_with_reprompting	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def check_and_transform_query_with_reprompting(self, user_query):$/;"	member	line:209	class:RepromptingDBManager
+traceback	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^            import traceback$/;"	namespace	line:303
+_apply_word_replacement	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def _apply_word_replacement(self, user_query, search_word, replacement_word):$/;"	member	line:313	class:RepromptingDBManager
+add_single_reprompting_question	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def add_single_reprompting_question(self, question_type, question, custom_prompt, $/;"	member	line:353	class:RepromptingDBManager
+get_individual_input_statistics	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def get_individual_input_statistics(self):$/;"	member	line:421	class:RepromptingDBManager
+upload_excel_to_db	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def upload_excel_to_db(self, excel_file_path, file_name):$/;"	member	line:445	class:RepromptingDBManager
+get_reprompting_statistics	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def get_reprompting_statistics(self):$/;"	member	line:507	class:RepromptingDBManager
+check_reprompting_question	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def check_reprompting_question(self, question):$/;"	member	line:530	class:RepromptingDBManager
+find_similar_questions	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def find_similar_questions(self, question, similarity_threshold=0.6, limit=5):$/;"	member	line:551	class:RepromptingDBManager
+get_all_reprompting_questions	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def get_all_reprompting_questions(self, limit=100, offset=0):$/;"	member	line:577	class:RepromptingDBManager
+delete_reprompting_question	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def delete_reprompting_question(self, question_id):$/;"	member	line:594	class:RepromptingDBManager
+get_question_by_type	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def get_question_by_type(self, question_type):$/;"	member	line:610	class:RepromptingDBManager
+get_custom_prompt_for_question	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def get_custom_prompt_for_question(self, question):$/;"	member	line:624	class:RepromptingDBManager
+update_reprompting_question	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def update_reprompting_question(self, question_id, question_type=None, question=None, $/;"	member	line:639	class:RepromptingDBManager
+export_to_excel	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def export_to_excel(self, output_path=None):$/;"	member	line:676	class:RepromptingDBManager
+get_question_types	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def get_question_types(self):$/;"	member	line:700	class:RepromptingDBManager
+bulk_delete_questions	D:\workspace\iap-project\src\utils\reprompting_db_manager.py	/^    def bulk_delete_questions(self, question_ids):$/;"	member	line:712	class:RepromptingDBManager
+sqlite3	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^import sqlite3$/;"	namespace	line:2
+os	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^import os$/;"	namespace	line:3
+datetime	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^from datetime import datetime$/;"	namespace	line:4
+Dict	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^from typing import Dict, List, Optional, Any$/;"	namespace	line:5
+List	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^from typing import Dict, List, Optional, Any$/;"	namespace	line:5
+Optional	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^from typing import Dict, List, Optional, Any$/;"	namespace	line:5
+Any	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^from typing import Dict, List, Optional, Any$/;"	namespace	line:5
+re	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^import re$/;"	namespace	line:6
+load_dotenv	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^from dotenv import load_dotenv$/;"	namespace	line:7
+get_incident_db_path	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^def get_incident_db_path():$/;"	function	line:11
+StatisticsDBManager	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^class StatisticsDBManager:$/;"	class	line:16
+debug_mode	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    debug_mode = True$/;"	variable	line:20	class:StatisticsDBManager
+CAUSE_TYPE_MAPPING	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    CAUSE_TYPE_MAPPING = {$/;"	variable	line:23	class:StatisticsDBManager
+ACTUAL_CAUSE_TYPES	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    ACTUAL_CAUSE_TYPES = [$/;"	variable	line:53	class:StatisticsDBManager
+CAUSE_TYPE_KEYWORDS	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    CAUSE_TYPE_KEYWORDS = [$/;"	variable	line:64	class:StatisticsDBManager
+CAUSE_TYPE_SYNONYMS	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    CAUSE_TYPE_SYNONYMS = {$/;"	variable	line:73	class:StatisticsDBManager
+__init__	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def __init__(self, db_path: str = None):$/;"	member	line:79	class:StatisticsDBManager
+_load_service_names	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _load_service_names(self):$/;"	member	line:106	class:StatisticsDBManager
+_ensure_db_exists	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _ensure_db_exists(self):$/;"	member	line:144	class:StatisticsDBManager
+_load_actual_cause_types_from_db	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _load_actual_cause_types_from_db(self):$/;"	member	line:166	class:StatisticsDBManager
+_execute_query	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _execute_query(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:$/;"	member	line:200	class:StatisticsDBManager
+_match_cause_type	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _match_cause_type(self, query_text: str) -> Optional[str]:$/;"	member	line:229	class:StatisticsDBManager
+_is_cause_type_query	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _is_cause_type_query(self, query: str) -> bool:$/;"	member	line:305	class:StatisticsDBManager
+_normalize_year_query	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _normalize_year_query(self, year_input: str) -> str:$/;"	member	line:347	class:StatisticsDBManager
+_normalize_month_query	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _normalize_month_query(self, month_input: str) -> str:$/;"	member	line:353	class:StatisticsDBManager
+_normalize_week_query	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _normalize_week_query(self, week_input: str) -> str:$/;"	member	line:359	class:StatisticsDBManager
+_normalize_grade_query	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _normalize_grade_query(self, grade_input: str) -> str:$/;"	member	line:371	class:StatisticsDBManager
+_get_current_year	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _get_current_year(self) -> str:$/;"	member	line:377	class:StatisticsDBManager
+datetime	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^        from datetime import datetime$/;"	namespace	line:379
+_extract_period_months	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _extract_period_months(self, query: str) -> tuple:$/;"	member	line:382	class:StatisticsDBManager
+parse_statistics_query	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def parse_statistics_query(self, query: str) -> Dict[str, Any]:$/;"	member	line:417	class:StatisticsDBManager
+_extract_service_name_enhanced	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _extract_service_name_enhanced(self, query: str) -> Optional[str]:$/;"	member	line:712	class:StatisticsDBManager
+build_sql_query	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def build_sql_query(self, conditions: Dict[str, Any]) -> tuple:$/;"	member	line:811	class:StatisticsDBManager
+traceback	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^            import traceback$/;"	namespace	line:1013
+get_statistics	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def get_statistics(self, query: str) -> Dict[str, Any]:$/;"	member	line:1018	class:StatisticsDBManager
+traceback	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^            import traceback$/;"	namespace	line:1148
+_aggregate_grouped_results	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _aggregate_grouped_results(self, results, statistics, conditions):$/;"	member	line:1177	class:StatisticsDBManager
+_aggregate_single_result	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _aggregate_single_result(self, results, statistics, conditions):$/;"	member	line:1286	class:StatisticsDBManager
+get_incident_details	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def get_incident_details(self, conditions: Dict[str, Any], limit: int = 100) -> List[Dict[str, Any]]:$/;"	member	line:1367	class:StatisticsDBManager
+_normalize_query_synonyms	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def _normalize_query_synonyms(self, query: str) -> str:$/;"	member	line:1457	class:StatisticsDBManager
+test_cause_type_matching	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def test_cause_type_matching(self, test_queries: List[str] = None):$/;"	member	line:1492	class:StatisticsDBManager
+get_cause_type_distribution	D:\workspace\iap-project\src\utils\statistics_db_manager.py	/^    def get_cause_type_distribution(self) -> Dict[str, Any]:$/;"	member	line:1608	class:StatisticsDBManager
+os	D:\workspace\iap-project\src\config\settings_web.py	/^import os$/;"	namespace	line:1
+load_dotenv	D:\workspace\iap-project\src\config\settings_web.py	/^from dotenv import load_dotenv$/;"	namespace	line:2
+AppConfig	D:\workspace\iap-project\src\config\settings_web.py	/^class AppConfig:$/;"	class	line:4
+__init__	D:\workspace\iap-project\src\config\settings_web.py	/^    def __init__(self):$/;"	member	line:7	class:AppConfig
+validate_config	D:\workspace\iap-project\src\config\settings_web.py	/^    def validate_config(self):$/;"	member	line:28	class:AppConfig
+has_serpapi_config	D:\workspace\iap-project\src\config\settings_web.py	/^    def has_serpapi_config(self):$/;"	member	line:37	class:AppConfig
+get_env_status	D:\workspace\iap-project\src\config\settings_web.py	/^    def get_env_status(self):$/;"	member	line:41	class:AppConfig
+get_search_quality_settings	D:\workspace\iap-project\src\config\settings_web.py	/^    def get_search_quality_settings(self, query_type):$/;"	member	line:49	class:AppConfig
+st	D:\workspace\iap-project\src\utils\query_processor_web.py	/^import streamlit as st$/;"	namespace	line:1
+re	D:\workspace\iap-project\src\utils\query_processor_web.py	/^import re$/;"	namespace	line:2
+SystemPrompts	D:\workspace\iap-project\src\utils\query_processor_web.py	/^from config.prompts_web import SystemPrompts$/;"	namespace	line:3
+AppConfig	D:\workspace\iap-project\src\utils\query_processor_web.py	/^from config.settings_web import AppConfig$/;"	namespace	line:4
+UIComponents	D:\workspace\iap-project\src\utils\query_processor_web.py	/^from utils.ui_components_web import UIComponents$/;"	namespace	line:5
+InternetSearchManager	D:\workspace\iap-project\src\utils\query_processor_web.py	/^from utils.internet_search_web import InternetSearchManager$/;"	namespace	line:6
+QueryProcessor	D:\workspace\iap-project\src\utils\query_processor_web.py	/^class QueryProcessor:$/;"	class	line:8
+__init__	D:\workspace\iap-project\src\utils\query_processor_web.py	/^    def __init__(self, azure_openai_client, model_name, config=None, session_key="web_chatbot"):$/;"	member	line:11	class:QueryProcessor
+is_it_related_query	D:\workspace\iap-project\src\utils\query_processor_web.py	/^    def is_it_related_query(self, query):$/;"	member	line:24	class:QueryProcessor
+show_non_it_response	D:\workspace\iap-project\src\utils\query_processor_web.py	/^    def show_non_it_response(self, query):$/;"	function	line:81
+classify_query_type_with_llm	D:\workspace\iap-project\src\utils\query_processor_web.py	/^    def classify_query_type_with_llm(self, query):$/;"	function	line:111
+extract_service_name_from_query	D:\workspace\iap-project\src\utils\query_processor_web.py	/^    def extract_service_name_from_query(self, query):$/;"	function	line:158
+is_valid_service_name	D:\workspace\iap-project\src\utils\query_processor_web.py	/^    def is_valid_service_name(self, service_name):$/;"	function	line:179
+_generate_web_search_response	D:\workspace\iap-project\src\utils\query_processor_web.py	/^    def _generate_web_search_response(self, query, target_service_name, query_type, type_labels):$/;"	function	line:204
+_generate_fallback_response	D:\workspace\iap-project\src\utils\query_processor_web.py	/^    def _generate_fallback_response(self, query, query_type, type_labels):$/;"	function	line:348
+_get_search_purpose	D:\workspace\iap-project\src\utils\query_processor_web.py	/^    def _get_search_purpose(self, query_type):$/;"	function	line:394
+process_query	D:\workspace\iap-project\src\utils\query_processor_web.py	/^    def process_query(self, query, query_type=None):$/;"	function	line:404
+st	D:\workspace\iap-project\src\utils\internet_search_web.py	/^import streamlit as st$/;"	namespace	line:1
+requests	D:\workspace\iap-project\src\utils\internet_search_web.py	/^import requests$/;"	namespace	line:2
+List	D:\workspace\iap-project\src\utils\internet_search_web.py	/^from typing import List, Dict, Optional$/;"	namespace	line:3
+Dict	D:\workspace\iap-project\src\utils\internet_search_web.py	/^from typing import List, Dict, Optional$/;"	namespace	line:3
+Optional	D:\workspace\iap-project\src\utils\internet_search_web.py	/^from typing import List, Dict, Optional$/;"	namespace	line:3
+re	D:\workspace\iap-project\src\utils\internet_search_web.py	/^import re$/;"	namespace	line:4
+InternetSearchManager	D:\workspace\iap-project\src\utils\internet_search_web.py	/^class InternetSearchManager:$/;"	class	line:6
+__init__	D:\workspace\iap-project\src\utils\internet_search_web.py	/^    def __init__(self, config):$/;"	member	line:9	class:InternetSearchManager
+is_available	D:\workspace\iap-project\src\utils\internet_search_web.py	/^    def is_available(self) -> bool:$/;"	member	line:15	class:InternetSearchManager
+extract_search_keywords	D:\workspace\iap-project\src\utils\internet_search_web.py	/^    def extract_search_keywords(self, query: str, service_name: str = None) -> str:$/;"	member	line:19	class:InternetSearchManager
+search_google	D:\workspace\iap-project\src\utils\internet_search_web.py	/^    def search_google(self, query: str, service_name: str = None, num_results: int = 6) -> List[Dict]:$/;"	member	line:63	class:InternetSearchManager
+format_search_results_for_llm	D:\workspace\iap-project\src\utils\internet_search_web.py	/^    def format_search_results_for_llm(self, search_results: List[Dict]) -> str:$/;"	member	line:117	class:InternetSearchManager
+assess_search_reliability	D:\workspace\iap-project\src\utils\internet_search_web.py	/^    def assess_search_reliability(self, search_results: List[Dict], query: str) -> Dict:$/;"	member	line:134	class:InternetSearchManager
+generate_reliability_disclaimer	D:\workspace\iap-project\src\utils\internet_search_web.py	/^    def generate_reliability_disclaimer(self, reliability_assessment: Dict, query_type: str) -> str:$/;"	member	line:214	class:InternetSearchManager
+generate_internet_search_response	D:\workspace\iap-project\src\utils\internet_search_web.py	/^    def generate_internet_search_response(self, azure_openai_client, query: str, service_name: str, search_results: List[Dict], model_name: str, query_type: str) -> str:$/;"	member	line:232	class:InternetSearchManager
+SystemPrompts	D:\workspace\iap-project\src\utils\internet_search_web.py	/^            from config.prompts_web import SystemPrompts$/;"	namespace	line:249
+os	D:\workspace\iap-project\src\config\settings_local.py	/^import os$/;"	namespace	line:1
+load_dotenv	D:\workspace\iap-project\src\config\settings_local.py	/^from dotenv import load_dotenv$/;"	namespace	line:2
+AppConfigLocal	D:\workspace\iap-project\src\config\settings_local.py	/^class AppConfigLocal:$/;"	class	line:4
+__init__	D:\workspace\iap-project\src\config\settings_local.py	/^    def __init__(self):$/;"	member	line:5	class:AppConfigLocal
+get_vector_search_config	D:\workspace\iap-project\src\config\settings_local.py	/^    def get_vector_search_config(self, query_type="default"):$/;"	member	line:46	class:AppConfigLocal
+get_search_mode_for_query	D:\workspace\iap-project\src\config\settings_local.py	/^    def get_search_mode_for_query(self, query_type, query_text):$/;"	member	line:80	class:AppConfigLocal
+validate_config	D:\workspace\iap-project\src\config\settings_local.py	/^    def validate_config(self):$/;"	member	line:95	class:AppConfigLocal
+get_env_status	D:\workspace\iap-project\src\config\settings_local.py	/^    def get_env_status(self):$/;"	member	line:106	class:AppConfigLocal
+get_dynamic_thresholds	D:\workspace\iap-project\src\config\settings_local.py	/^    def get_dynamic_thresholds(self, query_type, query_text):$/;"	member	line:117	class:AppConfigLocal
+st	D:\workspace\iap-project\src\utils\logging_middleware.py	/^import streamlit as st$/;"	namespace	line:2
+time	D:\workspace\iap-project\src\utils\logging_middleware.py	/^import time$/;"	namespace	line:3
+functools	D:\workspace\iap-project\src\utils\logging_middleware.py	/^import functools$/;"	namespace	line:4
+re	D:\workspace\iap-project\src\utils\logging_middleware.py	/^import re$/;"	namespace	line:5
+datetime	D:\workspace\iap-project\src\utils\logging_middleware.py	/^from datetime import datetime, timedelta$/;"	namespace	line:6
+timedelta	D:\workspace\iap-project\src\utils\logging_middleware.py	/^from datetime import datetime, timedelta$/;"	namespace	line:6
+Any	D:\workspace\iap-project\src\utils\logging_middleware.py	/^from typing import Any, Callable, Optional$/;"	namespace	line:7
+Callable	D:\workspace\iap-project\src\utils\logging_middleware.py	/^from typing import Any, Callable, Optional$/;"	namespace	line:7
+Optional	D:\workspace\iap-project\src\utils\logging_middleware.py	/^from typing import Any, Callable, Optional$/;"	namespace	line:7
+MonitoringManager	D:\workspace\iap-project\src\utils\logging_middleware.py	/^from utils.monitoring_manager import MonitoringManager$/;"	namespace	line:8
+LoggingMiddleware	D:\workspace\iap-project\src\utils\logging_middleware.py	/^class LoggingMiddleware:$/;"	class	line:10
+__init__	D:\workspace\iap-project\src\utils\logging_middleware.py	/^    def __init__(self):$/;"	member	line:13	class:LoggingMiddleware
+get_client_ip	D:\workspace\iap-project\src\utils\logging_middleware.py	/^    def get_client_ip(self) -> str:$/;"	member	line:27	class:LoggingMiddleware
+get_user_agent	D:\workspace\iap-project\src\utils\logging_middleware.py	/^    def get_user_agent(self) -> str:$/;"	member	line:33	class:LoggingMiddleware
+_analyze_response_quality	D:\workspace\iap-project\src\utils\logging_middleware.py	/^    def _analyze_response_quality(self, response_content: str, document_count: int) -> tuple:$/;"	member	line:36	class:LoggingMiddleware
+_is_rag_based_response	D:\workspace\iap-project\src\utils\logging_middleware.py	/^    def _is_rag_based_response(self, response_content: str, document_count: int = None) -> bool:$/;"	member	line:62	class:LoggingMiddleware
+log_query	D:\workspace\iap-project\src\utils\logging_middleware.py	/^    def log_query(self, question: str, query_type: str = None, response_time: float = None, $/;"	member	line:98	class:LoggingMiddleware
+log_user_activity_disabled	D:\workspace\iap-project\src\utils\logging_middleware.py	/^def log_user_activity_disabled(query_type: str = None):$/;"	function	line:131
+decorator	D:\workspace\iap-project\src\utils\logging_middleware.py	/^    def decorator(func: Callable) -> Callable:$/;"	function	line:133	function:log_user_activity_disabled
+wrapper	D:\workspace\iap-project\src\utils\logging_middleware.py	/^        def wrapper(*args, **kwargs) -> Any:$/;"	function	line:135	function:log_user_activity_disabled.decorator
+log_user_activity_conditional	D:\workspace\iap-project\src\utils\logging_middleware.py	/^def log_user_activity_conditional(query_type: str = None, enable_logging: bool = True):$/;"	function	line:140
+decorator	D:\workspace\iap-project\src\utils\logging_middleware.py	/^    def decorator(func: Callable) -> Callable:$/;"	function	line:142	function:log_user_activity_conditional
+wrapper	D:\workspace\iap-project\src\utils\logging_middleware.py	/^        def wrapper(*args, **kwargs) -> Any:$/;"	function	line:144	function:log_user_activity_conditional.decorator
+log_user_activity	D:\workspace\iap-project\src\utils\logging_middleware.py	/^def log_user_activity(query_type: str = None):$/;"	function	line:209
+log_page_visit	D:\workspace\iap-project\src\utils\logging_middleware.py	/^def log_page_visit(page_name: str):$/;"	function	line:213
+log_chat_interaction	D:\workspace\iap-project\src\utils\logging_middleware.py	/^def log_chat_interaction(question: str, response: str, query_type: str = None, $/;"	function	line:224
+set_client_ip	D:\workspace\iap-project\src\utils\logging_middleware.py	/^def set_client_ip(ip_address: str):$/;"	function	line:237
+apply_logging_to_query_processor	D:\workspace\iap-project\src\utils\logging_middleware.py	/^def apply_logging_to_query_processor(query_processor):$/;"	function	line:241
+apply_logging_to_query_processor_force_decorator	D:\workspace\iap-project\src\utils\logging_middleware.py	/^def apply_logging_to_query_processor_force_decorator(query_processor):$/;"	function	line:248
+logged_process_query	D:\workspace\iap-project\src\utils\logging_middleware.py	/^    def logged_process_query(query, query_type=None):$/;"	function	line:256	function:apply_logging_to_query_processor_force_decorator
+apply_logging_to_query_processor_safe	D:\workspace\iap-project\src\utils\logging_middleware.py	/^def apply_logging_to_query_processor_safe(query_processor):$/;"	function	line:267
+get_recent_activity_summary	D:\workspace\iap-project\src\utils\logging_middleware.py	/^def get_recent_activity_summary(hours: int = 1):$/;"	function	line:279
+get_failure_analysis	D:\workspace\iap-project\src\utils\logging_middleware.py	/^def get_failure_analysis(hours: int = 24):$/;"	function	line:310
+debug_logging_status	D:\workspace\iap-project\src\utils\logging_middleware.py	/^def debug_logging_status(query_processor):$/;"	function	line:336
+st	D:\workspace\iap-project\src\app.py	/^import streamlit as st$/;"	namespace	line:2
+AuthManager	D:\workspace\iap-project\src\app.py	/^from utils.auth_manager import AuthManager$/;"	namespace	line:3
+auth_manager	D:\workspace\iap-project\src\app.py	/^auth_manager = AuthManager()$/;"	variable	line:6
+base_pages	D:\workspace\iap-project\src\app.py	/^base_pages = [$/;"	variable	line:9
+admin_pages	D:\workspace\iap-project\src\app.py	/^admin_pages = [$/;"	variable	line:18
+auth_pages	D:\workspace\iap-project\src\app.py	/^auth_pages = [$/;"	variable	line:31
+admin_management_pages	D:\workspace\iap-project\src\app.py	/^admin_management_pages = [$/;"	variable	line:36
+pages	D:\workspace\iap-project\src\app.py	/^pages = base_pages + auth_pages$/;"	variable	line:48
+pg	D:\workspace\iap-project\src\app.py	/^pg = st.navigation(pages)$/;"	variable	line:55
+st	D:\workspace\iap-project\src\menu\admin_login.py	/^import streamlit as st$/;"	namespace	line:2
+datetime	D:\workspace\iap-project\src\menu\admin_login.py	/^from datetime import datetime$/;"	namespace	line:3
+sys	D:\workspace\iap-project\src\menu\admin_login.py	/^import sys$/;"	namespace	line:4
+os	D:\workspace\iap-project\src\menu\admin_login.py	/^import os$/;"	namespace	line:5
+AuthManager	D:\workspace\iap-project\src\menu\admin_login.py	/^from utils.auth_manager import AuthManager$/;"	namespace	line:10
+main	D:\workspace\iap-project\src\menu\admin_login.py	/^def main():$/;"	function	line:12
+st	D:\workspace\iap-project\src\utils\auth_manager.py	/^import streamlit as st$/;"	namespace	line:2
+bcrypt	D:\workspace\iap-project\src\utils\auth_manager.py	/^import bcrypt$/;"	namespace	line:3
+sqlite3	D:\workspace\iap-project\src\utils\auth_manager.py	/^import sqlite3$/;"	namespace	line:4
+os	D:\workspace\iap-project\src\utils\auth_manager.py	/^import os$/;"	namespace	line:5
+Dict	D:\workspace\iap-project\src\utils\auth_manager.py	/^from typing import Dict, List, Optional$/;"	namespace	line:6
+List	D:\workspace\iap-project\src\utils\auth_manager.py	/^from typing import Dict, List, Optional$/;"	namespace	line:6
+Optional	D:\workspace\iap-project\src\utils\auth_manager.py	/^from typing import Dict, List, Optional$/;"	namespace	line:6
+Path	D:\workspace\iap-project\src\utils\auth_manager.py	/^from pathlib import Path$/;"	namespace	line:7
+datetime	D:\workspace\iap-project\src\utils\auth_manager.py	/^from datetime import datetime$/;"	namespace	line:8
+load_dotenv	D:\workspace\iap-project\src\utils\auth_manager.py	/^from dotenv import load_dotenv$/;"	namespace	line:9
+AuthManager	D:\workspace\iap-project\src\utils\auth_manager.py	/^class AuthManager:$/;"	class	line:14
+__init__	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def __init__(self):$/;"	member	line:17	class:AuthManager
+ensure_database	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def ensure_database(self):$/;"	member	line:23	class:AuthManager
+_initialize_settings	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def _initialize_settings(self):$/;"	member	line:72	class:AuthManager
+get_connection	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def get_connection(self) -> sqlite3.Connection:$/;"	member	line:92	class:AuthManager
+initialize_default_admin	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def initialize_default_admin(self):$/;"	member	line:98	class:AuthManager
+_hash_password	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def _hash_password(self, password: str) -> str:$/;"	member	line:125	class:AuthManager
+_verify_password	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def _verify_password(self, password: str, password_hash: str) -> bool:$/;"	member	line:131	class:AuthManager
+verify_admin_credentials	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def verify_admin_credentials(self, username: str, password: str) -> bool:$/;"	member	line:139	class:AuthManager
+login_admin	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def login_admin(self, username: str, password: str) -> bool:$/;"	member	line:163	class:AuthManager
+_log_login_attempt	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def _log_login_attempt(self, username: str, success: bool):$/;"	member	line:192	class:AuthManager
+logout_admin	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def logout_admin(self):$/;"	member	line:208	class:AuthManager
+is_admin_logged_in	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def is_admin_logged_in(self) -> bool:$/;"	member	line:214	class:AuthManager
+get_current_admin	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def get_current_admin(self) -> Optional[Dict]:$/;"	member	line:218	class:AuthManager
+add_admin	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def add_admin(self, username: str, password: str, name: str, role: str = "admin") -> bool:$/;"	member	line:244	class:AuthManager
+update_admin_password	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def update_admin_password(self, username: str, new_password: str) -> bool:$/;"	member	line:270	class:AuthManager
+deactivate_admin	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def deactivate_admin(self, username: str) -> bool:$/;"	member	line:293	class:AuthManager
+activate_admin	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def activate_admin(self, username: str) -> bool:$/;"	member	line:314	class:AuthManager
+get_all_admins	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def get_all_admins(self) -> List[Dict]:$/;"	member	line:335	class:AuthManager
+delete_admin	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def delete_admin(self, username: str) -> bool:$/;"	member	line:351	class:AuthManager
+get_login_attempts	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def get_login_attempts(self, username: Optional[str] = None, limit: int = 100) -> List[Dict]:$/;"	member	line:376	class:AuthManager
+check_session_timeout	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def check_session_timeout(self) -> bool:$/;"	member	line:400	class:AuthManager
+timedelta	D:\workspace\iap-project\src\utils\auth_manager.py	/^        from datetime import timedelta$/;"	namespace	line:409
+migrate_from_json	D:\workspace\iap-project\src\utils\auth_manager.py	/^    def migrate_from_json(self, json_path: str = "data\/admin_config.json") -> bool:$/;"	member	line:426	class:AuthManager
+json	D:\workspace\iap-project\src\utils\auth_manager.py	/^        import json$/;"	namespace	line:428
+AzureClientManager	D:\workspace\iap-project\src\utils\__init__.py	/^from .azure_clients import AzureClientManager, VectorEmbeddingClient, HybridSearchClient$/;"	namespace	line:2
+VectorEmbeddingClient	D:\workspace\iap-project\src\utils\__init__.py	/^from .azure_clients import AzureClientManager, VectorEmbeddingClient, HybridSearchClient$/;"	namespace	line:2
+HybridSearchClient	D:\workspace\iap-project\src\utils\__init__.py	/^from .azure_clients import AzureClientManager, VectorEmbeddingClient, HybridSearchClient$/;"	namespace	line:2
+InternetSearchManager	D:\workspace\iap-project\src\utils\__init__.py	/^from .internet_search import InternetSearchManager$/;"	namespace	line:3
+QueryProcessorLocal	D:\workspace\iap-project\src\utils\__init__.py	/^from .query_processor_local import QueryProcessorLocal$/;"	namespace	line:4
+RepromptingDBManager	D:\workspace\iap-project\src\utils\__init__.py	/^from .reprompting_db_manager import RepromptingDBManager$/;"	namespace	line:5
+SearchManagerLocal	D:\workspace\iap-project\src\utils\__init__.py	/^from .search_utils_local import SearchManagerLocal$/;"	namespace	line:6
+UIComponentsLocal	D:\workspace\iap-project\src\utils\__init__.py	/^from .ui_components_local import UIComponentsLocal$/;"	namespace	line:7
+ChartManager	D:\workspace\iap-project\src\utils\__init__.py	/^from .chart_utils import ChartManager$/;"	namespace	line:8
+DocumentFilterManager	D:\workspace\iap-project\src\utils\__init__.py	/^from .filter_manager import DocumentFilterManager, QueryType, FilterConditions, FilterStage, FilterResult, DocumentNormalizer, ConditionExtractor, DocumentValidator$/;"	namespace	line:9
+QueryType	D:\workspace\iap-project\src\utils\__init__.py	/^from .filter_manager import DocumentFilterManager, QueryType, FilterConditions, FilterStage, FilterResult, DocumentNormalizer, ConditionExtractor, DocumentValidator$/;"	namespace	line:9
+FilterConditions	D:\workspace\iap-project\src\utils\__init__.py	/^from .filter_manager import DocumentFilterManager, QueryType, FilterConditions, FilterStage, FilterResult, DocumentNormalizer, ConditionExtractor, DocumentValidator$/;"	namespace	line:9
+FilterStage	D:\workspace\iap-project\src\utils\__init__.py	/^from .filter_manager import DocumentFilterManager, QueryType, FilterConditions, FilterStage, FilterResult, DocumentNormalizer, ConditionExtractor, DocumentValidator$/;"	namespace	line:9
+FilterResult	D:\workspace\iap-project\src\utils\__init__.py	/^from .filter_manager import DocumentFilterManager, QueryType, FilterConditions, FilterStage, FilterResult, DocumentNormalizer, ConditionExtractor, DocumentValidator$/;"	namespace	line:9
+DocumentNormalizer	D:\workspace\iap-project\src\utils\__init__.py	/^from .filter_manager import DocumentFilterManager, QueryType, FilterConditions, FilterStage, FilterResult, DocumentNormalizer, ConditionExtractor, DocumentValidator$/;"	namespace	line:9
+ConditionExtractor	D:\workspace\iap-project\src\utils\__init__.py	/^from .filter_manager import DocumentFilterManager, QueryType, FilterConditions, FilterStage, FilterResult, DocumentNormalizer, ConditionExtractor, DocumentValidator$/;"	namespace	line:9
+DocumentValidator	D:\workspace\iap-project\src\utils\__init__.py	/^from .filter_manager import DocumentFilterManager, QueryType, FilterConditions, FilterStage, FilterResult, DocumentNormalizer, ConditionExtractor, DocumentValidator$/;"	namespace	line:9
+AuthManager	D:\workspace\iap-project\src\utils\__init__.py	/^from .auth_manager import AuthManager$/;"	namespace	line:10
+__all__	D:\workspace\iap-project\src\utils\__init__.py	/^__all__ = ['AzureClientManager', 'VectorEmbeddingClient', 'HybridSearchClient', 'InternetSearchManager', 'QueryProcessorLocal', 'RepromptingDBManager', 'SearchManagerLocal', 'UIComponentsLocal', 'ChartManager', 'DocumentFilterManager', 'QueryType', 'FilterConditions', 'FilterStage', 'FilterResult', 'DocumentNormalizer', 'ConditionExtractor', 'DocumentValidator', 'AuthManager']/;"	variable	line:12
+st	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^import streamlit as st$/;"	namespace	line:1
+pd	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^import pandas as pd$/;"	namespace	line:2
+AzureOpenAI	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^from openai import AzureOpenAI$/;"	namespace	line:3
+StringIO	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^from io import StringIO$/;"	namespace	line:4
+re	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^import re$/;"	namespace	line:5
+os	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^import os$/;"	namespace	line:6
+load_dotenv	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^from dotenv import load_dotenv$/;"	namespace	line:7
+page_title	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^    page_title="인시던트 요약 시스템",$/;"	variable	line:14
+page_icon	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^    page_icon="🔧",$/;"	variable	line:15
+layout	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^    layout="wide"$/;"	variable	line:16
+azure_openai_endpoint	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^azure_openai_endpoint = os.getenv("OPENAI_ENDPOINT")$/;"	variable	line:23
+azure_openai_key	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^azure_openai_key = os.getenv("OPENAI_KEY")$/;"	variable	line:24
+azure_openai_model	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^azure_openai_model = os.getenv("CHAT_MODEL", "iap-gpt-4o-mini")$/;"	variable	line:25
+azure_openai_api_version	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^azure_openai_api_version = os.getenv("OPENAI_API_VERSION", "2024-02-01")$/;"	variable	line:26
+client	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^client = None$/;"	variable	line:29
+client	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^        client = AzureOpenAI($/;"	variable	line:33
+azure_endpoint	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^            azure_endpoint=azure_openai_endpoint,$/;"	variable	line:34
+api_key	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^            api_key=azure_openai_key,$/;"	variable	line:35
+api_version	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^            api_version=azure_openai_api_version$/;"	variable	line:36
+manual_endpoint	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^            manual_endpoint = st.text_input("Azure OpenAI Endpoint:", value=azure_openai_endpoint or "")$/;"	variable	line:47
+manual_key	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^            manual_key = st.text_input("Azure OpenAI Key:", type="password", value=azure_openai_key or "")$/;"	variable	line:48
+manual_model	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^            manual_model = st.text_input("Chat Model:", value=azure_openai_model)$/;"	variable	line:49
+manual_api_version	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^            manual_api_version = st.text_input("API Version:", value=azure_openai_api_version)$/;"	variable	line:50
+client	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^                    client = AzureOpenAI($/;"	variable	line:54
+azure_endpoint	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^                        azure_endpoint=manual_endpoint,$/;"	variable	line:55
+api_key	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^                        api_key=manual_key,$/;"	variable	line:56
+api_version	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^                        api_version=manual_api_version$/;"	variable	line:57
+azure_openai_model	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^                    azure_openai_model = manual_model$/;"	variable	line:59
+summarize_text	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^def summarize_text(text, summary_type, max_tokens=150):$/;"	function	line:65
+response	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^        response = client.chat.completions.create($/;"	variable	line:191
+model	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^            model=azure_openai_model,$/;"	variable	line:192
+messages	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^            messages=[$/;"	variable	line:193
+max_tokens	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^            max_tokens=max_tokens,$/;"	variable	line:197
+temperature	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^            temperature=0.3$/;"	variable	line:198
+summary	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^        summary = response.choices[0].message.content.strip()$/;"	variable	line:201
+process_excel_file	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^def process_excel_file(uploaded_file, max_tokens=150):$/;"	function	line:208
+main	D:\workspace\iap-project\src\menu\90_Chatbot_Rag_Datapreprocess.py	/^def main():$/;"	function	line:275
+st	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^import streamlit as st$/;"	namespace	line:1
+pd	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^import pandas as pd$/;"	namespace	line:2
+sqlite3	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^import sqlite3$/;"	namespace	line:3
+os	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^import os$/;"	namespace	line:4
+datetime	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^from datetime import datetime$/;"	namespace	line:5
+chardet	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^import chardet$/;"	namespace	line:6
+io	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^import io$/;"	namespace	line:7
+re	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^import re$/;"	namespace	line:8
+load_dotenv	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^from dotenv import load_dotenv$/;"	namespace	line:9
+page_title	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^    page_title="인시던트 데이터 관리",$/;"	variable	line:16
+page_icon	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^    page_icon="🔧",$/;"	variable	line:17
+layout	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^    layout="wide"$/;"	variable	line:18
+get_db_path	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def get_db_path():$/;"	function	line:22
+DB_PATH	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^DB_PATH = get_db_path()$/;"	variable	line:27
+DB_DIR	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^DB_DIR = os.path.dirname(DB_PATH)$/;"	variable	line:28
+normalize_year	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def normalize_year(value):$/;"	function	line:34
+normalize_month	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def normalize_month(value):$/;"	function	line:43
+normalize_week	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def normalize_week(value):$/;"	function	line:52
+normalize_incident_grade	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def normalize_incident_grade(value):$/;"	function	line:76
+normalize_data_row	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def normalize_data_row(data_dict):$/;"	function	line:85
+init_database	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def init_database():$/;"	function	line:101
+check_encoding	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def check_encoding(file_content):$/;"	function	line:136
+upload_csv_data	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def upload_csv_data(df):$/;"	function	line:151
+get_incidents	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def get_incidents(limit=100, search_term=""):$/;"	function	line:186
+add_incident	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def add_incident(data):$/;"	function	line:205
+update_incident	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def update_incident(incident_id, data):$/;"	function	line:240
+delete_incident	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def delete_incident(incident_id):$/;"	function	line:276
+main	D:\workspace\iap-project\src\menu\90_Chatbot_Incident_data_mng.py	/^def main():$/;"	function	line:295
+st	D:\workspace\iap-project\src\utils\query_processor_local.py	/^import streamlit as st$/;"	namespace	line:1
+re	D:\workspace\iap-project\src\utils\query_processor_local.py	/^import re$/;"	namespace	line:2
+time	D:\workspace\iap-project\src\utils\query_processor_local.py	/^import time$/;"	namespace	line:3
+os	D:\workspace\iap-project\src\utils\query_processor_local.py	/^import os$/;"	namespace	line:4
+datetime	D:\workspace\iap-project\src\utils\query_processor_local.py	/^from datetime import datetime$/;"	namespace	line:5
+SystemPrompts	D:\workspace\iap-project\src\utils\query_processor_local.py	/^from config.prompts import SystemPrompts$/;"	namespace	line:6
+AppConfigLocal	D:\workspace\iap-project\src\utils\query_processor_local.py	/^from config.settings_local import AppConfigLocal$/;"	namespace	line:7
+SearchManagerLocal	D:\workspace\iap-project\src\utils\query_processor_local.py	/^from utils.search_utils_local import SearchManagerLocal$/;"	namespace	line:8
+UIComponentsLocal	D:\workspace\iap-project\src\utils\query_processor_local.py	/^from utils.ui_components_local import UIComponentsLocal$/;"	namespace	line:9
+RepromptingDBManager	D:\workspace\iap-project\src\utils\query_processor_local.py	/^from utils.reprompting_db_manager import RepromptingDBManager$/;"	namespace	line:10
+ChartManager	D:\workspace\iap-project\src\utils\query_processor_local.py	/^from utils.chart_utils import ChartManager$/;"	namespace	line:11
+StatisticsDBManager	D:\workspace\iap-project\src\utils\query_processor_local.py	/^from utils.statistics_db_manager import StatisticsDBManager$/;"	namespace	line:12
+DocumentFilterManager	D:\workspace\iap-project\src\utils\query_processor_local.py	/^from utils.filter_manager import DocumentFilterManager, QueryType$/;"	namespace	line:13
+QueryType	D:\workspace\iap-project\src\utils\query_processor_local.py	/^from utils.filter_manager import DocumentFilterManager, QueryType$/;"	namespace	line:13
+MonitoringManager	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    from utils.monitoring_manager import MonitoringManager$/;"	namespace	line:16
+MONITORING_AVAILABLE	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    MONITORING_AVAILABLE = True$/;"	variable	line:17
+MONITORING_AVAILABLE	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    MONITORING_AVAILABLE = False$/;"	variable	line:19
+MonitoringManager	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    class MonitoringManager:$/;"	class	line:20
+__init__	D:\workspace\iap-project\src\utils\query_processor_local.py	/^        def __init__(self, *args, **kwargs): pass$/;"	member	line:21	class:MonitoringManager
+log_user_activity	D:\workspace\iap-project\src\utils\query_processor_local.py	/^        def log_user_activity(self, *args, **kwargs): pass$/;"	member	line:22	class:MonitoringManager
+DataIntegrityNormalizer	D:\workspace\iap-project\src\utils\query_processor_local.py	/^class DataIntegrityNormalizer:$/;"	class	line:24
+normalize_error_time	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def normalize_error_time(error_time):$/;"	member	line:28	class:DataIntegrityNormalizer
+normalize_date_fields	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def normalize_date_fields(doc):$/;"	member	line:42	class:DataIntegrityNormalizer
+preserve_original_fields	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def preserve_original_fields(doc):$/;"	member	line:78	class:DataIntegrityNormalizer
+normalize_document_with_integrity	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def normalize_document_with_integrity(cls, doc):$/;"	member	line:97	class:DataIntegrityNormalizer
+StatisticsValidator	D:\workspace\iap-project\src\utils\query_processor_local.py	/^class StatisticsValidator:$/;"	class	line:108
+__init__	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def __init__(self):$/;"	member	line:109	class:StatisticsValidator
+validate_document	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def validate_document(self, doc, doc_index):$/;"	member	line:113	class:StatisticsValidator
+validate_statistics_result	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def validate_statistics_result(self, stats, original_doc_count):$/;"	member	line:131	class:StatisticsValidator
+ImprovedStatisticsCalculator	D:\workspace\iap-project\src\utils\query_processor_local.py	/^class ImprovedStatisticsCalculator:$/;"	class	line:137
+__init__	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def __init__(self, remove_duplicates=False):$/;"	member	line:138	class:ImprovedStatisticsCalculator
+_extract_filter_conditions	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _extract_filter_conditions(self, query):$/;"	member	line:143	class:ImprovedStatisticsCalculator
+_validate_document_against_conditions	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _validate_document_against_conditions(self, doc, conditions):$/;"	member	line:231	class:ImprovedStatisticsCalculator
+_extract_year_from_document	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _extract_year_from_document(self, doc):$/;"	member	line:268	class:ImprovedStatisticsCalculator
+_extract_month_from_document	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _extract_month_from_document(self, doc):$/;"	member	line:298	class:ImprovedStatisticsCalculator
+_apply_filters	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _apply_filters(self, documents, conditions):$/;"	member	line:328	class:ImprovedStatisticsCalculator
+_empty_statistics	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _empty_statistics(self):$/;"	member	line:331	class:ImprovedStatisticsCalculator
+_is_error_time_query	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _is_error_time_query(self, query):$/;"	member	line:337	class:ImprovedStatisticsCalculator
+_determine_primary_stat_type	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _determine_primary_stat_type(self, query, yearly_stats, monthly_stats, time_stats, service_stats, department_stats, grade_stats):$/;"	member	line:341	class:ImprovedStatisticsCalculator
+_calculate_detailed_statistics	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _calculate_detailed_statistics(self, documents, conditions, is_error_time_query):$/;"	member	line:360	class:ImprovedStatisticsCalculator
+calculate_comprehensive_statistics	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def calculate_comprehensive_statistics(self, query, documents, query_type="default"):$/;"	member	line:433	class:ImprovedStatisticsCalculator
+QueryProcessorLocal	D:\workspace\iap-project\src\utils\query_processor_local.py	/^class QueryProcessorLocal:$/;"	class	line:473
+__init__	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def __init__(self, azure_openai_client, search_client, model_name, config=None, embedding_client=None):$/;"	member	line:474	class:QueryProcessorLocal
+statistics_db_manager	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def statistics_db_manager(self):$/;"	member	line:539	class:QueryProcessorLocal
+_validate_documents_against_query_conditions	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _validate_documents_against_query_conditions(self, query, documents):$/;"	member	line:547	class:QueryProcessorLocal
+_is_service_match	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _is_service_match(self, query_service, doc_service):$/;"	member	line:624	class:QueryProcessorLocal
+_extract_year_from_query	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _extract_year_from_query(self, query):$/;"	member	line:661	class:QueryProcessorLocal
+_extract_months_from_query	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _extract_months_from_query(self, query):$/;"	member	line:686	class:QueryProcessorLocal
+_extract_year_from_document	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _extract_year_from_document(self, doc):$/;"	member	line:729	class:QueryProcessorLocal
+_extract_month_from_document	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _extract_month_from_document(self, doc):$/;"	member	line:751	class:QueryProcessorLocal
+generate_rag_response_with_data_integrity	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def generate_rag_response_with_data_integrity(self, query, documents, query_type="default", time_conditions=None, department_conditions=None, reprompting_info=None):$/;"	member	line:782	class:QueryProcessorLocal
+traceback	D:\workspace\iap-project\src\utils\query_processor_local.py	/^            import traceback$/;"	namespace	line:882
+_get_data_integrity_prompt	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _get_data_integrity_prompt(self, query_type):$/;"	member	line:886	class:QueryProcessorLocal
+_generate_statistics_response_with_integrity	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _generate_statistics_response_with_integrity(self, query, documents):$/;"	function	line:929
+traceback	D:\workspace\iap-project\src\utils\query_processor_local.py	/^            import traceback$/;"	namespace	line:972
+_calculate_statistics_with_chart_support	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _calculate_statistics_with_chart_support(self, documents, query):$/;"	function	line:976
+traceback	D:\workspace\iap-project\src\utils\query_processor_local.py	/^            import traceback$/;"	namespace	line:1047
+_format_db_statistics_with_chart_support	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _format_db_statistics_with_chart_support(self, db_stats, query):$/;"	function	line:1051
+check_and_transform_query_with_reprompting	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def check_and_transform_query_with_reprompting(self, user_query):$/;"	function	line:1175
+extract_time_conditions	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def extract_time_conditions(self, query):$/;"	function	line:1235
+extract_department_conditions	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def extract_department_conditions(self, query):$/;"	function	line:1255
+classify_query_type_with_llm	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def classify_query_type_with_llm(self, query):$/;"	function	line:1260
+traceback	D:\workspace\iap-project\src\utils\query_processor_local.py	/^            import traceback$/;"	namespace	line:1381
+_keyword_based_fallback_classification	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _keyword_based_fallback_classification(self, query):$/;"	function	line:1386
+_calculate_llm_classification_confidence	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _calculate_llm_classification_confidence(self, query, predicted_type):$/;"	function	line:1452
+_extract_chart_type_from_query	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _extract_chart_type_from_query(self, query):$/;"	function	line:1491
+_generate_chart_title	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _generate_chart_title(self, query, stats):$/;"	function	line:1513
+_get_chart_data_from_stats	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _get_chart_data_from_stats(self, stats, requested_chart_type=None):$/;"	function	line:1527
+_extract_incident_id_sort_key	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _extract_incident_id_sort_key(self, incident_id):$/;"	function	line:1553
+_apply_default_sorting	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _apply_default_sorting(self, documents):$/;"	function	line:1562
+default_sort_key	D:\workspace\iap-project\src\utils\query_processor_local.py	/^            def default_sort_key(doc):$/;"	function	line:1567	function:._apply_default_sorting
+detect_sorting_requirements	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def detect_sorting_requirements(self, query):$/;"	function	line:1579
+apply_custom_sorting	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def apply_custom_sorting(self, documents, sort_info):$/;"	function	line:1601
+error_time_sort_key	D:\workspace\iap-project\src\utils\query_processor_local.py	/^                def error_time_sort_key(doc):$/;"	function	line:1607	function:.apply_custom_sorting
+_display_response_with_marker_conversion	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _display_response_with_marker_conversion(self, response, chart_info=None, query_type="default"):$/;"	function	line:1624
+process_query	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def process_query(self, query, query_type=None):$/;"	function	line:1642
+_is_successful_response	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _is_successful_response(self, response_text: str, document_count: int) -> bool:$/;"	function	line:1776
+_is_rag_based_response	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _is_rag_based_response(self, response_text: str, document_count: int = None) -> bool:$/;"	function	line:1809
+_get_failure_reason	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _get_failure_reason(self, response_text: str, document_count: int) -> str:$/;"	function	line:1858
+_log_query_activity	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _log_query_activity(self, query: str, query_type: str = None, response_time: float = None,$/;"	function	line:1885
+force_replace_problematic_queries	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def force_replace_problematic_queries(self, query):$/;"	function	line:1921
+_convert_to_query_type_enum	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _convert_to_query_type_enum(self, query_type_str):$/;"	function	line:1944
+_determine_query_scope	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _determine_query_scope(self, conditions):$/;"	function	line:1953
+_get_chart_data_from_db_stats	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _get_chart_data_from_db_stats(self, db_stats, requested_chart_type=None):$/;"	function	line:1987
+_generate_chart_title_from_db_stats	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def _generate_chart_title_from_db_stats(self, query, db_stats):$/;"	function	line:2038
+calculate_unified_statistics	D:\workspace\iap-project\src\utils\query_processor_local.py	/^    def calculate_unified_statistics(self, documents, query, query_type="default"):$/;"	function	line:2086
+st	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^import streamlit as st$/;"	namespace	line:2
+pd	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^import pandas as pd$/;"	namespace	line:3
+plotly	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^import plotly.express as px$/;"	namespace	line:4
+px	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^import plotly.express as px$/;"	namespace	line:4
+plotly	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^import plotly.graph_objects as go$/;"	namespace	line:5
+go	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^import plotly.graph_objects as go$/;"	namespace	line:5
+datetime	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^from datetime import datetime, timedelta$/;"	namespace	line:6
+timedelta	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^from datetime import datetime, timedelta$/;"	namespace	line:6
+json	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^import json$/;"	namespace	line:7
+os	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^import os$/;"	namespace	line:8
+defaultdict	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^from collections import defaultdict, Counter$/;"	namespace	line:9
+Counter	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^from collections import defaultdict, Counter$/;"	namespace	line:9
+AuthManager	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^from utils.auth_manager import AuthManager$/;"	namespace	line:10
+MonitoringManager	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^from utils.monitoring_manager import MonitoringManager$/;"	namespace	line:11
+ChartManager	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^from utils.chart_utils import ChartManager$/;"	namespace	line:12
+main	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^def main():$/;"	function	line:14
+show_dashboard_overview	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^def show_dashboard_overview(monitoring_manager, logs_data, chart_manager):$/;"	function	line:107
+show_time_statistics	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^def show_time_statistics(monitoring_manager, logs_data, chart_manager):$/;"	function	line:183
+show_ip_analysis	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^def show_ip_analysis(monitoring_manager, logs_data, chart_manager):$/;"	function	line:246
+show_question_analysis	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^def show_question_analysis(monitoring_manager, logs_data, chart_manager):$/;"	function	line:330
+show_detailed_logs	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^def show_detailed_logs(monitoring_manager, logs_data):$/;"	function	line:417
+style_dataframe	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^        def style_dataframe(df):$/;"	function	line:555	function:show_detailed_logs
+color_answer_status	D:\workspace\iap-project\src\menu\90_Admin_monitoring.py	/^            def color_answer_status(val):$/;"	function	line:556	function:show_detailed_logs.style_dataframe
+st	D:\workspace\iap-project\src\utils\search_utils.py	/^import streamlit as st$/;"	namespace	line:1
+re	D:\workspace\iap-project\src\utils\search_utils.py	/^import re$/;"	namespace	line:2
+AppConfig	D:\workspace\iap-project\src\utils\search_utils.py	/^from config.settings import AppConfig$/;"	namespace	line:3
+SearchManager	D:\workspace\iap-project\src\utils\search_utils.py	/^class SearchManager:$/;"	class	line:5
+__init__	D:\workspace\iap-project\src\utils\search_utils.py	/^    def __init__(self, search_client, config=None):$/;"	member	line:8	class:SearchManager
+_load_service_names_from_rag	D:\workspace\iap-project\src\utils\search_utils.py	/^    def _load_service_names_from_rag(_self):$/;"	member	line:17	class:SearchManager
+get_service_names_from_rag	D:\workspace\iap-project\src\utils\search_utils.py	/^    def get_service_names_from_rag(self):$/;"	member	line:45	class:SearchManager
+extract_service_name_from_query	D:\workspace\iap-project\src\utils\search_utils.py	/^    def extract_service_name_from_query(self, query):$/;"	member	line:52	class:SearchManager
+_find_best_similarity_match	D:\workspace\iap-project\src\utils\search_utils.py	/^    def _find_best_similarity_match(self, query, service_names, threshold=0.7):$/;"	member	line:100	class:SearchManager
+calculate_similarity	D:\workspace\iap-project\src\utils\search_utils.py	/^        def calculate_similarity(s1, s2):$/;"	function	line:102	function:SearchManager._find_best_similarity_match
+_extract_service_name_legacy	D:\workspace\iap-project\src\utils\search_utils.py	/^    def _extract_service_name_legacy(self, query):$/;"	member	line:126	class:SearchManager
+display_available_services	D:\workspace\iap-project\src\utils\search_utils.py	/^    def display_available_services(self, limit=10):$/;"	member	line:147	class:SearchManager
+search_service_names	D:\workspace\iap-project\src\utils\search_utils.py	/^    def search_service_names(self, keyword):$/;"	member	line:157	class:SearchManager
+is_valid_service_name	D:\workspace\iap-project\src\utils\search_utils.py	/^    def is_valid_service_name(self, service_name):$/;"	member	line:169	class:SearchManager
+calculate_hybrid_score	D:\workspace\iap-project\src\utils\search_utils.py	/^    def calculate_hybrid_score(self, search_score, reranker_score):$/;"	member	line:231	class:SearchManager
+advanced_filter_documents_v3	D:\workspace\iap-project\src\utils\search_utils.py	/^    def advanced_filter_documents_v3(self, documents, query_type="default", query_text="", target_service_name=None):$/;"	member	line:242	class:SearchManager
+sort_key	D:\workspace\iap-project\src\utils\search_utils.py	/^        def sort_key(doc):$/;"	function	line:319	function:SearchManager.advanced_filter_documents_v3
+semantic_search_with_service_filter	D:\workspace\iap-project\src\utils\search_utils.py	/^    def semantic_search_with_service_filter(self, query, target_service_name=None, query_type="default", top_k=20):$/;"	member	line:341	class:SearchManager
+search_documents_with_service_filter	D:\workspace\iap-project\src\utils\search_utils.py	/^    def search_documents_with_service_filter(self, query, target_service_name=None, query_type="default", top_k=20):$/;"	member	line:407	class:SearchManager
+search_documents_fallback	D:\workspace\iap-project\src\utils\search_utils.py	/^    def search_documents_fallback(self, query, target_service_name=None, top_k=15):$/;"	member	line:474	class:SearchManager
+AppConfigLocal	D:\workspace\iap-project\src\config\__init__.py	/^from .settings_local import AppConfigLocal$/;"	namespace	line:3
+SystemPrompts	D:\workspace\iap-project\src\config\__init__.py	/^from .prompts import SystemPrompts$/;"	namespace	line:4
+__all__	D:\workspace\iap-project\src\config\__init__.py	/^__all__ = ['AppConfigLocal', 'SystemPrompts']/;"	variable	line:6
+st	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^import streamlit as st$/;"	namespace	line:1
+pd	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^import pandas as pd$/;"	namespace	line:2
+openpyxl	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^import openpyxl$/;"	namespace	line:3
+datetime	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^from datetime import datetime$/;"	namespace	line:4
+logging	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^import logging$/;"	namespace	line:5
+Path	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^from pathlib import Path$/;"	namespace	line:6
+tempfile	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^import tempfile$/;"	namespace	line:7
+os	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^import os$/;"	namespace	line:8
+load_dotenv	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^from dotenv import load_dotenv$/;"	namespace	line:9
+RepromptingDBManager	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^from utils.reprompting_db_manager import RepromptingDBManager$/;"	namespace	line:10
+get_reprompting_db_path	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^def get_reprompting_db_path():$/;"	function	line:15
+ExcelUploadManagerReprompting	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^class ExcelUploadManagerReprompting:$/;"	class	line:20
+__init__	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def __init__(self):$/;"	member	line:23	class:ExcelUploadManagerReprompting
+validate_excel_file	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def validate_excel_file(self, uploaded_file):$/;"	member	line:40	class:ExcelUploadManagerReprompting
+validate_excel_structure	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def validate_excel_structure(self, df):$/;"	member	line:61	class:ExcelUploadManagerReprompting
+validate_individual_input	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def validate_individual_input(self, question_type, question, custom_prompt, wrong_answer_summary):$/;"	member	line:99	class:ExcelUploadManagerReprompting
+preview_excel_data	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def preview_excel_data(self, uploaded_file, max_rows=10):$/;"	member	line:134	class:ExcelUploadManagerReprompting
+process_upload	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def process_upload(self, uploaded_file):$/;"	member	line:162	class:ExcelUploadManagerReprompting
+process_individual_input	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def process_individual_input(self, question_type, question, custom_prompt, wrong_answer_summary):$/;"	member	line:218	class:ExcelUploadManagerReprompting
+render_individual_input_interface	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def render_individual_input_interface(self):$/;"	member	line:258	class:ExcelUploadManagerReprompting
+_display_individual_input_result	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def _display_individual_input_result(self, result):$/;"	member	line:382	class:ExcelUploadManagerReprompting
+render_upload_interface	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def render_upload_interface(self):$/;"	member	line:408	class:ExcelUploadManagerReprompting
+_display_upload_result	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def _display_upload_result(self, result):$/;"	member	line:473	class:ExcelUploadManagerReprompting
+render_statistics_interface	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def render_statistics_interface(self):$/;"	member	line:521	class:ExcelUploadManagerReprompting
+render_management_interface	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def render_management_interface(self):$/;"	member	line:561	class:ExcelUploadManagerReprompting
+_render_data_list	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def _render_data_list(self):$/;"	member	line:577	class:ExcelUploadManagerReprompting
+_render_search_interface	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def _render_search_interface(self):$/;"	member	line:676	class:ExcelUploadManagerReprompting
+_render_delete_interface	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def _render_delete_interface(self):$/;"	member	line:708	class:ExcelUploadManagerReprompting
+render_main_interface	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    def render_main_interface(self):$/;"	member	line:731	class:ExcelUploadManagerReprompting
+upload_manager	D:\workspace\iap-project\src\menu\90_Chatbot_UserQuestion_Changer.py	/^    upload_manager = ExcelUploadManagerReprompting()$/;"	variable	line:765	class:ExcelUploadManagerReprompting
+st	D:\workspace\iap-project\src\chatbot_main_web.py	/^import streamlit as st$/;"	namespace	line:1
+AppConfig	D:\workspace\iap-project\src\chatbot_main_web.py	/^from config.settings_web import AppConfig$/;"	namespace	line:2
+AzureClientManager	D:\workspace\iap-project\src\chatbot_main_web.py	/^from utils.azure_clients_web import AzureClientManager$/;"	namespace	line:3
+UIComponents	D:\workspace\iap-project\src\chatbot_main_web.py	/^from utils.ui_components_web import UIComponents$/;"	namespace	line:4
+QueryProcessor	D:\workspace\iap-project\src\chatbot_main_web.py	/^from utils.query_processor_web import QueryProcessor$/;"	namespace	line:5
+DEBUG_MODE	D:\workspace\iap-project\src\chatbot_main_web.py	/^DEBUG_MODE = False  # 개발 시에만 True, 운영 시에는 False 로 설정$/;"	variable	line:10
+MAX_QUERY_LENGTH	D:\workspace\iap-project\src\chatbot_main_web.py	/^MAX_QUERY_LENGTH = 300  # 한글 기준 최대 300자$/;"	variable	line:13
+WEB_SESSION_KEY	D:\workspace\iap-project\src\chatbot_main_web.py	/^WEB_SESSION_KEY = "web_chatbot"$/;"	variable	line:16
+WEB_MESSAGES_KEY	D:\workspace\iap-project\src\chatbot_main_web.py	/^WEB_MESSAGES_KEY = f"{WEB_SESSION_KEY}_messages"$/;"	variable	line:17
+WEB_LAST_QUERY_KEY	D:\workspace\iap-project\src\chatbot_main_web.py	/^WEB_LAST_QUERY_KEY = f"{WEB_SESSION_KEY}_last_query"$/;"	variable	line:18
+validate_query_length	D:\workspace\iap-project\src\chatbot_main_web.py	/^def validate_query_length(query):$/;"	function	line:20
+show_query_length_error	D:\workspace\iap-project\src\chatbot_main_web.py	/^def show_query_length_error(current_length):$/;"	function	line:26
+initialize_web_session	D:\workspace\iap-project\src\chatbot_main_web.py	/^def initialize_web_session():$/;"	function	line:51
+clear_web_search_states	D:\workspace\iap-project\src\chatbot_main_web.py	/^def clear_web_search_states(user_query):$/;"	function	line:62
+main	D:\workspace\iap-project\src\chatbot_main_web.py	/^def main():$/;"	function	line:74
+json	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^import json$/;"	namespace	line:1
+re	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^import re$/;"	namespace	line:2
+datetime	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^import datetime$/;"	namespace	line:3
+os	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^import os$/;"	namespace	line:4
+Dict	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^from typing import Dict, List, Tuple, Any$/;"	namespace	line:5
+List	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^from typing import Dict, List, Tuple, Any$/;"	namespace	line:5
+Tuple	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^from typing import Dict, List, Tuple, Any$/;"	namespace	line:5
+Any	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^from typing import Dict, List, Tuple, Any$/;"	namespace	line:5
+st	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^import streamlit as st$/;"	namespace	line:6
+DataIntegrityMonitor	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^class DataIntegrityMonitor:$/;"	class	line:8
+__init__	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def __init__(self, config=None):$/;"	member	line:11	class:DataIntegrityMonitor
+_initialize_technical_patterns	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def _initialize_technical_patterns(self):$/;"	member	line:23	class:DataIntegrityMonitor
+validate_llm_output	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def validate_llm_output(self, original_documents: List[Dict], llm_output: str) -> Dict[str, Any]:$/;"	member	line:48	class:DataIntegrityMonitor
+_validate_document_fields	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def _validate_document_fields(self, doc: Dict, llm_output: str, doc_index: int) -> List[Dict]:$/;"	member	line:86	class:DataIntegrityMonitor
+_check_field_preservation	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def _check_field_preservation(self, field_name: str, original_value: str, llm_output: str, doc_index: int, incident_id: str) -> Dict:$/;"	member	line:100	class:DataIntegrityMonitor
+_extract_technical_terms	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def _extract_technical_terms(self, text: str) -> List[str]:$/;"	member	line:149	class:DataIntegrityMonitor
+_is_term_preserved_in_output	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def _is_term_preserved_in_output(self, term: str, llm_output: str) -> bool:$/;"	member	line:173	class:DataIntegrityMonitor
+_get_term_synonyms	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def _get_term_synonyms(self, term: str) -> List[str]:$/;"	member	line:194	class:DataIntegrityMonitor
+_validate_global_technical_terms	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def _validate_global_technical_terms(self, documents: List[Dict], llm_output: str) -> List[Dict]:$/;"	member	line:210	class:DataIntegrityMonitor
+_is_critical_technical_term	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def _is_critical_technical_term(self, term: str) -> bool:$/;"	member	line:259	class:DataIntegrityMonitor
+_calculate_technical_term_retention	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def _calculate_technical_term_retention(self, documents: List[Dict], llm_output: str) -> float:$/;"	member	line:270	class:DataIntegrityMonitor
+_calculate_integrity_score	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def _calculate_integrity_score(self, violations: List[Dict], document_count: int) -> float:$/;"	member	line:286	class:DataIntegrityMonitor
+_log_violations	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def _log_violations(self, validation_result: Dict):$/;"	member	line:303	class:DataIntegrityMonitor
+get_violation_summary	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def get_violation_summary(self) -> str:$/;"	member	line:344	class:DataIntegrityMonitor
+get_field_violation_statistics	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def get_field_violation_statistics(self) -> Dict[str, int]:$/;"	member	line:363	class:DataIntegrityMonitor
+generate_integrity_report	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def generate_integrity_report(self) -> str:$/;"	member	line:376	class:DataIntegrityMonitor
+reset_statistics	D:\workspace\iap-project\src\utils\data_integrity_monitor.py	/^    def reset_statistics(self):$/;"	member	line:416	class:DataIntegrityMonitor
+requests	D:\workspace\iap-project\src\menu\90_Chatbot_Serpapi_Usage.py	/^import requests$/;"	namespace	line:1
+st	D:\workspace\iap-project\src\menu\90_Chatbot_Serpapi_Usage.py	/^import streamlit as st$/;"	namespace	line:2
+load_dotenv	D:\workspace\iap-project\src\menu\90_Chatbot_Serpapi_Usage.py	/^from dotenv import load_dotenv$/;"	namespace	line:3
+os	D:\workspace\iap-project\src\menu\90_Chatbot_Serpapi_Usage.py	/^import os$/;"	namespace	line:4
+api_key	D:\workspace\iap-project\src\menu\90_Chatbot_Serpapi_Usage.py	/^api_key = os.getenv("SERPAPI_API_KEY")$/;"	variable	line:14
+get_serpapi_usage	D:\workspace\iap-project\src\menu\90_Chatbot_Serpapi_Usage.py	/^    def get_serpapi_usage(api_key: str):$/;"	function	line:19
+st	D:\workspace\iap-project\src\utils\search_utils_local.py	/^import streamlit as st$/;"	namespace	line:1
+re	D:\workspace\iap-project\src\utils\search_utils_local.py	/^import re$/;"	namespace	line:2
+math	D:\workspace\iap-project\src\utils\search_utils_local.py	/^import math$/;"	namespace	line:3
+os	D:\workspace\iap-project\src\utils\search_utils_local.py	/^import os$/;"	namespace	line:4
+Path	D:\workspace\iap-project\src\utils\search_utils_local.py	/^from pathlib import Path$/;"	namespace	line:5
+List	D:\workspace\iap-project\src\utils\search_utils_local.py	/^from typing import List, Dict, Any, Tuple, Optional$/;"	namespace	line:6
+Dict	D:\workspace\iap-project\src\utils\search_utils_local.py	/^from typing import List, Dict, Any, Tuple, Optional$/;"	namespace	line:6
+Any	D:\workspace\iap-project\src\utils\search_utils_local.py	/^from typing import List, Dict, Any, Tuple, Optional$/;"	namespace	line:6
+Tuple	D:\workspace\iap-project\src\utils\search_utils_local.py	/^from typing import List, Dict, Any, Tuple, Optional$/;"	namespace	line:6
+Optional	D:\workspace\iap-project\src\utils\search_utils_local.py	/^from typing import List, Dict, Any, Tuple, Optional$/;"	namespace	line:6
+AppConfigLocal	D:\workspace\iap-project\src\utils\search_utils_local.py	/^from config.settings_local import AppConfigLocal$/;"	namespace	line:7
+DocumentFilterManager	D:\workspace\iap-project\src\utils\search_utils_local.py	/^from utils.filter_manager import DocumentFilterManager, FilterConditions, QueryType$/;"	namespace	line:8
+FilterConditions	D:\workspace\iap-project\src\utils\search_utils_local.py	/^from utils.filter_manager import DocumentFilterManager, FilterConditions, QueryType$/;"	namespace	line:8
+QueryType	D:\workspace\iap-project\src\utils\search_utils_local.py	/^from utils.filter_manager import DocumentFilterManager, FilterConditions, QueryType$/;"	namespace	line:8
+SearchManagerLocal	D:\workspace\iap-project\src\utils\search_utils_local.py	/^class SearchManagerLocal:$/;"	class	line:10
+__init__	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def __init__(self, search_client, embedding_client, config=None):$/;"	member	line:13	class:SearchManagerLocal
+_load_service_names_from_file	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _load_service_names_from_file(self):$/;"	member	line:62	class:SearchManagerLocal
+get_service_names_from_file	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def get_service_names_from_file(self):$/;"	member	line:117	class:SearchManagerLocal
+_find_service_name_in_file	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _find_service_name_in_file(self, query: str) -> Optional[str]:$/;"	member	line:124	class:SearchManagerLocal
+_is_korean_particle	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _is_korean_particle(self, text: str) -> bool:$/;"	member	line:257	class:SearchManagerLocal
+semantic_search_with_adaptive_filtering	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def semantic_search_with_adaptive_filtering(self, query, target_service_name=None, query_type="default", top_k=50):$/;"	member	line:286	class:SearchManagerLocal
+_execute_vector_hybrid_search	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _execute_vector_hybrid_search(self, query, target_service_name, query_type, top_k):$/;"	member	line:328	class:SearchManagerLocal
+_execute_balanced_hybrid_search	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _execute_balanced_hybrid_search(self, query, query_vector, target_service_name, vector_config, top_k):$/;"	member	line:358	class:SearchManagerLocal
+_execute_vector_primary_search	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _execute_vector_primary_search(self, query, query_vector, target_service_name, vector_config, top_k):$/;"	member	line:382	class:SearchManagerLocal
+_execute_text_primary_search	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _execute_text_primary_search(self, query, query_vector, target_service_name, vector_config, top_k):$/;"	member	line:404	class:SearchManagerLocal
+_execute_text_only_search	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _execute_text_only_search(self, query, target_service_name, query_type, top_k):$/;"	member	line:427	class:SearchManagerLocal
+_execute_search_with_params	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _execute_search_with_params(self, search_text, vector_queries, query_type, top_k, search_mode="any"):$/;"	member	line:442	class:SearchManagerLocal
+_process_search_results	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _process_search_results(self, results, search_type):$/;"	member	line:470	class:SearchManagerLocal
+_convert_search_result_to_document	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _convert_search_result_to_document(self, result):$/;"	member	line:484	class:SearchManagerLocal
+_parse_error_time	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _parse_error_time(self, error_time_raw):$/;"	member	line:515	class:SearchManagerLocal
+_apply_rrf_scoring_and_normalization	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _apply_rrf_scoring_and_normalization(self, documents, vector_config):$/;"	member	line:530	class:SearchManagerLocal
+_build_enhanced_query	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _build_enhanced_query(self, query, target_service_name):$/;"	member	line:579	class:SearchManagerLocal
+_add_time_conditions	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _add_time_conditions(self, query, time_info):$/;"	member	line:608	class:SearchManagerLocal
+_add_service_conditions	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _add_service_conditions(self, query, target_service_name):$/;"	member	line:635	class:SearchManagerLocal
+_build_basic_query	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _build_basic_query(self, query, target_service_name):$/;"	member	line:643	class:SearchManagerLocal
+_convert_to_query_type_enum	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _convert_to_query_type_enum(self, query_type_str):$/;"	member	line:655	class:SearchManagerLocal
+_fallback_to_original_search	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _fallback_to_original_search(self, query, target_service_name, query_type, top_k):$/;"	member	line:665	class:SearchManagerLocal
+_safe_execute	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _safe_execute(self, func, default_value=None, error_msg=""):$/;"	member	line:673	class:SearchManagerLocal
+extract_incident_grade_from_query	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def extract_incident_grade_from_query(self, query):$/;"	member	line:682	class:SearchManagerLocal
+build_grade_search_query	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def build_grade_search_query(self, query, grade_info):$/;"	member	line:708	class:SearchManagerLocal
+is_common_term_service	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def is_common_term_service(self, service_name):$/;"	member	line:723	class:SearchManagerLocal
+get_common_term_search_patterns	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def get_common_term_search_patterns(self, service_name):$/;"	member	line:735	class:SearchManagerLocal
+extract_query_keywords	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def extract_query_keywords(self, query):$/;"	member	line:755	class:SearchManagerLocal
+calculate_keyword_relevance_score	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def calculate_keyword_relevance_score(self, query, document):$/;"	member	line:795	class:SearchManagerLocal
+_load_effect_patterns_from_rag	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _load_effect_patterns_from_rag(_self):$/;"	member	line:812	class:SearchManagerLocal
+_normalize_text_for_similarity	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _normalize_text_for_similarity(self, text):$/;"	member	line:833	class:SearchManagerLocal
+_extract_semantic_keywords	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _extract_semantic_keywords(self, text):$/;"	member	line:845	class:SearchManagerLocal
+get_effect_patterns_from_rag	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def get_effect_patterns_from_rag(self):$/;"	member	line:876	class:SearchManagerLocal
+_expand_query_with_semantic_similarity	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _expand_query_with_semantic_similarity(self, query):$/;"	member	line:883	class:SearchManagerLocal
+_calculate_text_similarity	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _calculate_text_similarity(self, text1, text2):$/;"	member	line:950	class:SearchManagerLocal
+_boost_semantic_documents	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _boost_semantic_documents(self, documents, query):$/;"	member	line:966	class:SearchManagerLocal
+_load_service_names_from_rag	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _load_service_names_from_rag(_self):$/;"	member	line:1003	class:SearchManagerLocal
+get_service_names_from_rag	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def get_service_names_from_rag(self):$/;"	member	line:1012	class:SearchManagerLocal
+_normalize_service_name	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _normalize_service_name(self, service_name):$/;"	member	line:1019	class:SearchManagerLocal
+_extract_service_tokens	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _extract_service_tokens(self, service_name):$/;"	member	line:1026	class:SearchManagerLocal
+_calculate_service_similarity	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _calculate_service_similarity(self, query_tokens, service_tokens):$/;"	member	line:1033	class:SearchManagerLocal
+extract_service_name_from_query	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def extract_service_name_from_query(self, query):$/;"	member	line:1049	class:SearchManagerLocal
+_is_cause_type_query	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _is_cause_type_query(self, query):$/;"	member	line:1141	class:SearchManagerLocal
+_extract_service_name_for_cause_type_query	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _extract_service_name_for_cause_type_query(self, query):$/;"	member	line:1180	class:SearchManagerLocal
+_extract_service_name_for_statistics	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _extract_service_name_for_statistics(self, query):$/;"	member	line:1220	class:SearchManagerLocal
+diagnose_service_name_matching	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def diagnose_service_name_matching(self, query):$/;"	member	line:1272	class:SearchManagerLocal
+calculate_hybrid_score	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def calculate_hybrid_score(self, search_score, reranker_score):$/;"	member	line:1320	class:SearchManagerLocal
+_extract_year_month_from_query_unified	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _extract_year_month_from_query_unified(self, query):$/;"	member	line:1332	class:SearchManagerLocal
+search_documents_with_service_filter	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def search_documents_with_service_filter(self, query, target_service_name=None, query_type="default", top_k=15):$/;"	member	line:1369	class:SearchManagerLocal
+search_documents_fallback	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def search_documents_fallback(self, query, target_service_name=None, top_k=25):$/;"	member	line:1405	class:SearchManagerLocal
+_extract_service_name_legacy	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _extract_service_name_legacy(self, query):$/;"	member	line:1451	class:SearchManagerLocal
+_normalize_statistics_query	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def _normalize_statistics_query(self, query):$/;"	member	line:1469	class:SearchManagerLocal
+test_service_name_matching	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def test_service_name_matching(self):$/;"	member	line:1483	class:SearchManagerLocal
+filter_documents_by_time_conditions	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def filter_documents_by_time_conditions(self, documents, time_conditions):$/;"	member	line:1501	class:SearchManagerLocal
+filter_documents_by_department_conditions	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def filter_documents_by_department_conditions(self, documents, department_conditions):$/;"	member	line:1505	class:SearchManagerLocal
+filter_documents_by_grade	D:\workspace\iap-project\src\utils\search_utils_local.py	/^    def filter_documents_by_grade(self, documents, grade_info):$/;"	member	line:1509	class:SearchManagerLocal
+st	D:\workspace\iap-project\src\menu\admin_management.py	/^import streamlit as st$/;"	namespace	line:2
+pd	D:\workspace\iap-project\src\menu\admin_management.py	/^import pandas as pd$/;"	namespace	line:3
+datetime	D:\workspace\iap-project\src\menu\admin_management.py	/^from datetime import datetime$/;"	namespace	line:4
+sys	D:\workspace\iap-project\src\menu\admin_management.py	/^import sys$/;"	namespace	line:5
+os	D:\workspace\iap-project\src\menu\admin_management.py	/^import os$/;"	namespace	line:6
+AuthManager	D:\workspace\iap-project\src\menu\admin_management.py	/^from utils.auth_manager import AuthManager$/;"	namespace	line:11
+main	D:\workspace\iap-project\src\menu\admin_management.py	/^def main():$/;"	function	line:13
+show_admin_list	D:\workspace\iap-project\src\menu\admin_management.py	/^def show_admin_list(auth_manager, current_admin):$/;"	function	line:47
+add_new_admin	D:\workspace\iap-project\src\menu\admin_management.py	/^def add_new_admin(auth_manager, current_admin):$/;"	function	line:165
+edit_my_info	D:\workspace\iap-project\src\menu\admin_management.py	/^def edit_my_info(auth_manager, current_admin):$/;"	function	line:236
+show_login_attempts	D:\workspace\iap-project\src\menu\admin_management.py	/^def show_login_attempts(auth_manager, current_admin):$/;"	function	line:319
+calculate_password_strength	D:\workspace\iap-project\src\menu\admin_management.py	/^def calculate_password_strength(password: str) -> int:$/;"	function	line:396
+st	D:\workspace\iap-project\src\chatbot_main_local.py	/^import streamlit as st$/;"	namespace	line:1
+AppConfigLocal	D:\workspace\iap-project\src\chatbot_main_local.py	/^from config.settings_local import AppConfigLocal$/;"	namespace	line:2
+AzureClientManager	D:\workspace\iap-project\src\chatbot_main_local.py	/^from utils.azure_clients import AzureClientManager$/;"	namespace	line:3
+SearchManagerLocal	D:\workspace\iap-project\src\chatbot_main_local.py	/^from utils.search_utils_local import SearchManagerLocal$/;"	namespace	line:4
+UIComponentsLocal	D:\workspace\iap-project\src\chatbot_main_local.py	/^from utils.ui_components_local import UIComponentsLocal$/;"	namespace	line:5
+QueryProcessorLocal	D:\workspace\iap-project\src\chatbot_main_local.py	/^from utils.query_processor_local import QueryProcessorLocal$/;"	namespace	line:6
+apply_logging_to_query_processor	D:\workspace\iap-project\src\chatbot_main_local.py	/^from utils.logging_middleware import apply_logging_to_query_processor, set_client_ip$/;"	namespace	line:7
+set_client_ip	D:\workspace\iap-project\src\chatbot_main_local.py	/^from utils.logging_middleware import apply_logging_to_query_processor, set_client_ip$/;"	namespace	line:7
+pd	D:\workspace\iap-project\src\chatbot_main_local.py	/^    import pandas as pd$/;"	namespace	line:11
+openpyxl	D:\workspace\iap-project\src\chatbot_main_local.py	/^    import openpyxl$/;"	namespace	line:12
+EXCEL_AVAILABLE	D:\workspace\iap-project\src\chatbot_main_local.py	/^    EXCEL_AVAILABLE = True$/;"	variable	line:13
+EXCEL_AVAILABLE	D:\workspace\iap-project\src\chatbot_main_local.py	/^    EXCEL_AVAILABLE = False$/;"	variable	line:15
+SETTINGS	D:\workspace\iap-project\src\chatbot_main_local.py	/^SETTINGS = {$/;"	variable	line:19
+validate_query_length	D:\workspace\iap-project\src\chatbot_main_local.py	/^def validate_query_length(query):$/;"	function	line:30
+show_query_length_error	D:\workspace\iap-project\src\chatbot_main_local.py	/^def show_query_length_error(current_length):$/;"	function	line:33
+get_quality_config	D:\workspace\iap-project\src\chatbot_main_local.py	/^def get_quality_config(level):$/;"	function	line:46
+apply_quality_config_to_app_config	D:\workspace\iap-project\src\chatbot_main_local.py	/^def apply_quality_config_to_app_config(app_config, quality_config):$/;"	function	line:49
+get_enhanced_dynamic_thresholds	D:\workspace\iap-project\src\chatbot_main_local.py	/^    def get_enhanced_dynamic_thresholds(query_type="default", query_text=""):$/;"	function	line:52	function:apply_quality_config_to_app_config
+apply_page_style	D:\workspace\iap-project\src\chatbot_main_local.py	/^def apply_page_style():$/;"	function	line:86
+main	D:\workspace\iap-project\src\chatbot_main_local.py	/^def main():$/;"	function	line:92
+traceback	D:\workspace\iap-project\src\chatbot_main_local.py	/^                import traceback$/;"	namespace	line:173
+re	D:\workspace\iap-project\src\utils\filter_manager.py	/^import re$/;"	namespace	line:17
+time	D:\workspace\iap-project\src\utils\filter_manager.py	/^import time$/;"	namespace	line:18
+List	D:\workspace\iap-project\src\utils\filter_manager.py	/^from typing import List, Dict, Any, Tuple, Optional, Union$/;"	namespace	line:19
+Dict	D:\workspace\iap-project\src\utils\filter_manager.py	/^from typing import List, Dict, Any, Tuple, Optional, Union$/;"	namespace	line:19
+Any	D:\workspace\iap-project\src\utils\filter_manager.py	/^from typing import List, Dict, Any, Tuple, Optional, Union$/;"	namespace	line:19
+Tuple	D:\workspace\iap-project\src\utils\filter_manager.py	/^from typing import List, Dict, Any, Tuple, Optional, Union$/;"	namespace	line:19
+Optional	D:\workspace\iap-project\src\utils\filter_manager.py	/^from typing import List, Dict, Any, Tuple, Optional, Union$/;"	namespace	line:19
+Union	D:\workspace\iap-project\src\utils\filter_manager.py	/^from typing import List, Dict, Any, Tuple, Optional, Union$/;"	namespace	line:19
+dataclass	D:\workspace\iap-project\src\utils\filter_manager.py	/^from dataclasses import dataclass, field$/;"	namespace	line:20
+field	D:\workspace\iap-project\src\utils\filter_manager.py	/^from dataclasses import dataclass, field$/;"	namespace	line:20
+Enum	D:\workspace\iap-project\src\utils\filter_manager.py	/^from enum import Enum$/;"	namespace	line:21
+datetime	D:\workspace\iap-project\src\utils\filter_manager.py	/^from datetime import datetime$/;"	namespace	line:22
+json	D:\workspace\iap-project\src\utils\filter_manager.py	/^import json$/;"	namespace	line:23
+QueryType	D:\workspace\iap-project\src\utils\filter_manager.py	/^class QueryType(Enum):$/;"	class	line:26
+REPAIR	D:\workspace\iap-project\src\utils\filter_manager.py	/^    REPAIR = "repair"$/;"	variable	line:28	class:QueryType
+CAUSE	D:\workspace\iap-project\src\utils\filter_manager.py	/^    CAUSE = "cause" $/;"	variable	line:29	class:QueryType
+SIMILAR	D:\workspace\iap-project\src\utils\filter_manager.py	/^    SIMILAR = "similar"$/;"	variable	line:30	class:QueryType
+INQUIRY	D:\workspace\iap-project\src\utils\filter_manager.py	/^    INQUIRY = "inquiry"$/;"	variable	line:31	class:QueryType
+STATISTICS	D:\workspace\iap-project\src\utils\filter_manager.py	/^    STATISTICS = "statistics"$/;"	variable	line:32	class:QueryType
+DEFAULT	D:\workspace\iap-project\src\utils\filter_manager.py	/^    DEFAULT = "default"$/;"	variable	line:33	class:QueryType
+FilterStage	D:\workspace\iap-project\src\utils\filter_manager.py	/^class FilterStage(Enum):$/;"	class	line:36
+NORMALIZATION	D:\workspace\iap-project\src\utils\filter_manager.py	/^    NORMALIZATION = "normalization"$/;"	variable	line:38	class:FilterStage
+DEDUPLICATION	D:\workspace\iap-project\src\utils\filter_manager.py	/^    DEDUPLICATION = "deduplication" $/;"	variable	line:39	class:FilterStage
+CONDITION_FILTERING	D:\workspace\iap-project\src\utils\filter_manager.py	/^    CONDITION_FILTERING = "condition_filtering"$/;"	variable	line:40	class:FilterStage
+TIME_FILTERING	D:\workspace\iap-project\src\utils\filter_manager.py	/^    TIME_FILTERING = "time_filtering"$/;"	variable	line:41	class:FilterStage
+DEPARTMENT_FILTERING	D:\workspace\iap-project\src\utils\filter_manager.py	/^    DEPARTMENT_FILTERING = "department_filtering"$/;"	variable	line:42	class:FilterStage
+SERVICE_FILTERING	D:\workspace\iap-project\src\utils\filter_manager.py	/^    SERVICE_FILTERING = "service_filtering"$/;"	variable	line:43	class:FilterStage
+GRADE_FILTERING	D:\workspace\iap-project\src\utils\filter_manager.py	/^    GRADE_FILTERING = "grade_filtering"$/;"	variable	line:44	class:FilterStage
+SEMANTIC_FILTERING	D:\workspace\iap-project\src\utils\filter_manager.py	/^    SEMANTIC_FILTERING = "semantic_filtering"$/;"	variable	line:45	class:FilterStage
+KEYWORD_FILTERING	D:\workspace\iap-project\src\utils\filter_manager.py	/^    KEYWORD_FILTERING = "keyword_filtering"$/;"	variable	line:46	class:FilterStage
+NEGATIVE_KEYWORD_FILTERING	D:\workspace\iap-project\src\utils\filter_manager.py	/^    NEGATIVE_KEYWORD_FILTERING = "negative_keyword_filtering"$/;"	variable	line:47	class:FilterStage
+LLM_VALIDATION	D:\workspace\iap-project\src\utils\filter_manager.py	/^    LLM_VALIDATION = "llm_validation"$/;"	variable	line:48	class:FilterStage
+QUALITY_SCORING	D:\workspace\iap-project\src\utils\filter_manager.py	/^    QUALITY_SCORING = "quality_scoring"$/;"	variable	line:49	class:FilterStage
+FINAL_SELECTION	D:\workspace\iap-project\src\utils\filter_manager.py	/^    FINAL_SELECTION = "final_selection"$/;"	variable	line:50	class:FilterStage
+FilterConditions	D:\workspace\iap-project\src\utils\filter_manager.py	/^class FilterConditions:$/;"	class	line:54
+get	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def get(self, key: str, default=None):$/;"	member	line:111	class:FilterConditions
+__getitem__	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def __getitem__(self, key: str):$/;"	member	line:118	class:FilterConditions
+__setitem__	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def __setitem__(self, key: str, value):$/;"	member	line:124	class:FilterConditions
+__contains__	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def __contains__(self, key: str):$/;"	member	line:132	class:FilterConditions
+keys	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def keys(self):$/;"	member	line:136	class:FilterConditions
+values	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def values(self):$/;"	member	line:140	class:FilterConditions
+items	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def items(self):$/;"	member	line:144	class:FilterConditions
+to_dict	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def to_dict(self):$/;"	member	line:148	class:FilterConditions
+from_dict	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def from_dict(cls, data: dict):$/;"	member	line:162	class:FilterConditions
+FilterResult	D:\workspace\iap-project\src\utils\filter_manager.py	/^class FilterResult:$/;"	class	line:174
+removed_count	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def removed_count(self):$/;"	member	line:187	class:FilterResult
+filter_rate	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def filter_rate(self):$/;"	member	line:192	class:FilterResult
+DocumentNormalizer	D:\workspace\iap-project\src\utils\filter_manager.py	/^class DocumentNormalizer:$/;"	class	line:197
+normalize_error_time	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def normalize_error_time(error_time):$/;"	member	line:201	class:DocumentNormalizer
+normalize_date_fields	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def normalize_date_fields(doc):$/;"	member	line:219	class:DocumentNormalizer
+normalize_string_fields	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def normalize_string_fields(doc):$/;"	member	line:273	class:DocumentNormalizer
+normalize_document	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def normalize_document(cls, doc):$/;"	member	line:294	class:DocumentNormalizer
+ConditionExtractor	D:\workspace\iap-project\src\utils\filter_manager.py	/^class ConditionExtractor:$/;"	class	line:310
+STATS_KEYWORDS	D:\workspace\iap-project\src\utils\filter_manager.py	/^    STATS_KEYWORDS = [$/;"	variable	line:313	class:ConditionExtractor
+ERROR_TIME_KEYWORDS	D:\workspace\iap-project\src\utils\filter_manager.py	/^    ERROR_TIME_KEYWORDS = [$/;"	variable	line:318	class:ConditionExtractor
+COMMON_TERM_SERVICES	D:\workspace\iap-project\src\utils\filter_manager.py	/^    COMMON_TERM_SERVICES = {$/;"	variable	line:323	class:ConditionExtractor
+extract_all_conditions	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def extract_all_conditions(cls, query: str, query_type: QueryType, search_manager=None) -> FilterConditions:$/;"	member	line:335	class:ConditionExtractor
+_extract_keywords	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _extract_keywords(cls, query_lower: str) -> List[str]:$/;"	member	line:377	class:ConditionExtractor
+_extract_time_conditions	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _extract_time_conditions(cls, query_lower: str, conditions: FilterConditions):$/;"	member	line:400	class:ConditionExtractor
+_extract_service_conditions	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _extract_service_conditions(cls, query_lower: str, conditions: FilterConditions, search_manager=None):$/;"	member	line:514	class:ConditionExtractor
+_extract_grade_conditions	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _extract_grade_conditions(cls, query_lower: str, conditions: FilterConditions):$/;"	member	line:564	class:ConditionExtractor
+_extract_department_conditions	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _extract_department_conditions(cls, query_lower: str, conditions: FilterConditions):$/;"	member	line:581	class:ConditionExtractor
+_is_valid_service_name	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _is_valid_service_name(cls, service_name: str) -> bool:$/;"	member	line:602	class:ConditionExtractor
+_determine_filtering_settings	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _determine_filtering_settings(cls, conditions: FilterConditions):$/;"	member	line:619	class:ConditionExtractor
+DocumentValidator	D:\workspace\iap-project\src\utils\filter_manager.py	/^class DocumentValidator:$/;"	class	line:660
+validate_document_conditions	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def validate_document_conditions(doc: Dict[Any, Any], conditions: FilterConditions) -> Tuple[bool, str]:$/;"	member	line:664	class:DocumentValidator
+_extract_year	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _extract_year(doc: Dict[Any, Any]) -> Optional[str]:$/;"	member	line:756	class:DocumentValidator
+_extract_month	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _extract_month(doc: Dict[Any, Any]) -> Optional[str]:$/;"	member	line:789	class:DocumentValidator
+DocumentFilterManager	D:\workspace\iap-project\src\utils\filter_manager.py	/^class DocumentFilterManager:$/;"	class	line:835
+__init__	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def __init__(self, debug_mode: bool = False, search_manager=None, config=None):$/;"	member	line:838	class:DocumentFilterManager
+extract_all_conditions	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def extract_all_conditions(self, query: str, query_type: QueryType) -> FilterConditions:$/;"	member	line:866	class:DocumentFilterManager
+apply_comprehensive_filtering	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def apply_comprehensive_filtering($/;"	member	line:870	class:DocumentFilterManager
+_apply_normalization	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _apply_normalization(self, documents: List[Dict[Any, Any]], conditions: FilterConditions) -> List[Dict[Any, Any]]:$/;"	member	line:959	class:DocumentFilterManager
+_apply_deduplication	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _apply_deduplication(self, documents: List[Dict[Any, Any]], conditions: FilterConditions) -> List[Dict[Any, Any]]:$/;"	member	line:987	class:DocumentFilterManager
+_apply_condition_filtering	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _apply_condition_filtering(self, documents: List[Dict[Any, Any]], conditions: FilterConditions) -> List[Dict[Any, Any]]:$/;"	member	line:1025	class:DocumentFilterManager
+_apply_service_filtering	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _apply_service_filtering(self, documents: List[Dict[Any, Any]], conditions: FilterConditions) -> List[Dict[Any, Any]]:$/;"	member	line:1106	class:DocumentFilterManager
+_apply_grade_filtering	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _apply_grade_filtering(self, documents: List[Dict[Any, Any]], conditions: FilterConditions) -> List[Dict[Any, Any]]:$/;"	member	line:1163	class:DocumentFilterManager
+_apply_semantic_filtering	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _apply_semantic_filtering(self, documents: List[Dict[Any, Any]], conditions: FilterConditions) -> List[Dict[Any, Any]]:$/;"	member	line:1207	class:DocumentFilterManager
+_apply_keyword_filtering	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _apply_keyword_filtering(self, documents: List[Dict[Any, Any]], conditions: FilterConditions) -> List[Dict[Any, Any]]:$/;"	member	line:1234	class:DocumentFilterManager
+_apply_negative_keyword_filtering	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _apply_negative_keyword_filtering(self, documents: List[Dict[Any, Any]], conditions: FilterConditions) -> List[Dict[Any, Any]]:$/;"	member	line:1264	class:DocumentFilterManager
+_apply_llm_validation	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _apply_llm_validation(self, documents: List[Dict[Any, Any]], query: str, conditions: FilterConditions) -> List[Dict[Any, Any]]:$/;"	member	line:1312	class:DocumentFilterManager
+_apply_quality_scoring	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _apply_quality_scoring(self, documents: List[Dict[Any, Any]], conditions: FilterConditions) -> List[Dict[Any, Any]]:$/;"	member	line:1334	class:DocumentFilterManager
+_apply_final_selection	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _apply_final_selection(self, documents: List[Dict[Any, Any]], conditions: FilterConditions) -> List[Dict[Any, Any]]:$/;"	member	line:1403	class:DocumentFilterManager
+_record_skip_filtering	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _record_skip_filtering(self, documents: List[Dict[Any, Any]], conditions: FilterConditions):$/;"	member	line:1443	class:DocumentFilterManager
+_record_filter_result	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _record_filter_result($/;"	member	line:1458	class:DocumentFilterManager
+_record_error	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _record_error(self, stage: str, error_msg: str, documents: List[Dict[Any, Any]], conditions: FilterConditions):$/;"	member	line:1487	class:DocumentFilterManager
+_format_conditions	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _format_conditions(self, conditions: FilterConditions) -> str:$/;"	member	line:1502	class:DocumentFilterManager
+_get_active_conditions	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _get_active_conditions(self, conditions: FilterConditions) -> List[str]:$/;"	member	line:1543	class:DocumentFilterManager
+_print_detailed_summary	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def _print_detailed_summary(self):$/;"	member	line:1568	class:DocumentFilterManager
+get_filter_summary	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def get_filter_summary(self) -> Dict[str, Any]:$/;"	member	line:1602	class:DocumentFilterManager
+export_filter_history	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def export_filter_history(self, filepath: Optional[str] = None) -> str:$/;"	member	line:1644	class:DocumentFilterManager
+reset_history	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def reset_history(self):$/;"	member	line:1658	class:DocumentFilterManager
+get_last_result	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def get_last_result(self) -> Optional[FilterResult]:$/;"	member	line:1662	class:DocumentFilterManager
+set_search_manager	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def set_search_manager(self, search_manager):$/;"	member	line:1666	class:DocumentFilterManager
+set_config	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def set_config(self, config):$/;"	member	line:1670	class:DocumentFilterManager
+filter_documents_by_time_conditions	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def filter_documents_by_time_conditions(self, documents, time_conditions):$/;"	member	line:1675	class:DocumentFilterManager
+filter_documents_by_department_conditions	D:\workspace\iap-project\src\utils\filter_manager.py	/^    def filter_documents_by_department_conditions(self, documents, department_conditions):$/;"	member	line:1695	class:DocumentFilterManager
+test_filter_manager	D:\workspace\iap-project\src\utils\filter_manager.py	/^def test_filter_manager():$/;"	function	line:1710
+test_year_extraction	D:\workspace\iap-project\src\utils\filter_manager.py	/^def test_year_extraction():$/;"	function	line:1783
+pd	D:\workspace\iap-project\src\utils\excel_utils.py	/^import pandas as pd$/;"	namespace	line:2
+st	D:\workspace\iap-project\src\utils\excel_utils.py	/^import streamlit as st$/;"	namespace	line:3
+re	D:\workspace\iap-project\src\utils\excel_utils.py	/^import re$/;"	namespace	line:4
+BytesIO	D:\workspace\iap-project\src\utils\excel_utils.py	/^from io import BytesIO$/;"	namespace	line:5
+datetime	D:\workspace\iap-project\src\utils\excel_utils.py	/^from datetime import datetime$/;"	namespace	line:6
+ExcelDownloadManager	D:\workspace\iap-project\src\utils\excel_utils.py	/^class ExcelDownloadManager:$/;"	class	line:8
+__init__	D:\workspace\iap-project\src\utils\excel_utils.py	/^    def __init__(self):$/;"	member	line:11	class:ExcelDownloadManager
+extract_table_from_response	D:\workspace\iap-project\src\utils\excel_utils.py	/^    def extract_table_from_response(self, response_text):$/;"	member	line:14	class:ExcelDownloadManager
+_extract_table_fallback	D:\workspace\iap-project\src\utils\excel_utils.py	/^    def _extract_table_fallback(self, response_text):$/;"	member	line:88	class:ExcelDownloadManager
+create_excel_dataframe	D:\workspace\iap-project\src\utils\excel_utils.py	/^    def create_excel_dataframe(self, table_data):$/;"	member	line:135	class:ExcelDownloadManager
+generate_excel_file	D:\workspace\iap-project\src\utils\excel_utils.py	/^    def generate_excel_file(self, df, filename_prefix="장애내역"):$/;"	member	line:159	class:ExcelDownloadManager
+Font	D:\workspace\iap-project\src\utils\excel_utils.py	/^                from openpyxl.styles import Font, PatternFill, Border, Side, Alignment$/;"	namespace	line:179
+PatternFill	D:\workspace\iap-project\src\utils\excel_utils.py	/^                from openpyxl.styles import Font, PatternFill, Border, Side, Alignment$/;"	namespace	line:179
+Border	D:\workspace\iap-project\src\utils\excel_utils.py	/^                from openpyxl.styles import Font, PatternFill, Border, Side, Alignment$/;"	namespace	line:179
+Side	D:\workspace\iap-project\src\utils\excel_utils.py	/^                from openpyxl.styles import Font, PatternFill, Border, Side, Alignment$/;"	namespace	line:179
+Alignment	D:\workspace\iap-project\src\utils\excel_utils.py	/^                from openpyxl.styles import Font, PatternFill, Border, Side, Alignment$/;"	namespace	line:179
+display_download_button	D:\workspace\iap-project\src\utils\excel_utils.py	/^    def display_download_button(self, response_text, query_type="inquiry"):$/;"	member	line:227	class:ExcelDownloadManager
+traceback	D:\workspace\iap-project\src\utils\excel_utils.py	/^            import traceback$/;"	namespace	line:297
+_create_simple_table_from_response	D:\workspace\iap-project\src\utils\excel_utils.py	/^    def _create_simple_table_from_response(self, response_text):$/;"	member	line:306	class:ExcelDownloadManager
+re	D:\workspace\iap-project\src\utils\excel_utils.py	/^                        import re$/;"	namespace	line:329
+extract_download_info_from_query	D:\workspace\iap-project\src\utils\excel_utils.py	/^    def extract_download_info_from_query(self, query):$/;"	member	line:369	class:ExcelDownloadManager
+os	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^import os$/;"	namespace	line:1
+load_dotenv	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^from dotenv import load_dotenv$/;"	namespace	line:2
+st	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^import streamlit as st$/;"	namespace	line:3
+sqlite3	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^import sqlite3$/;"	namespace	line:4
+email	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^import email$/;"	namespace	line:5
+policy	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^from email import policy$/;"	namespace	line:6
+EmailMessage	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^from email.message import EmailMessage$/;"	namespace	line:7
+BlobServiceClient	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions$/;"	namespace	line:8
+generate_blob_sas	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions$/;"	namespace	line:8
+BlobSasPermissions	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions$/;"	namespace	line:8
+datetime	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^import datetime$/;"	namespace	line:9
+pytz	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^import pytz$/;"	namespace	line:10
+StringIO	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^from io import StringIO$/;"	namespace	line:11
+tempfile	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^import tempfile$/;"	namespace	line:12
+pd	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^import pandas as pd$/;"	namespace	line:13
+Document	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^from docx import Document$/;"	namespace	line:14
+Pt	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^from docx.shared import Pt$/;"	namespace	line:15
+WD_PARAGRAPH_ALIGNMENT	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^from docx.enum.text import WD_PARAGRAPH_ALIGNMENT$/;"	namespace	line:16
+AzureOpenAI	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^from openai import AzureOpenAI$/;"	namespace	line:17
+json	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^import json$/;"	namespace	line:18
+re	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^import re$/;"	namespace	line:19
+base64	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^import base64  # 추가된 import$/;"	namespace	line:20
+import	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^import base64  # 추가된 import$/;"	namespace	line:20
+page_title	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^    page_title="장애보고서 초안 생성기",$/;"	variable	line:27
+page_icon	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^    page_icon="💡",$/;"	variable	line:28
+layout	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^    layout="wide",  # "wide" 또는 "centered" 중 선택 (wide: 전체 너비, centered: 가운데 정렬)$/;"	variable	line:29
+initial_sidebar_state	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^    initial_sidebar_state="auto"$/;"	variable	line:30
+STORAGE_CONN_STR	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^STORAGE_CONN_STR = os.getenv("STORAGE_CONN_STR")$/;"	variable	line:39
+STORAGE_ACCOUNT_NAME	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^STORAGE_ACCOUNT_NAME = os.getenv("STORAGE_ACCOUNT_NAME")$/;"	variable	line:40
+EML_CONTAINER_NAME	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^EML_CONTAINER_NAME = os.getenv("EML_CONTAINER_NAME")$/;"	variable	line:41
+WORD_CONTAINER_NAME	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^WORD_CONTAINER_NAME = os.getenv("WORD_CONTAINER_NAME")$/;"	variable	line:42
+DB_BASE_PATH	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^DB_BASE_PATH = os.getenv("DB_BASE_PATH")$/;"	variable	line:43
+EML_DB_PATH	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^    EML_DB_PATH = os.path.join(DB_BASE_PATH, "eml_reports.db")$/;"	variable	line:48
+EML_DB_PATH	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^    EML_DB_PATH = "eml_reports.db"$/;"	variable	line:53
+openai_endpoint	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^openai_endpoint = os.getenv("OPENAI_ENDPOINT")$/;"	variable	line:56
+openai_api_key	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^openai_api_key = os.getenv("OPENAI_KEY")$/;"	variable	line:57
+openai_model	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^openai_model = os.getenv("OPENAI_MODEL")$/;"	variable	line:58
+chat_model	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^chat_model = os.getenv("CHAT_MODEL3")$/;"	variable	line:59
+required_env_vars	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^required_env_vars = {$/;"	variable	line:62
+korea_tz	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^korea_tz = pytz.timezone('Asia\/Seoul')$/;"	variable	line:70
+current_time	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^current_time = datetime.datetime.now(korea_tz)$/;"	variable	line:71
+missing_vars	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^missing_vars = [var for var, value in required_env_vars.items() if not value]$/;"	variable	line:74
+validate_connection_string	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def validate_connection_string(connection_string):$/;"	function	line:76
+test_azure_connection	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def test_azure_connection():$/;"	function	line:90
+init_database	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def init_database():$/;"	function	line:120
+insert_eml_data	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def insert_eml_data(parsed_data, original_filename, blob_name, file_size):$/;"	function	line:151
+get_eml_record	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def get_eml_record(record_id):$/;"	function	line:187
+get_eml_records	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def get_eml_records():$/;"	function	line:210
+display_db_record	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def display_db_record(record):$/;"	function	line:228
+parse_eml_file	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def parse_eml_file(eml_content):$/;"	function	line:265
+re	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^                import re$/;"	namespace	line:367
+upload_to_azure_eml_blob	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def upload_to_azure_eml_blob(file_content, filename):$/;"	function	line:411
+display_eml_content	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def display_eml_content(parsed_data):$/;"	function	line:456
+current_year	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^current_year = datetime.datetime.now(korea_tz).year$/;"	variable	line:485
+extract_precise_data	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def extract_precise_data(body_text: str) -> dict:$/;"	function	line:487
+response	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        response = client.chat.completions.create($/;"	variable	line:569
+model	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            model=chat_model,$/;"	variable	line:570
+messages	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            messages=[$/;"	variable	line:571
+max_tokens	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            max_tokens=4000,$/;"	variable	line:575
+temperature	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            temperature=0.0$/;"	variable	line:576
+result	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        result = response.choices[0].message.content.strip()$/;"	variable	line:579
+start	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            start = result.find("```json") + 7$/;"	variable	line:581
+end	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            end = result.rfind("```")$/;"	variable	line:582
+result	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            result = result[start:end].strip()$/;"	variable	line:583
+extracted_data	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        extracted_data = json.loads(result)$/;"	variable	line:585
+action_pattern	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        action_pattern = r'장애\\s*조치\\s*결과\\s*[:：]\\s*(.+?)(?:\\n\\n|\\n[가-힣]+\\s*[:：]|장애원인|$)'$/;"	variable	line:601
+action_match	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        action_match = re.search(action_pattern, body_text, re.DOTALL)$/;"	variable	line:602
+action_text	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            action_text = action_match.group(1).strip()$/;"	variable	line:605
+action_list_regex	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            action_list_regex = []$/;"	variable	line:609
+lines	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            lines = action_text.split('\\n')$/;"	variable	line:612
+cleaned_lines	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            cleaned_lines = [line.strip() for line in lines if line.strip()]$/;"	variable	line:613
+time_match	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^                time_match = re.match(r'(\\d{2}:\\d{2})\\s*(.+)', line)$/;"	variable	line:620
+time_str	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^                    time_str = time_match.group(1)$/;"	variable	line:622
+content	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^                    content = time_match.group(2).strip()$/;"	variable	line:623
+content	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^                    content = content.replace(':', '').replace('：', '').strip()$/;"	variable	line:626
+debug_lines	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            debug_lines = [line for line in cleaned_lines if '14:32' in line or '14:48' in line]$/;"	variable	line:639
+ai_action_count	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            ai_action_count = 0$/;"	variable	line:646
+ai_action_count	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^                ai_action_count = len(extracted_data["장애_조치_경과_리스트"])$/;"	variable	line:648
+regex_action_count	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            regex_action_count = len(action_list_regex)$/;"	variable	line:650
+service_pattern	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        service_pattern = r'대상서비스\\s*[:：]\\s*(.+?)(?:\\n|$)'$/;"	variable	line:661
+service_match	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        service_match = re.search(service_pattern, body_text)$/;"	variable	line:662
+service_name	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            service_name = service_match.group(1).strip()$/;"	variable	line:664
+situation_pattern	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        situation_pattern = r'상황반장\\s*[:：]?\\s*(.+?)(?:\\n|복구반장|$)'$/;"	variable	line:670
+situation_match	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        situation_match = re.search(situation_pattern, body_text)$/;"	variable	line:671
+situation_leader	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            situation_leader = situation_match.group(1).strip()$/;"	variable	line:673
+recovery_pattern	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        recovery_pattern = r'복구반장\\s*[:：]?\\s*(.+?)(?:\\n|$)'$/;"	variable	line:679
+recovery_match	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        recovery_match = re.search(recovery_pattern, body_text)$/;"	variable	line:680
+recovery_full	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            recovery_full = recovery_match.group(1).strip()$/;"	variable	line:682
+words	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^                words = recovery_full.split()$/;"	variable	line:686
+recovery_person	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^                    recovery_person = " ".join(words[-2:])$/;"	variable	line:689
+recovery_dept	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^                    recovery_dept = " ".join(words[:-2])$/;"	variable	line:690
+incident_pattern	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        incident_pattern = r'장애현상\\s*[:：]\\s*(.+?)(?:\\n|$)'$/;"	variable	line:700
+incident_match	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        incident_match = re.search(incident_pattern, body_text)$/;"	variable	line:701
+incident_symptom	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            incident_symptom = incident_match.group(1).strip()$/;"	variable	line:703
+extract_duration_patterns	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def extract_duration_patterns(body_text: str) -> str:$/;"	function	line:716
+find_action_progress_table	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def find_action_progress_table(doc):$/;"	function	line:773
+fill_action_progress_table	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def fill_action_progress_table(table, action_list):$/;"	function	line:810
+replace_placeholder_text	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def replace_placeholder_text(doc, placeholder, replacement):$/;"	function	line:862
+fill_template_safely	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def fill_template_safely(template_path: str, data: dict, record_id: int) -> str:$/;"	function	line:882
+upload_to_azure_word	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def upload_to_azure_word(file_path: str, filename: str):$/;"	function	line:1015
+show_completion_guide_simple	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^def show_completion_guide_simple():$/;"	function	line:1045
+template_path	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^template_path = "data\/docx\/iap-report-sample1(#).docx"$/;"	variable	line:1102
+template_exists	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^template_exists = os.path.exists(template_path)$/;"	variable	line:1103
+uploaded_file	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^    uploaded_file = st.file_uploader($/;"	variable	line:1109
+type	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        type=['eml'],$/;"	variable	line:1111
+help	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        help="복구 보고서가 포함된 EML 파일을 업로드해주세요"$/;"	variable	line:1112
+file_content	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        file_content = uploaded_file.read()$/;"	variable	line:1117
+file_content_str	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        file_content_str = file_content.decode('utf-8', errors='ignore')$/;"	variable	line:1118
+extracted	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^            extracted = extract_precise_data(st.session_state.current_body_text)$/;"	variable	line:1191
+data	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        data = st.session_state.extracted$/;"	variable	line:1209
+valid_data	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^        valid_data = {k: v for k, v in data.items() if v and v != "정보없음"}$/;"	variable	line:1210
+report_path	D:\workspace\iap-project\src\menu\2_Report_Gen_Assistant.py	/^                        report_path = fill_template_safely(template_path, data, st.session_state.current_record_id)$/;"	variable	line:1228
+SystemPrompts	D:\workspace\iap-project\src\config\prompts_web.py	/^class SystemPrompts:$/;"	class	line:1
+get_prompt	D:\workspace\iap-project\src\config\prompts_web.py	/^    def get_prompt(cls, query_type):$/;"	member	line:197	class:SystemPrompts
+st	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^import streamlit as st$/;"	namespace	line:1
+pd	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^import pandas as pd$/;"	namespace	line:2
+matplotlib	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^import matplotlib.pyplot as plt$/;"	namespace	line:3
+plt	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^import matplotlib.pyplot as plt$/;"	namespace	line:3
+matplotlib	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^import matplotlib.font_manager as fm$/;"	namespace	line:4
+fm	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^import matplotlib.font_manager as fm$/;"	namespace	line:4
+sns	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^import seaborn as sns$/;"	namespace	line:5
+np	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^import numpy as np$/;"	namespace	line:6
+platform	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^import platform$/;"	namespace	line:7
+os	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^import os$/;"	namespace	line:8
+urllib	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^import urllib.request$/;"	namespace	line:9
+request	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^import urllib.request$/;"	namespace	line:9
+datetime	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^from datetime import datetime, timedelta$/;"	namespace	line:10
+timedelta	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^from datetime import datetime, timedelta$/;"	namespace	line:10
+page_title	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    page_title="서비스별 오류 시즌성 분석기",$/;"	variable	line:16
+page_icon	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    page_icon="📊",$/;"	variable	line:17
+layout	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    layout="wide",$/;"	variable	line:18
+initial_sidebar_state	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    initial_sidebar_state="expanded"$/;"	variable	line:19
+setup_korean_font	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^def setup_korean_font():$/;"	function	line:38
+font_name	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^font_name = setup_korean_font()$/;"	variable	line:142
+get_sorted_services	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^def get_sorted_services(services_list, default_service=None):$/;"	function	line:147
+calculate_trend_metrics	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^def calculate_trend_metrics(df, current_month, current_mmdd):$/;"	function	line:162
+create_heatmap_data	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^def create_heatmap_data(df, selected_service=None):$/;"	function	line:201
+calculate_moving_average	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^def calculate_moving_average(data, window=3):$/;"	function	line:222
+get_moving_average_info	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^def get_moving_average_info(window):$/;"	function	line:242
+csv_path	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^csv_path = ".\/data\/csv\/seasonality.csv"$/;"	variable	line:258
+df	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    df = pd.read_csv(csv_path, parse_dates=["error_date"])$/;"	variable	line:261
+weekday_map	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^weekday_map = {0: "월", 1: "화", 2: "수", 3: "목", 4: "금", 5: "토", 6: "일"}$/;"	variable	line:279
+available_years	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^available_years = sorted(df['year'].unique(), reverse=True)  # 최신년도부터 정렬$/;"	variable	line:286
+default_year	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^default_year = available_years[0]  # 가장 최근 년도를 기본값으로$/;"	variable	line:287
+selected_year	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    selected_year = st.selectbox($/;"	variable	line:293
+options	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        options=available_years,$/;"	variable	line:295
+index	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        index=0,  # 첫 번째 항목(최신년도)을 기본값으로$/;"	variable	line:296
+help	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        help="년도를 선택하세요"$/;"	variable	line:297
+year_data_count	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    year_data_count = len(df[df['year'] == selected_year])$/;"	variable	line:302
+monthly_total	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^monthly_total = df_filtered_year.groupby('month').size().reset_index(name='count')$/;"	variable	line:318
+full_months_df	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^full_months_df = pd.DataFrame({'month': range(1, 13)})$/;"	variable	line:321
+monthly_total_full	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^monthly_total_full = pd.merge(full_months_df, monthly_total, on='month', how='left').fillna(0)$/;"	variable	line:322
+bars_monthly	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^bars_monthly = ax_monthly.bar(monthly_total_full['month'], monthly_total_full['count'], $/;"	variable	line:327
+today	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^today = datetime.today()$/;"	variable	line:331
+current_month	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    current_month = today.month$/;"	variable	line:333
+current_month_idx	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        current_month_idx = current_month - 1$/;"	variable	line:335
+height	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    height = bar.get_height()$/;"	variable	line:349
+col_chart	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^col_chart = st.columns([0.15, 0.7, 0.15])$/;"	variable	line:355
+peak_month	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    peak_month = monthly_total_full.loc[monthly_total_full['count'].idxmax(), 'month']$/;"	variable	line:362
+peak_count	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    peak_count = monthly_total_full['count'].max()$/;"	variable	line:363
+avg_monthly	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    avg_monthly = monthly_total_full['count'].mean()$/;"	variable	line:367
+total_yearly	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    total_yearly = monthly_total_full['count'].sum()$/;"	variable	line:371
+today	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^today = datetime.today()$/;"	variable	line:384
+current_month	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^current_month = today.month$/;"	variable	line:385
+current_mmdd	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^current_mmdd = today.strftime("%m-%d")$/;"	variable	line:386
+metrics	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^metrics = calculate_trend_metrics(df, current_month, current_mmdd)$/;"	variable	line:389
+label	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        label="📈 전체 오류 수",$/;"	variable	line:396
+value	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        value=f"{metrics['total_errors']:,}",$/;"	variable	line:397
+help	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        help="전체 기간 동안 발생한 총 오류 수"$/;"	variable	line:398
+label	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        label=f"📅 {current_month}월 오류 수",$/;"	variable	line:403
+value	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        value=f"{metrics['current_month_errors']:,}",$/;"	variable	line:404
+delta	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        delta=f"{metrics['month_change']:.1f}%",$/;"	variable	line:405
+help	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        help="이번 달 오류 수 (전월 대비 증가율)"$/;"	variable	line:406
+label	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        label=f"🎯 오늘({current_mmdd}) 예상",$/;"	variable	line:411
+value	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        value=f"{metrics['today_errors']}",$/;"	variable	line:412
+help	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        help="과거 동일 날짜 기준 예상 오류 수"$/;"	variable	line:413
+label	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        label="🚨 위험 서비스",$/;"	variable	line:418
+value	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        value=f"{metrics['risk_service']}",$/;"	variable	line:419
+delta	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        delta=f"{metrics['risk_count']}건",$/;"	variable	line:420
+help	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        help="이번 달 가장 많은 오류가 발생한 서비스"$/;"	variable	line:421
+monthly_counts	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^monthly_counts = df.groupby(["service", "month"]).size().reset_index(name="count")$/;"	variable	line:427
+day_counts	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^day_counts = df.groupby(["service", "month_day"]).size().reset_index(name="count")$/;"	variable	line:428
+top_services_month	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^top_services_month = ($/;"	variable	line:435
+top_services_day	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^top_services_day = ($/;"	variable	line:448
+default_service	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    default_service = top_services_month.iloc[0]["service"]$/;"	variable	line:464
+default_service	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    default_service = df["service"].unique().tolist()[0]$/;"	variable	line:467
+unique_services	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^unique_services = df["service"].unique().tolist()$/;"	variable	line:474
+unique_services	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^unique_services = get_sorted_services(unique_services, default_service)$/;"	variable	line:476
+selected_service	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^selected_service = st.selectbox("서비스 선택", unique_services)$/;"	variable	line:478
+full_months	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^full_months = pd.DataFrame({'month': range(1, 13)})$/;"	variable	line:483
+service_monthly_full	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^service_monthly_full = pd.merge(full_months, service_monthly[['month', 'count']], on='month', how='left')$/;"	variable	line:484
+window_months	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^window_months = 3$/;"	variable	line:492
+ma_info_months	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^ma_info_months = get_moving_average_info(window_months)$/;"	variable	line:493
+bars	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^bars = ax.bar(service_monthly_full["month"], service_monthly_full["count"], alpha=0.7, label="실제 오류 수")$/;"	variable	line:499
+trend_months_actual	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    trend_months_actual = trend_indices_months + 1$/;"	variable	line:504
+label	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^           label=f"트렌드 ({ma_info_months['description']})", alpha=0.8)$/;"	variable	line:507
+current_month_idx	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^current_month_idx = current_month - 1$/;"	variable	line:517
+col_chart	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^col_chart = st.columns([0.15, 0.7, 0.15])$/;"	variable	line:523
+unique_services_day	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^unique_services_day = df["service"].unique().tolist()$/;"	variable	line:545
+unique_services_day	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^unique_services_day = get_sorted_services(unique_services_day, default_service)$/;"	variable	line:546
+selected_service_day	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^selected_service_day = st.selectbox("서비스 선택 (일별 시즌성)", unique_services_day, key="day_select")$/;"	variable	line:548
+selected_month_option	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^selected_month_option = st.selectbox($/;"	variable	line:549
+options	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    options=["전체"] + [f"{i}월" for i in range(1, 13)],$/;"	variable	line:551
+key	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    key="month_select"$/;"	variable	line:552
+selected_month	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    selected_month = int(selected_month_option.replace("월", ""))$/;"	variable	line:559
+filtered_df	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    filtered_df = df[(df["service"] == selected_service_day) & (df["month"] == selected_month)]$/;"	variable	line:560
+all_days	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^all_days = pd.DataFrame({'day': list(range(1, 32))})$/;"	variable	line:563
+actual_daily_counts	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    actual_daily_counts = ($/;"	variable	line:567
+daily_counts	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    daily_counts = pd.merge(all_days, actual_daily_counts, on="day", how="left").fillna(0)$/;"	variable	line:573
+daily_counts	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    daily_counts = all_days.copy()$/;"	variable	line:576
+window_days	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^window_days = 7$/;"	variable	line:580
+ma_info_days	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^ma_info_days = get_moving_average_info(window_days)$/;"	variable	line:581
+y_max	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^y_max = max(5, daily_counts["count"].max())$/;"	variable	line:585
+bars2	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^bars2 = ax2.bar(daily_counts["day"], daily_counts["count"], alpha=0.7, label="실제 오류 수")$/;"	variable	line:592
+trend_days_actual	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    trend_days_actual = trend_indices_days + 1$/;"	variable	line:597
+label	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^           label=f"트렌드 ({ma_info_days['description']})", alpha=0.8)$/;"	variable	line:600
+current_day	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    current_day = today.day$/;"	variable	line:612
+current_day_idx	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^        current_day_idx = current_day - 1$/;"	variable	line:614
+col_chart	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^col_chart = st.columns([0.15, 0.7, 0.15])$/;"	variable	line:620
+unique_services_week	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^unique_services_week = df["service"].unique().tolist()$/;"	variable	line:628
+unique_services_week	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^unique_services_week = get_sorted_services(unique_services_week, default_service)$/;"	variable	line:629
+selected_service_week	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^selected_service_week = st.selectbox("서비스 선택 (요일)", unique_services_week, key="weekday_select")$/;"	variable	line:631
+weekday_order_kr	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^weekday_order_kr = ["월", "화", "수", "목", "금", "토", "일"]$/;"	variable	line:633
+weekday_counts	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^weekday_counts = ($/;"	variable	line:636
+bars3	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^bars3 = ax3.bar(weekday_counts["week"], weekday_counts["count"])$/;"	variable	line:644
+today_weekday	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^today_weekday = weekday_map[today.weekday()]$/;"	variable	line:647
+col_chart	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^col_chart = st.columns([0.15, 0.7, 0.15])$/;"	variable	line:658
+unique_services_daynight	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    unique_services_daynight = df["service"].unique().tolist()$/;"	variable	line:667
+unique_services_daynight	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    unique_services_daynight = get_sorted_services(unique_services_daynight, default_service)$/;"	variable	line:668
+selected_service_daynight	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    selected_service_daynight = st.selectbox("서비스 선택 (주간\/야간)", unique_services_daynight, key="daynight_select")$/;"	variable	line:670
+time_counts	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    time_counts = ($/;"	variable	line:673
+col_chart	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    col_chart = st.columns([0.15, 0.7, 0.15])$/;"	variable	line:688
+insights	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^insights = []$/;"	variable	line:700
+most_active_month	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^most_active_month = df.groupby('month').size().idxmax()$/;"	variable	line:703
+most_active_weekday	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^most_active_weekday = df.groupby('week').size().idxmax()$/;"	variable	line:707
+most_problematic_service	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^most_problematic_service = df['service'].value_counts().index[0]$/;"	variable	line:711
+winter_months	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^winter_months = df[df['month'].isin([12, 1, 2])].shape[0]$/;"	variable	line:715
+summer_months	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^summer_months = df[df['month'].isin([6, 7, 8])].shape[0]$/;"	variable	line:716
+heatmap_services_raw	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^heatmap_services_raw = df["service"].unique().tolist()$/;"	variable	line:731
+heatmap_services_sorted	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^heatmap_services_sorted = get_sorted_services(heatmap_services_raw)$/;"	variable	line:732
+heatmap_services	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^heatmap_services = ["전체"] + heatmap_services_sorted$/;"	variable	line:733
+selected_heatmap_service	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^selected_heatmap_service = st.selectbox("히트맵 서비스 선택", heatmap_services, key="heatmap_service")$/;"	variable	line:735
+heatmap_data	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    heatmap_data = create_heatmap_data(df)$/;"	variable	line:739
+title_suffix	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    title_suffix = "전체 서비스"$/;"	variable	line:740
+heatmap_data	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    heatmap_data = create_heatmap_data(df, selected_heatmap_service)$/;"	variable	line:742
+title_suffix	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    title_suffix = selected_heatmap_service$/;"	variable	line:743
+annot	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    annot=False, $/;"	variable	line:749
+cmap	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    cmap='YlOrRd', $/;"	variable	line:750
+ax	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    ax=ax_heatmap,$/;"	variable	line:751
+cbar_kws	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    cbar_kws={'label': '오류 발생 수'},$/;"	variable	line:752
+linewidths	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    linewidths=0.8,$/;"	variable	line:753
+linecolor	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^    linecolor='gray'$/;"	variable	line:754
+col_chart	D:\workspace\iap-project\src\menu\3_Seasonality_predictor.py	/^col_chart = st.columns([0.15, 0.7, 0.15])$/;"	variable	line:761

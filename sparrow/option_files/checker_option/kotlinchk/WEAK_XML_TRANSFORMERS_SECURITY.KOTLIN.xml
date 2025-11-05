@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?><option>
+    <category name="WEAK_XML_TRANSFORMERS_SECURITY.KOTLIN">
+        <item name="taint_source" type="string" required="true" variable="true" regexp="true">
+            <value>return of fqn("javax.xml.transform.TransformerFactory.newInstance")</value>
+        </item>
+        <item name="taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value>base of name("transform")</value>
+        </item>
+        <item name="taint_propagator" type="string" required="true" variable="true" regexp="true">
+            <!--propagate string-->
+<value>operand(*) of "+" to return</value>
+<value>param(*) of fqn(reg("java\.lang\.StringBuilder\.append.*")) to return</value>
+<!-- ___ -->
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+            <value/>
+        </item>
+        <item name="taint_filter_function_fqn" type="string" required="false" variable="true" regexp="true">
+            <value>sparrow.my.filter.utils.is_safe()</value>
+        </item>
+    </category>
+</option>
+

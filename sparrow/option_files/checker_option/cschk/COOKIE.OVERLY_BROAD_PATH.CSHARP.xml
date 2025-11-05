@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="COOKIE.OVERLY_BROAD_PATH.CSHARP">
+        <item name="path_pattern" type="string" required="false" variable="true" regexp="true">
+            <value>/</value>
+        </item>
+    </category>
+</option>

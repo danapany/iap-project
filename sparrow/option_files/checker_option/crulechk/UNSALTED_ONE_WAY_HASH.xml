@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+	<category name="UNSALTED_ONE_WAY_HASH">
+		<item name="hash_function" type="string" required="false" variable="true">
+			<value>KrdMD5Encrypt|2</value>
+		</item>
+	</category>
+</option>
+

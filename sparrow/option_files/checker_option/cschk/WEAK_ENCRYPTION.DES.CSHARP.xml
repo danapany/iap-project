@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="WEAK_ENCRYPTION.DES.CSHARP">
+        <item name="weak_encryption" type="string" required="false" variable="true" regexp="true">
+            <value>System.Security.Cryptography.DESCryptoServiceProvider</value>
+        </item>
+    </category>
+</option>

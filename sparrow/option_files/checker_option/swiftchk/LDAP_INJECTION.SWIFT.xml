@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="LDAP_INJECTION.SWIFT">
+        <item name="taint_source" type="string" required="true" variable="true" regexp="true">
+            <value>getenv$return</value>
+            <value>main$param</value>
+            <value>NSString\.stringWithFormat:$return</value>
+            <value>NSString\.initWithFormat:$return</value>
+            <value>NSMUtableString\.appendFormat:$return</value>
+            <value>fgets$param(1)</value>
+        </item>
+        <item name="taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value>LDAP\.Login$param(*)</value>
+
+        </item>
+        <item name="taint_propagator" type="string" required="false" variable="true" regexp="true">
+            <value>strcpy$param(2)->param(1)</value>
+            <value>memcpy$param(2)->param(1)</value>
+            <value>strncpy$param(2)->param(1)</value>
+            <value>strncat$param(2)->param(1)</value>
+            <value>strcat$param(2)->param(1)</value>
+
+            <value>NSString\.stringWithUTF8String:$param(1)->return</value>
+            <value>NSString\.stringByAppendingString:$param(1)->return</value>
+            <value>base of "NSString.stringByAppendingString:" to return</value>
+            <value>NSString\.stringWithString:$param(1)->return</value>
+            <value>NSString\.UTF8String$base->return</value>
+            <value>NSURL\.URLWithString:$param(1)->return</value>
+            <value>sprintf$param(3~*)->param(1)</value>
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+            <value></value>
+        </item>
+    </category>
+</option>
+

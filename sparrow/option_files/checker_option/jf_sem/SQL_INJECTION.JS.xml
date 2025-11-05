@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="SQL_INJECTION.JS">
+        <item name="taint_source" type="string" required="true" variable="true" regexp="true">
+            <value>variable of fqn("document.URL")</value>
+            <value>variable of fqn("document.forms")</value>
+            <value>variable of fqn("document.cookie")</value>
+            <value>variable of fqn("document.baseURI")</value>
+            <value>variable of fqn("document.location")</value>
+            <value>variable of fqn("document.referrer")</value>
+            <value>variable of fqn("document.documentURI")</value>
+            <value>variable of fqn("document.URLUnencoded")</value>
+            <value>variable of fqn("location.hash")</value>
+            <value>variable of fqn("location.href")</value>
+            <value>variable of fqn(reg(".+\\.location\\.hash"))</value>
+            <value>variable of fqn(reg(".+\\.location\\.href"))</value>
+            <value>return of fqn(reg("document\\.URL\\..+"))</value>
+            <value>return of fqn(reg("document\\.forms\\..+"))</value>
+            <value>return of fqn(reg("document\\.cookie\\..+"))</value>
+            <value>return of fqn(reg("document\\.baseURI\\..+"))</value>
+            <value>return of fqn(reg("document\\.location\\..+"))</value>
+            <value>return of fqn(reg("document\\.referrer\\..+"))</value>
+            <value>return of fqn(reg("document\\.documentURI\\..+"))</value>
+            <value>return of fqn(reg("document\\.URLUnencoded\\..+"))</value>
+            <value>return of fqn(reg("location\\.hash\\..+"))</value>
+            <value>return of fqn(reg("location\\.href\\..+"))</value>
+            <value>return of fqn(reg(".+\\.location\\.hash\\..+"))</value>
+            <value>return of fqn(reg(".+\\.location\\.href\\..+"))</value>
+            <!-- Source added -->
+            <value>variable of fqn(reg("taint_.*SQL_INJECTION\\.JS.*P_A_[0-9]+"))</value>
+            <!-- NODEJS Source -->
+            <value>variable of fqn("__sparrow_node_js_request__.url")</value>
+            <value>variable of fqn("__sparrow_node_js_url_request__")</value>
+            <value>variable of fqn("__sparrow_node_js_url_request__.url")</value>
+            <value>variable of fqn("__sparrow_node_js_url_request__.query.url")</value>
+        </item>
+        <item name="taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value>param(1) of name("query")</value> <!-- Query function of mysql in nodejs-->
+            <value>param(1) of name("executeSql")</value>
+            <!-- Indexed DB sink-->
+            <value>param(1) of name("transaction")</value>
+        </item>
+        <item name="taint_propagator" type="string" required="false" variable="true" regexp="true">
+            <value>operand(*) of name("+") to return</value>
+            <value>base of name("substring") to return</value>
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+            <value></value>
+        </item>
+        <item name="taint_filter_function_fqn" type="string" required="false" variable="true" regexp="true">
+            <value></value>
+        </item>
+    </category>
+</option>
+

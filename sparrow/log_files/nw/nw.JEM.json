@@ -1,0 +1,28 @@
+{
+  "module":"JEM",
+  "parentModule":"WHISTLE",
+  "logs":[
+    {
+      "seq":30658538498741695,
+      "stepName":"pythonchk",
+      "level":"info",
+      "message":{
+        "id":"module_version_0",
+        "args":[
+          "pythonchk-1.7.9"
+        ]
+      }
+    },
+    {
+      "seq":30658538504180390,
+      "stepName":"strchk",
+      "level":"info",
+      "message":{
+        "id":"module_version_0",
+        "args":[
+          "strchk-1.5.6"
+        ]
+      }
+    }
+  ]
+}

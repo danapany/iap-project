@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<option>
+    <category name="CROSS_SITE_REQUEST_FORGERY">
+        <item name="critical_class" type="string" required="true" variable="true" regexp="true">
+            <value>CrossSiteRequestForgery.AccountManager</value>
+        </item>
+        <item name="need_token_cmp_class_base" type="string" required="true" variable="true" regexp="true">
+            <value>org.apache.jasper.runtime.HttpJspBase</value>
+        </item>
+        <item name="request_class" type="string" required="true" variable="true" regexp="true">
+            <value>javax.servlet.http.HttpServletRequest</value>
+            <value>.*HttpServletRequest</value>
+        </item>
+        <item name="session_class" type="string" required="true" variable="true" regexp="true">
+            <value>javax.servlet.http.HttpSession</value>
+            <value>.*HttpSession</value>
+        </item>
+        <item name="critical_function" type="string" required="true" variable="true" regexp="true">
+            <value>send</value>
+            <value>sendAccount</value>
+        </item>
+        <item name="argument_type_for_critical_function" type="string" required="true" variable="true" regexp="true">
+            <value>CrossSiteRequestForgery\.BankAccount</value>
+        </item>
+        <item name="authenticated_block" type="string" required="true" variable="true" regexp="false">
+            <value>if</value>
+            <value>switch</value>
+            <value>ternary</value>
+            <value>while</value>
+            <value>for</value>
+        </item>
+        <item name="authentication_function" type="string" required="true" variable="true" regexp="true">
+            <value>(java\.lang\.)?String\.equals</value>
+        </item>
+        <item name="token_target_file" type="string" required="true" variable="true" regexp="true">
+            <value>.+</value>
+        </item>
+        <itemgroup>
+            <itemname>critical_class</itemname>
+            <itemname>critical_function</itemname>
+            <itemname>argument_type_for_critical_function</itemname>
+            <itemname>authenticated_block</itemname>
+            <itemname>authentication_function</itemname>
+        </itemgroup>
+        <itemgroup>
+            <itemname>token_target_file</itemname>
+        </itemgroup>
+    </category>
+</option>

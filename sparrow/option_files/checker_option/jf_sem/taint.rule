@@ -1,0 +1,1762 @@
+/*
+  The alias rule (a) used in an alias rule (b) is recommended to be described after (b)
+  More than 2 depth aliases are not allowed. Only 1 depth aliases are allowed.
+  ex)
+    alias_source (b) {
+      @(a)
+    }
+    alias_source (a) {
+      ...
+    }
+*/
+
+alias_source SRC_ALL {
+    @SRC_REQUEST
+
+    @SRC_RANDOM
+
+    @SRC_DB
+
+    #RETURN of #METHOD javax.servlet.http.Cookie.getValue()
+
+    @SRC_READ
+}
+
+alias_source SRC_INPUT {
+    @SRC_REQUEST
+
+    @SRC_DB
+
+    #RETURN of #METHOD javax.servlet.http.Cookie.getValue()
+
+    @SRC_READ
+}
+
+alias_source SRC_REQUEST {
+    #RETURN of #METHOD VOObject.get(java.lang.String)
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getParameterMap()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getHeaders(java.lang.String) 
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getParameterValues(java.lang.String)
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getHeaderNames() 
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getHeaders(java.lang.String) 
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getParameterNames()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getTheParameter() 
+
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getParameter(java.lang.String)
+    #RETURN of #METHOD javax.servlet.ServletRequest.getParameter(java.lang.String)
+    #RETURN of #METHOD javax.servlet.ServletRequest.getServerName()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getHeader(java.lang.String)
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getPathInfo()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getPathTranslated()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getQueryString()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getRemoteUser()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getRequestedSessionId()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getServletPath()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getRemoteAddr()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getCookies()
+
+    #RETURN of #METHOD javax.servlet.ServletRequest.getParameterMap()
+    #RETURN of #METHOD javax.servlet.ServletRequest.getParameterNames()
+    #RETURN of #METHOD javax.servlet.ServletRequest.getParameterValues(java.lang.String)
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getQueryString()
+    #RETURN of #METHOD org.springframework.web.util.UrlPathHelper.getOriginatingQueryString(javax.servlet.http.HttpServletRequest)
+
+    #RETURN of #METHOD egovframework.com.utl.cas.service.EgovSessionCookieUtil.getCookie(javax.servlet.http.HttpServletRequest, java.lang.String)
+    #RETURN of #METHOD egovframework.com.utl.cas.service.EgovSessionCookieUtil.getSessionValuesString(javax.servlet.http.HttpServletRequest)
+    #RETURN of #METHOD egovframework.com.utl.cas.service.EgovSessionCookieUtil.getSessionAttribute(javax.servlet.http.HttpServletRequest, java.lang.String)
+
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequestWrapper.getParameter(java.lang.String)
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequestWrapper.getHeader(java.lang.String)
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequestWrapper.getPathInfo()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequestWrapper.getPathTranslated()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequestWrapper.getQueryString()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequestWrapper.getRemoteUser()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequestWrapper.getRequestedSessionId()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequestWrapper.getServletPath()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequestWrapper.getRemoteAddr()
+    #RETURN of #METHOD javax.servlet.http.HttpServletRequestWrapper.getCookies()
+
+    #RETURN of #METHOD javax.servlet.ServletRequestWrapper.getParameter(java.lang.String)
+    #RETURN of #METHOD javax.servlet.ServletRequestWrapper.getServerName()
+	
+    #RETURN of #METHOD org.owasp.webgoat.session.ParameterParser.getStringParameter(java.lang.String)
+    #RETURN of #METHOD org.owasp.webgoat.session.ParameterParser.getRawParameter(java.lang.String)
+    #RETURN of #METHOD org.owasp.webgoat.session.ParameterParser.getRawParameter(java.lang.String,java.lang.String)
+
+}
+
+alias_source SRC_RANDOM {
+    #RETURN of #METHOD java.util.Random.nextInt()
+    #RETURN of #METHOD java.util.Random.nextInt(int)
+    #RETURN of #METHOD java.security.SecureRandom.nextInt()
+    #RETURN of #METHOD java.security.SecureRandom.nextInt(int)
+    #RETURN of #METHOD java.security.SecureRandom.nextLong()
+
+    #RETURN of #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getRandomStr(char, char)
+    #RETURN of #METHOD egovframework.com.utl.fcc.service.EgovNumberUtil.getRandomNum(int, int)
+}
+
+alias_source SRC_RANDOM_INIT {
+    #BASE of #METHOD java.util.Random.<init>()
+    #BASE of #METHOD java.util.Random.<init>(long)
+//    #RETURN of #METHOD java.util.Random.nextInt()
+//    #RETURN of #METHOD java.util.Random.nextInt(int)
+//    #RETURN of #METHOD java.security.SecureRandom.nextInt()
+//    #RETURN of #METHOD java.security.SecureRandom.nextInt(int)
+//    #RETURN of #METHOD java.security.SecureRandom.nextLong()
+//    #RETURN of #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getRandomStr(char, char)
+//	#RETURN of #METHOD egovframework.com.utl.fcc.service.EgovNumberUtil.getRandomNum(int, int)
+}
+
+alias_source SRC_DB {
+    #RETURN of #METHOD java.sql.ResultSet.getString(int)
+    #RETURN of #METHOD java.sql.ResultSet.getString(java.lang.String)
+}
+
+alias_source SRC_ENV {
+    #RETURN of #METHOD java.lang.System.getenv(java.lang.String)
+    #RETURN of #METHOD java.lang.System.getProperty(java.lang.String)
+    #RETURN of #METHOD java.net.InetAddress.getLocalHost()
+    #RETURN of #METHOD java.util.Properties.getProperty(java.lang.String)
+    #RETURN of #METHOD javax.servlet.http.Cookie.getValue()
+    #RETURN of #METHOD org.springframework.core.env.PropertySource.getProperty(java.lang.String)
+}
+
+alias_source SRC_READ {
+    #PARAM 1 of #METHOD java.io.BufferedInputStream.read(byte [])
+    #PARAM 1 of #METHOD java.io.BufferedInputStream.read(byte [], int, int)
+    #PARAM 1 of #METHOD java.io.BufferedReader.read(char [], int, int)
+    #PARAM 1 of #METHOD java.io.CharArrayReader.read(char [], int, int)
+    #PARAM 1 of #METHOD java.io.DataInputStream.read(byte [])
+    #PARAM 1 of #METHOD java.io.DataInputStream.read(byte [], int, int)
+    #PARAM 1 of #METHOD java.io.FileInputStream.read(byte [])
+    #PARAM 1 of #METHOD java.io.FileInputStream.read(byte [], int, int)
+    #PARAM 1 of #METHOD java.io.FileReader.read(char [])
+    #PARAM 1 of #METHOD java.io.FileReader.read(char [], int, int)
+    #PARAM 1 of #METHOD java.io.FilterInputStream.read(byte [])
+    #PARAM 1 of #METHOD java.io.FilterInputStream.read(byte [], int, int)
+    #PARAM 1 of #METHOD java.io.InputStream.read(byte [])
+    #PARAM 1 of #METHOD java.io.InputStream.read(byte [], int, int)
+    #PARAM 1 of #METHOD java.io.InputStreamReader.read(char [], int, int)
+    #PARAM 1 of #METHOD java.io.LineNumberInputStream.read(byte [], int, int)
+    #PARAM 1 of #METHOD java.io.LineNumberReader.read(char [], int, int)
+    #PARAM 1 of #METHOD java.io.ObjectInputStream.read(byte [], int, int)
+    #PARAM 1 of #METHOD java.io.PipedInputStream.read(byte [], int, int)
+    #PARAM 1 of #METHOD java.io.PipedReader.read(char [], int, int)
+    #PARAM 1 of #METHOD java.io.Reader.read(char [])
+    #PARAM 1 of #METHOD java.io.Reader.read(char [], int, int)
+    #PARAM 1 of #METHOD java.io.SequenceInputStream.read(byte [], int, int)
+    #PARAM 1 of #METHOD java.io.StringBufferInputStream.read(byte [], int, int)
+    #PARAM 1 of #METHOD java.io.StringReader.read(char [], int, int)
+    #RETURN of #METHOD java.io.BufferedReader.readLine()
+}
+
+
+alias_sink Random_Use_Sink {
+    #TAINT_INVOKED_BY #METHOD java.util.Random.next(int)
+    #TAINT_INVOKED_BY #METHOD java.util.Random.nextInt()
+    #TAINT_INVOKED_BY #METHOD java.util.Random.nextBoolean()
+    #TAINT_INVOKED_BY #METHOD java.util.Random.nextBytes(byte [])
+    #TAINT_INVOKED_BY #METHOD java.util.Random.nextDouble()
+    #TAINT_INVOKED_BY #METHOD java.util.Random.nextFloat()
+    #TAINT_INVOKED_BY #METHOD java.util.Random.nextGaussian()
+    #TAINT_INVOKED_BY #METHOD java.util.Random.nextInt(int)
+    #TAINT_INVOKED_BY #METHOD java.util.Random.nextLong()
+}
+
+alias_sink J_Resources {
+    //// java.io.File
+    //#PARAM 2 of #METHOD java.io.File.<init>(java.io.File, java.lang.String)
+    //#PARAM 1 of #METHOD java.io.File.<init>(java.lang.String)
+    //#PARAM 1 of #METHOD java.io.File.<init>(java.lang.String, java.lang.String)
+    //#PARAM 2 of #METHOD java.io.File.<init>(java.lang.String, java.lang.String)
+    //#PARAM 1 of #METHOD java.io.File.createTempFile(java.lang.String, java.lang.String)
+    //#PARAM 1 of #METHOD java.io.File.createTempFile(java.lang.String, java.lang.String, java.io.File)
+    //// java.io.FileInputStream
+    //#PARAM 1 of #METHOD java.io.FileInputStream.<init>(java.lang.String)
+    //// java.io.FileOutputStream
+    //#PARAM 1 of #METHOD java.io.FileOutputStream.<init>(java.lang.String)
+    //#PARAM 1 of #METHOD java.io.FileOutputStream.<init>(java.lang.String, boolean)
+    //// java.io.FileReader
+    //#PARAM 1 of #METHOD java.io.FileReader.<init>(java.lang.String)
+    //// java.io.FileWriter
+    //#PARAM 1 of #METHOD java.io.FileWriter.<init>(java.lang.String)
+    //#PARAM 1 of #METHOD java.io.FileWriter.<init>(java.lang.String, boolean)
+    // java.net.ServerSocket
+    #PARAM 1 of #METHOD java.net.ServerSocket.<init>(int)
+    #PARAM 1 of #METHOD java.net.ServerSocket.<init>(int, int)
+    #PARAM 1 of #METHOD java.net.ServerSocket.<init>(int, int, java.net.InetAddress)
+    // java.net.Socket
+    #PARAM 2 of #METHOD java.net.Socket.<init>(java.net.InetAddress, int)
+    #PARAM 2 of #METHOD java.net.Socket.<init>(java.net.InetAddress, int, boolean)
+    #PARAM 2 of #METHOD java.net.Socket.<init>(java.lang.String, int)
+    #PARAM 2 of #METHOD java.net.Socket.<init>(java.lang.String, int, boolean)
+    #PARAM 2 of #METHOD java.net.Socket.<init>(java.lang.String, int, java.net.InetAddress, int)
+}
+
+alias_sink J_Exec {
+    #ANY_PARAM of #METHOD java.lang.ProcessBuilder.command(java.lang.String[])
+    #ANY_PARAM of #METHOD java.lang.ProcessBuilder.command(java.lang.String)
+    #PARAM 2 of #METHOD java.lang.Runtime.exec(java.lang.String [], java.lang.String [])
+    #PARAM 2 of #METHOD java.lang.Runtime.exec(java.lang.String [], java.lang.String [], java.io.File)
+    #PARAM 2 of #METHOD java.lang.Runtime.exec(java.lang.String, java.lang.String [])
+    #PARAM 2 of #METHOD java.lang.Runtime.exec(java.lang.String, java.lang.String [], java.io.File)
+
+    #PARAM 1 of #METHOD java.lang.Runtime.exec(java.lang.String)
+    #PARAM 1 of #METHOD java.lang.Runtime.exec(java.lang.String, java.lang.String [])
+    #PARAM 1 of #METHOD java.lang.Runtime.exec(java.lang.String, java.lang.String [], java.io.File)
+    #PARAM 1 of #METHOD java.lang.Runtime.exec(java.lang.String [])
+    #PARAM 1 of #METHOD java.lang.Runtime.exec(java.lang.String [], java.lang.String [])
+    #PARAM 1 of #METHOD java.lang.Runtime.exec(java.lang.String [], java.lang.String [], java.io.File)
+    #PARAM 1 of #METHOD egovframework.com.utl.sys.fsm.service.FileSystemUtils.performCommand(java.lang.String[], int)
+    #PARAM 1 of #METHOD egovframework.com.utl.sys.fsm.service.FileSystemUtils.openProcess(java.lang.String[])
+    #ANY_PARAM of #METHOD java.lang.ProcessBuilder.<init>(java.lang.String[])
+}
+
+alias_sink J_Response {
+    #PARAM 2 of #METHOD javax.servlet.http.Cookie.<init>(java.lang.String, java.lang.String)
+    #PARAM 1 of #METHOD javax.servlet.http.HttpServletResponse.addCookie(javax.servlet.http.Cookie)
+    #PARAM 2 of #METHOD javax.servlet.http.HttpServletResponse.setHeader(java.lang.String, java.lang.String)
+    #PARAM 2 of #METHOD javax.servlet.http.HttpServletResponse.addHeader(java.lang.String, java.lang.String)
+    #PARAM 1 of #METHOD javax.servlet.http.HttpServletResponse.sendRedirect(java.lang.String)
+
+	#PARAM 1 of #METHOD javax.servlet.http.HttpServletResponse.setContentType(java.lang.String)
+    #PARAM 3 of #METHOD egovframework.com.utl.cas.service.EgovSessionCookieUtil.setCookie(javax.servlet.http.HttpServletResponse, java.lang.String, java.lang.String)
+    #PARAM 3 of #METHOD egovframework.com.utl.cas.service.EgovSessionCookieUtil.setCookie(javax.servlet.http.HttpServletResponse, java.lang.String, java.lang.String, int)
+
+    #PARAM 1 of #METHOD javax.servlet.http.HttpServletResponseWrapper.addCookie(javax.servlet.http.Cookie)
+    #PARAM 2 of #METHOD javax.servlet.http.HttpServletResponseWrapper.setHeader(java.lang.String, java.lang.String)
+    #PARAM 2 of #METHOD javax.servlet.http.HttpServletResponseWrapper.addHeader(java.lang.String, java.lang.String)
+    #PARAM 1 of #METHOD javax.servlet.http.HttpServletResponseWrapper.sendRedirect(java.lang.String)
+}
+
+/* SQL_INJECTION sink */
+alias_sink J_SQLExe {
+    #PARAM 1 of #METHOD java.sql.Connection.prepareStatement(java.lang.String)
+    #PARAM 1 of #METHOD java.sql.Statement.execute(java.lang.String)
+    #PARAM 1 of #METHOD java.sql.Statement.execute(java.lang.String, int)
+    #PARAM 1 of #METHOD java.sql.Statement.execute(java.lang.String, int [])
+    #PARAM 1 of #METHOD java.sql.Statement.execute(java.lang.String, java.lang.String [])
+    #PARAM 1 of #METHOD java.sql.Statement.executeQuery(java.lang.String)
+    #PARAM 1 of #METHOD java.sql.Statement.executeUpdate(java.lang.String)
+    #PARAM 1 of #METHOD java.sql.Statement.executeUpdate(java.lang.String, int)
+    #PARAM 1 of #METHOD java.sql.Statement.executeUpdate(java.lang.String, int [])
+    #PARAM 1 of #METHOD java.sql.Statement.executeUpdate(java.lang.String, java.lang.String [])
+}
+
+alias_sink SQLInjection_SamateSink {
+    #PARAM 1 of #METHOD java.sql.Connection.prepareStatement(java.lang.String)
+    #PARAM 1 of #METHOD java.sql.Statement.execute(java.lang.String)
+    #PARAM 1 of #METHOD java.sql.Statement.execute(java.lang.String, int)
+    #PARAM 1 of #METHOD java.sql.Statement.execute(java.lang.String, int [])
+    #PARAM 1 of #METHOD java.sql.Statement.execute(java.lang.String, java.lang.String [])
+    #PARAM 1 of #METHOD java.sql.Statement.executeQuery(java.lang.String)
+    #PARAM 1 of #METHOD java.sql.Statement.executeUpdate(java.lang.String)
+    #PARAM 1 of #METHOD java.sql.Statement.executeUpdate(java.lang.String, int)
+    #PARAM 1 of #METHOD java.sql.Statement.executeUpdate(java.lang.String, int [])
+    #PARAM 1 of #METHOD java.sql.Statement.executeUpdate(java.lang.String, java.lang.String [])
+    #PARAM 1 of #METHOD java.sql.Statement.addBatch(java.lang.String)
+    #TAINT_INVOKED_BY #METHOD java.sql.Statement.executeBatch()
+    #PARAM 1 of #METHOD APFrame.executeSingle(java.lang.String, java.util.Vector)
+    #PARAM 2 of #METHOD APFrame.executeSingle(java.lang.String, java.util.Vector)
+}
+
+alias_sink SQLInjection_JdbcTemplate {
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.query(java.lang.String,  org.springframework.jdbc.core.ResultSetExtractor)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.query(java.lang.String,  org.springframework.jdbc.core.RowCallbackHandler)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.query(java.lang.String,  org.springframework.jdbc.core.RowMapper)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.queryForInt(java.lang.String)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.queryForList(java.lang.String)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.queryForList(java.lang.String, java.lang.Class)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.queryForLong(java.lang.String)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.queryForMap(java.lang.String)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.queryForObject(java.lang.String, java.lang.Class)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.queryForObject(java.lang.String, org.springframework.jdbc.core.RowMapper)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.queryForRowSet(java.lang.String)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.update(java.lang.String)
+}
+
+alias_sink SQLInjection_Owasp {
+    #PARAM 1 of #METHOD java.sql.Connection.prepareCall(java.lang.String)
+    #PARAM 1 of #METHOD java.sql.Connection.prepareCall(java.lang.String, int, int)
+    #PARAM 1 of #METHOD java.sql.Connection.prepareCall(java.lang.String, int, int, int)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.execute(java.lang.String)
+    #PARAM 1 of #METHOD org.springframework.jdbc.core.JdbcTemplate.batchUpdate(java.lang.String)
+}
+
+alias_sink FormatString_SamateSink {
+    #PARAM 1 of #METHOD java.io.PrintStream.format(java.lang.String,java.lang.Object[])
+    #PARAM 1 of #METHOD java.io.ObjectOutputStream.writeObject(java.lang.Object)
+    #PARAM 1 of #METHOD java.io.PrintStream.printf(java.lang.String,java.lang.Object[])
+}
+
+/* SQL_INJECTION_JDO sink */
+alias_sink J_JDOQuery {
+    #PARAM 1 of #METHOD javax.jdo.PersistenceManager.newQuery(java.lang.String)
+    #PARAM 2 of #METHOD javax.jdo.PersistenceManager.newQuery(java.lang.String,java.lang.Object)
+}
+
+alias_sink J_EMQuery {
+    #PARAM 1 of #METHOD javax.persistence.EntityManager.createNamedQuery(java.lang.String)
+    #PARAM 1 of #METHOD javax.persistence.EntityManager.createNamedQuery(java.lang.String,java.lang.Class)
+    #PARAM 1 of #METHOD javax.persistence.EntityManager.createNativeQuery(java.lang.String)
+    #PARAM 1 of #METHOD javax.persistence.EntityManager.createNativeQuery(java.lang.String,java.lang.Class)
+    #PARAM 1 of #METHOD javax.persistence.EntityManager.createNativeQuery(java.lang.String,java.lang.String)
+    #PARAM 1 of #METHOD javax.persistence.EntityManager.createQuery(java.lang.String)
+    #PARAM 1 of #METHOD javax.persistence.EntityManager.createQuery(java.lang.String,java.lang.Class)
+}
+
+alias_sink J_LDAP {
+    #PARAM 2 of #METHOD javax.naming.directory.InitialDirContext.search(java.lang.String, java.lang.String, javax.naming.directory.SearchControls)
+    #PARAM 2 of #METHOD javax.naming.directory.InitialDirContext.search(java.lang.String, java.lang.String, java.lang.Object[], javax.naming.directory.SearchControls)
+
+    #PARAM 2 of #METHOD javax.naming.directory.DirContext.search(java.lang.String, java.lang.String, javax.naming.directory.SearchControls)
+    #PARAM 2 of #METHOD javax.naming.directory.DirContext.search(java.lang.String, java.lang.String, java.lang.Object [], javax.naming.directory.SearchControls)
+    #PARAM 2 of #METHOD javax.naming.ldap.LdapContext.search(java.lang.String, java.lang.String, javax.naming.directory.SearchControls)
+}
+
+alias_sink J_XQuery {
+    #PARAM 1 of #METHOD javax.xml.xquery.XQConnection.prepareExpression(java.lang.String)
+    #PARAM 1 of #METHOD javax.xml.xquery.XQExpression.executeQuery(java.lang.String)
+    #PARAM 1 of #METHOD net.sf.saxon.javax.xml.xquery.XQConnection.prepareExpression(java.lang.String)
+    #TAINT_INVOKED_BY #METHOD net.sf.saxon.javax.xml.xquery.XQPreparedExpression.executeQuery()
+}
+
+alias_sink J_HibernateCreateQuery {
+    #PARAM 1 of #METHOD org.hibernate.Session.createQuery(java.lang.String)
+    #PARAM 1 of #METHOD org.hibernate.Session.createSQLQuery(java.lang.String)
+    #PARAM 1 of #METHOD org.hibernate.StatelessSession.createQuery(java.lang.String)
+    #PARAM 1 of #METHOD org.hibernate.StatelessSession.createSQLQuery(java.lang.String)
+}
+
+alias_sink J_XPath {
+    #PARAM 1 of #METHOD javax.xml.xpath.XPath.compile(java.lang.String)
+    #PARAM 1 of #METHOD javax.xml.xpath.XPath.evaluate(java.lang.String, org.xml.sax.InputSource)
+    #PARAM 1 of #METHOD javax.xml.xpath.XPath.evaluate(java.lang.String, org.xml.sax.InputSource, javax.xml.namespace.QName)
+    #PARAM 1 of #METHOD javax.xml.xpath.XPath.evaluate(java.lang.String, java.lang.Object)
+    #PARAM 1 of #METHOD javax.xml.xpath.XPath.evaluate(java.lang.String, java.lang.Object, javax.xml.namespace.QName)
+}
+
+alias_sink J_write {
+    #PARAM 1 of #METHOD java.io.OutputStreamWriter.write(java.lang.String)
+    #PARAM 1 of #METHOD java.io.OutputStreamWriter.write(java.lang.String, int, int)
+    #PARAM 1 of #METHOD java.io.PrintWriter.write(java.lang.String)
+    #PARAM 1 of #METHOD java.io.PrintWriter.write(java.lang.String, int, int)
+    #PARAM 1 of #METHOD java.io.PrintWriter.print(java.lang.String)
+    #PARAM 1 of #METHOD java.io.PrintWriter.println(java.lang.String)
+    #PARAM 1 of #METHOD java.io.BufferedWriter.write(java.lang.String)
+    #PARAM 1 of #METHOD java.io.BufferedWriter.write(java.lang.String, int, int)
+    #PARAM 1 of #METHOD java.io.OutputStream.write(byte[])
+    #PARAM 1 of #METHOD java.io.OutputStream.write(byte[], int, int)
+    #PARAM 1 of #METHOD java.io.PrintStream.write(byte[])
+    #PARAM 1 of #METHOD java.io.PrintStream.write(byte[], int, int)
+    #PARAM 1 of #METHOD java.io.FileOutputStream.write(byte[])
+    #PARAM 1 of #METHOD java.io.FileOutputStream.write(byte[], int, int)
+    #PARAM 1 of #METHOD java.io.BufferedOutputStream.write(byte[])
+    #PARAM 1 of #METHOD java.io.BufferedOutputStream.write(byte[], int, int)
+    #PARAM 1 of #METHOD javax.servlet.jsp.JspWriter.write(java.lang.String)
+    #PARAM 1 of #METHOD javax.servlet.jsp.JspWriter.print(java.lang.String)
+    #PARAM 1 of #METHOD javax.servlet.jsp.JspWriter.println(java.lang.String)
+}
+
+alias_sink J_write_to_response {
+    #PARAM 2 of #METHOD java.io.PrintWriter.format(java.util.Locale, java.lang.String, java.lang.Object) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 3 of #METHOD java.io.PrintWriter.format(java.util.Locale, java.lang.String, java.lang.Object) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.PrintWriter.format(java.lang.String, java.lang.Object) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 2 of #METHOD java.io.PrintWriter.format(java.lang.String, java.lang.Object) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 3 of #METHOD java.io.PrintWriter.printf(java.util.Locale, java.lang.String, java.lang.Object) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 2 of #METHOD java.io.PrintWriter.printf(java.lang.String, java.lang.Object) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.PrintWriter.printf(java.lang.String, java.lang.Object) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 2 of #METHOD java.io.PrintWriter.printf(java.util.Locale, java.lang.String, java.lang.Object) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.OutputStreamWriter.write(java.lang.String) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.OutputStreamWriter.write(java.lang.String, int, int) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.PrintWriter.write(java.lang.String) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.PrintWriter.write(java.lang.String, int, int) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.PrintWriter.print(java.lang.String) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.PrintWriter.println(java.lang.String) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.BufferedWriter.write(java.lang.String) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.BufferedWriter.write(java.lang.String, int, int) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.OutputStream.write(byte[]) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.OutputStream.write(byte[], int, int) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.FileOutputStream.write(byte[]) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.FileOutputStream.write(byte[], int, int) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.BufferedOutputStream.write(byte[]) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+    #PARAM 1 of #METHOD java.io.BufferedOutputStream.write(byte[], int, int) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponse
+
+    #PARAM 1 of #METHOD java.io.OutputStreamWriter.write(java.lang.String) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.OutputStreamWriter.write(java.lang.String, int, int) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.PrintWriter.write(java.lang.String) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.PrintWriter.write(java.lang.String, int, int) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.PrintWriter.print(java.lang.String) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.PrintWriter.println(java.lang.String) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.BufferedWriter.write(java.lang.String) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.BufferedWriter.write(java.lang.String, int, int) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.OutputStream.write(byte[]) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.OutputStream.write(byte[], int, int) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.FileOutputStream.write(byte[]) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.FileOutputStream.write(byte[], int, int) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.BufferedOutputStream.write(byte[]) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+    #PARAM 1 of #METHOD java.io.BufferedOutputStream.write(byte[], int, int) where #RESOURCE_ROOT is_type_of #CLASS javax.servlet.http.HttpServletResponseWrapper
+
+    #PARAM 1 of #METHOD javax.servlet.jsp.JspWriter.write(java.lang.String)
+    #PARAM 1 of #METHOD javax.servlet.jsp.JspWriter.print(java.lang.String)
+    #PARAM 1 of #METHOD javax.servlet.jsp.JspWriter.println(java.lang.String)
+}
+
+/*
+    PATH_TRAVERSAL sink
+    Reference:
+    java.io.*
+    http://docs.oracle.com/javase/6/docs/api/
+*/
+alias_sink PATH_TRAVERSAL_sink {
+    #PARAM 1 of #METHOD java.nio.file.Files.newInputStream(java.nio.file.Path, ava.nio.file.StandardOpenOption)
+    #PARAM 1 of #METHOD java.io.FileInputStream.<init>(java.lang.String, boolean)
+
+    #PARAM 2 of #METHOD java.io.File.<init>(java.io.File, java.lang.String)
+    #PARAM 1 of #METHOD java.io.File.<init>(java.lang.String)
+    #PARAM 1 of #METHOD java.io.File.<init>(java.lang.String, java.lang.String)
+    #PARAM 2 of #METHOD java.io.File.<init>(java.lang.String, java.lang.String)
+
+    #PARAM 1 of #METHOD java.io.FileInputStream.<init>(java.lang.String)
+
+    #PARAM 1 of #METHOD java.io.FileOutputStream.<init>(java.lang.String)
+    #PARAM 1 of #METHOD java.io.FileOutputStream.<init>(java.lang.String, boolean)
+
+    #PARAM 1 of #METHOD java.io.FileReader.<init>(java.lang.String)
+
+    #PARAM 1 of #METHOD java.io.FileWriter.<init>(java.lang.String)
+    #PARAM 1 of #METHOD java.io.FileWriter.<init>(java.lang.String, boolean)
+
+    #PARAM 1 of #METHOD java.io.PrintStream.<init>(java.lang.String)
+    #PARAM 1 of #METHOD java.io.PrintStream.<init>(java.lang.String, java.lang.String)
+
+    #PARAM 1 of #METHOD java.io.PrintWriter.<init>(java.lang.String)
+    #PARAM 1 of #METHOD java.io.PrintWriter.<init>(java.lang.String, java.lang.String)
+}
+
+alias_sink EXPOSURE_OF_SYSTEM_DATA_sink {
+    #PARAM 1 of #METHOD java.io.PrintWriter.println(java.lang.String)
+}
+
+alias_sink RELIANCE_ON_DNS_LOOKUPS_IN_A_SECURITY_DECISION_sink {
+    /* #TAINT_INVOKED_BY #METHOD java.lang.String.contains(java.lang.CharSequence) */
+    #TAINT_INVOKED_BY #METHOD java.lang.String.endsWith(java.lang.String)
+    #TAINT_INVOKED_BY #METHOD java.lang.String.equals(java.lang.Object)
+    #TAINT_INVOKED_BY #METHOD java.lang.String.equalsIgnoreCase(java.lang.String)
+    /* #TAINT_INVOKED_BY #METHOD java.lang.String.matches(java.lang.String) */
+    #TAINT_INVOKED_BY #METHOD java.lang.String.startsWith(java.lang.String)
+    #TAINT_INVOKED_BY #METHOD java.lang.String.startsWith(java.lang.String, int)
+}
+
+alias_sink RELIANCE_ON_UNTRUSTED_INPUTS_IN_A_SECURITY_DECISION_sink {
+    #TAINT_INVOKED_BY #METHOD javax.servlet.http.Cookie.getValue()
+    #TAINT_INVOKED_BY #METHOD java.lang.String.equals(java.lang.Object) with_args ["authentication"]
+    #TAINT_INVOKED_BY #METHOD java.lang.String.equals(java.lang.Object) with_args ["auth"]
+    #PARAM 1 of #METHOD java.lang.Boolean.equals(java.lang.Object)
+}
+
+alias_propag String_propag {
+    #BASE of #METHOD java.lang.String.substring(int) to #RETURN
+    #BASE of #METHOD java.lang.String.split(java.lang.String) to #RETURN
+    #PARAM 1 of #METHOD java.util.StringTokenizer.<init>(java.lang.String,java.lang.String) to #BASE
+    #BASE of #METHOD java.lang.String.trim() to #RETURN
+    #BASE of #METHOD java.util.StringTokenizer.nextToken() to #RETURN
+    #PARAM 1 of #METHOD egovframework.com.utl.fcc.service.EgovFormBasedFileUtil.convert(java.lang.String) to #RETURN
+    #PARAM 1 of #METHOD egovframework.com.cmm.EgovWebUtil.filePathWhiteList(java.lang.String) to #RETURN
+    #PARAM 1 of #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.isNullToString(java.lang.Object) to #RETURN
+    #PARAM 1 of #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.nullConvert(java.lang.String) to #RETURN
+    #PARAM 1 of #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getEncdDcd(java.lang.String, java.lang.String, java.lang.String) to #RETURN
+}
+
+/* Parsing propagation */
+alias_propag Parse_propag {
+    #PARAM 1 of #METHOD java.lang.Byte.parseByte(java.lang.String) to #RETURN
+    #PARAM 1 of #METHOD java.lang.Long.parseLong(java.lang.String) to #RETURN
+    #PARAM 1 of #METHOD java.lang.Short.parseShort(java.lang.String) to #RETURN
+}
+
+/* Conversion propagation */
+alias_propag Conv_propag {
+    #BASE of #METHOD java.lang.String.getBytes(java.lang.String) to #RETURN
+    #BASE of #METHOD java.lang.String.toCharArray() to #RETURN
+    #PARAM 1 of #METHOD java.security.MessageDigest.digest(byte []) to #RETURN
+}
+
+
+alias_propag dns_propag {
+    #PARAM 1 of #METHOD java.net.InetAddress.getByName(java.lang.String) to #RETURN
+    #BASE of #METHOD java.net.InetAddress.getCanonicalHostName() to #RETURN
+    #BASE of #METHOD java.net.InetAddress.getHostName() to #RETURN
+    #BASE of #METHOD java.net.InetAddress.getHostAddress() to #RETURN
+}
+
+alias_propag cookie_propag {
+    #PARAM 1 of #METHOD javax.servlet.http.Cookie.<init>(java.lang.String, java.lang.String) to #BASE
+    #PARAM 2 of #METHOD javax.servlet.http.Cookie.<init>(java.lang.String, java.lang.String) to #BASE
+    #BASE of #METHOD javax.servlet.http.Cookie.getName() to #RETURN
+}
+
+alias_source AndroidSrc {
+    #RETURN of #METHOD android.app.Activity.getSystemService(java.lang.String) with_args ["phone"]
+    #RETURN of #METHOD android.telephony.TelephonyManager.getLine1Number()
+    #RETURN of #METHOD android.telephony.TelephonyManager.getCellLocation()
+    #RETURN of #METHOD java.lang.System.getenv(java.lang.String)
+}
+
+alias_propag AndroidPropag {
+    #BASE of #METHOD android.telephony.TelephonyManager.getDeviceSoftwareVersion() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getDeviceId() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getCellLocation() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getNeighboringCellInfo() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getPhoneType() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getNetworkOperatorName() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getNetworkOperator() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.isNetworkRoaming() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getNetworkCountryIso() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getNetworkType() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.hasIccCard() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getSimState() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getSimOperator() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getSimOperatorName() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getSimCountryIso() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getSimSerialNumber() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getSubscriberId() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getLine1Number() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getVoiceMailNumber() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getVoiceMailAlphaTag() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getCallState() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getDataActivity() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getDataState() to #RETURN
+	#BASE of #METHOD android.telephony.TelephonyManager.getAllCellInfo() to #RETURN
+	#BASE of #METHOD android.telephony.CellLocation.toString() to #RETURN
+}
+
+alias_propag FileWriterInitPropag {
+	#BASE of #METHOD java.io.File.getAbsolutePath() to #RETURN
+	#PARAM 1 of #METHOD java.io.File.<init>(java.lang.String) to #BASE
+	#PARAM 2 of #METHOD java.io.File.<init>(java.io.File, java.lang.String) to #BASE
+	#PARAM 1 of #METHOD java.io.File.<init>(java.lang.String, java.lang.String) to #BASE
+	#PARAM 2 of #METHOD java.io.File.<init>(java.lang.String, java.lang.String) to #BASE
+	#PARAM 1 of #METHOD java.io.File.createTempFile(java.lang.String, java.lang.String) to #RETURN
+	#PARAM 1 of #METHOD java.io.File.createTempFile(java.lang.String, java.lang.String, java.io.File) to #RETURN
+	#PARAM 1 of #METHOD java.io.FileOutputStream.<init>(java.io.File) to #BASE
+	#PARAM 1 of #METHOD java.io.FileOutputStream.<init>(java.lang.String, boolean) to #BASE
+	#PARAM 1 of #METHOD java.io.FileWriter.<init>(java.lang.String) to #BASE
+    #PARAM 1 of #METHOD java.io.FileWriter.<init>(java.lang.String, boolean) to #BASE
+	#PARAM 1 of #METHOD java.io.OutputStreamWriter.<init>(java.io.OutputStream) to #BASE
+	#PARAM 1 of #METHOD java.io.OutputStreamWriter.<init>(java.io.OutputStream, java.nio.charset.Charset) to #BASE
+	#PARAM 1 of #METHOD java.io.OutputStreamWriter.<init>(java.io.OutputStream, java.nio.charset.CharsetEncoder) to #BASE
+	#PARAM 1 of #METHOD java.io.OutputStreamWriter.<init>(java.io.OutputStream, java.lang.String) to #BASE
+	#PARAM 1 of #METHOD java.io.PrintWriter.<init>(java.io.File) to #BASE
+	#PARAM 1 of #METHOD java.io.PrintWriter.<init>(java.io.File, java.lang.String) to #BASE
+	#PARAM 1 of #METHOD java.io.PrintWriter.<init>(java.io.OutputStream) to #BASE
+	#PARAM 1 of #METHOD java.io.PrintWriter.<init>(java.io.OutputStream, boolean) to #BASE
+	#PARAM 1 of #METHOD java.io.PrintWriter.<init>(java.lang.String) to #BASE
+	#PARAM 1 of #METHOD java.io.PrintWriter.<init>(java.lang.String, java.lang.String) to #BASE
+	#PARAM 1 of #METHOD java.io.PrintWriter.<init>(java.io.Writer) to #BASE
+	#PARAM 1 of #METHOD java.io.PrintWriter.<init>(java.io.Writer, boolean) to #BASE
+	#PARAM 1 of #METHOD java.io.BufferedWriter.<init>(java.io.Writer) to #BASE
+	#PARAM 1 of #METHOD java.io.BufferedWriter.<init>(java.io.Writer, int) to #BASE
+	#PARAM 1 of #METHOD java.io.BufferedOutputStream.<init>(java.io.OutputStream) to #BASE
+	#PARAM 1 of #METHOD java.io.BufferedOutputStream.<init>(java.io.OutputStream, int) to #BASE
+}
+
+alias_sink AndroidSink {
+    #PARAM 1 of #METHOD java.io.OutputStreamWriter.write(java.lang.String) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.OutputStreamWriter.write(java.lang.String, int, int) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.PrintWriter.write(java.lang.String) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.PrintWriter.write(java.lang.String, int, int) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.PrintWriter.print(java.lang.String) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.PrintWriter.println(java.lang.String) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.BufferedWriter.write(java.lang.String) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.BufferedWriter.write(java.lang.String, int, int) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.OutputStream.write(byte[]) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.OutputStream.write(byte[], int, int) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.FileOutputStream.write(byte[]) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.FileOutputStream.write(byte[], int, int) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.BufferedOutputStream.write(byte[]) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+    #PARAM 1 of #METHOD java.io.BufferedOutputStream.write(byte[], int, int) where #BASE is_tainted_by #RULE _INFORMATION_LEAK_ANDROID
+}
+
+alias_sink J_webgoat {
+    #PARAM 2 of #METHOD org.owasp.webgoat.session.Employee.<init>(int, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String,java.lang.String, int, java.lang.String, int, java.lang.String, int,java.lang.String, java.lang.String, java.lang.String)
+    #PARAM 3 of #METHOD org.owasp.webgoat.session.Employee.<init>(int, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String,java.lang.String, int, java.lang.String, int, java.lang.String, int,java.lang.String, java.lang.String, java.lang.String)
+    #PARAM 4 of #METHOD org.owasp.webgoat.session.Employee.<init>(int, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String,java.lang.String, int, java.lang.String, int, java.lang.String, int,java.lang.String, java.lang.String, java.lang.String)
+    #PARAM 5 of #METHOD org.owasp.webgoat.session.Employee.<init>(int, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String,java.lang.String, int, java.lang.String, int, java.lang.String, int,java.lang.String, java.lang.String, java.lang.String)
+    #PARAM 6 of #METHOD org.owasp.webgoat.session.Employee.<init>(int, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String,java.lang.String, int, java.lang.String, int, java.lang.String, int,java.lang.String, java.lang.String, java.lang.String)
+    #PARAM 7 of #METHOD org.owasp.webgoat.session.Employee.<init>(int, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String,java.lang.String, int, java.lang.String, int, java.lang.String, int,java.lang.String, java.lang.String, java.lang.String)
+    #PARAM 8 of #METHOD org.owasp.webgoat.session.Employee.<init>(int, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String,java.lang.String, int, java.lang.String, int, java.lang.String, int,java.lang.String, java.lang.String, java.lang.String)
+}
+
+alias_sink J_webgoat_Exec {
+    #PARAM 1 of #METHOD org.owasp.webgoat.util.Exec.execSimple(java.lang.String)
+}
+
+/*
+    Rule: ANDROID_XSS
+*/
+rule {
+    @name {
+        ANDROID_XSS
+    }
+    @definition {
+        ALARM {
+            if #PARAM 1 of #METHOD android.webkit.WebView.loadUrl(java.lang.String) is_from @SRC_ALL
+            if #PARAM 1 of #METHOD android.webkit.WebView.loadUrl(java.lang.String) is_from #RETURN of #METHOD android.os.Bundle.getString(java.lang.String)
+            if #PARAM 1 of #METHOD android.webkit.WebView.loadUrl(java.lang.String) is_from #RETURN of #METHOD android.content.Intent.getStringExtra(java.lang.String)
+        }
+        EXCLUDE {
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.startsWith(java.lang.String)
+        }
+        PROPAGATOR {
+            @String_propag
+        }
+    }
+    @description {
+        검증되지 않은 데이터를 웹 브라우저에 보내면 브라우저가 악성 코드를 실행하는 결과를 초래할 수 있습니다.
+    }
+}
+
+rule {
+    @name {
+        CHECK_FLOATING_POINT_INPUTS_FOR_EXCEPTIONAL_VALUES_NAN
+    }
+    @definition {
+        ALARM {
+            if #ARITHMETIC is_from #RETURN of #METHOD java.lang.Double.valueOf(java.lang.String)
+            if #ARITHMETIC is_from #BASE of #METHOD java.lang.Double.doubleValue()
+        }
+        EXCLUDE {
+            if #TAINT_INVOKED_BY #METHOD java.lang.Double.isNaN()
+            if #TAINT_USED_BY #PARAM 1 of #METHOD java.lang.Double.isNaN(double)
+        }
+        PROPAGATOR {
+            #PARAM 1 of #METHOD java.lang.Double.valueOf(java.lang.String) to #RETURN
+            #BASE of #METHOD java.lang.Double.doubleValue() to #RETURN
+        }
+    }
+    @description {
+        CHECK_FLOATING_POINT_INPUTS_FOR_EXCEPTIONAL_VALUES_NAN
+    }
+}
+
+/*
+    Rule: CLEAR_TEXT_TRANSMISSION_OF_SENSITIVE_INFORMATION
+*/
+rule {
+    @name {
+        CLEAR_TEXT_TRANSMISSION_OF_SENSITIVE_INFORMATION
+    }
+    @definition {
+        ALARM {
+            if @J_write is_from #RETURN of #METHOD CLEAR_TEXT_TRANSMISSION_OF_SENSITIVE_INFORMATION_TestCase.getPassword()
+            if @J_write is_from #RETURN of #METHOD java.net.PasswordAuthentication.getPassword()
+        }
+		EXCLUDE {
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.sim.service.EgovFileScrty.encryptFile(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.sim.service.EgovFileScrty.encodeBinary(byte[])
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.sim.service.EgovFileScrty.encode(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.sim.service.EgovFileScrty.encryptPassword(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.sim.service.EgovFileScrty.encryptPassword(java.lang.String, byte[])
+            if #TAINT_VAL pass #METHOD kr.re.kepri.web.security.KepriSecureCryptoUtils.encrypt(java.lang.String)
+            if #TAINT_VAL pass #METHOD kr.re.kepri.web.security.KepriSecureCryptoUtils.digeste(java.lang.String)
+        }
+        PROPAGATOR {
+            #BASE of #METHOD java.lang.String.toCharArray() to #RETURN
+            #BASE of #METHOD java.lang.String.getBytes() to #RETURN
+            #BASE of #METHOD java.lang.String.getBytes(java.lang.String) to #RETURN
+            #PARAM 1 of #METHOD egovframework.com.utl.fcc.service.EgovFormBasedFileUtil.convert(java.lang.String) to #RETURN
+            #PARAM 1 of #METHOD egovframework.com.cmm.EgovWebUtil.filePathWhiteList(java.lang.String) to #RETURN
+            #PARAM 1 of #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.isNullToString(java.lang.Object) to #RETURN
+            #PARAM 1 of #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.nullConvert(java.lang.String) to #RETURN
+            #PARAM 1 of #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getEncdDcd(java.lang.String, java.lang.String, java.lang.String) to #RETURN
+            #PARAM 1 of #METHOD java.lang.String.<init>(char[]) to #BASE
+            #PARAM 1 of #METHOD java.lang.String.<init>(byte[]) to #BASE
+        }
+    }
+    @description {
+        CLEAR_TEXT_TRANSMISSION_OF_SENSITIVE_INFORMATION
+    }
+}
+
+/*
+    Rule: 운영체제 명령어 삽입
+    (Improper Neutralization of Special Elements Used in an OS Command (OS Command Injection))
+
+    외부 입력이 시스템 명령어 실행 인수로 적절한 처리 없이 사용되면 위험하다.
+    외부 입력 문자열은 신뢰할 수 없기 때문에 미리 정당한 인자값의 배열을 만든 후,
+    적절한 인자값을 선택하는 형태로 사용해야 한다. 그렇지 않으면, 공격자가 원하는 명령어를 실행시킬 수 있다.
+
+*/
+rule {
+    @name {
+        COMMAND_INJECTION
+    }
+    @definition {
+        ALARM {
+            if @J_Exec is_from @SRC_INPUT
+            if @J_webgoat_Exec is_from @SRC_INPUT
+            if @J_Exec is_from #RETURN of #METHOD org.springframework.web.multipart.MultipartRequest.getFile(java.lang.String)
+            if @J_Exec is_from #RETURN of #METHOD org.springframework.web.multipart.MultipartHttpServletRequest.getFile(java.lang.String)
+            if @J_Exec is_from #RETURN of #METHOD org.springframework.web.multipart.AbstractMultipartHttpServletRequest.getFile(java.lang.String)
+            if @J_Exec is_from #RETURN of #METHOD org.springframework.web.multipart.MultipartHttpServletRequest.getParameter(java.lang.String)
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.removeOSCmdRisk(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+            if #TAINT_USED_BY #PARAM 1 of #METHOD kr.re.kepri.web.security.KepriSecureEtcUtils.isAllowedOsCommand(java.lang.String)
+        }
+        PROPAGATOR {
+            @String_propag
+            #BASE of #METHOD org.springframework.web.multipart.MultipartFile.getOriginalFilename() to #RETURN
+        }
+    }
+    // Rule 에 대한 설명을 기술한다.
+    @description {
+        외부에서 전달되는 값은 바로 시스템 내부 명령어의 생성에 사용되지 않아야 한다.
+    }
+}
+
+/*
+    무결성 검사없는 코드 다운로드
+*/
+rule {
+    @name {
+        DOWNLOAD_OF_CODE_WITHOUT_INTEGRITY_CHECK
+    }
+    @definition {
+        ALARM {
+            if #PARAM 1 of #METHOD java.net.URLClassLoader.<init>(java.net.URL[]) is_from @SRC_INPUT
+        }
+        /* 로드된 클래스가 안전한지 검사하는 Method 로 입력이 필요함 */
+        EXCLUDE {
+            if #TAINT_INVOKED_BY #METHOD java.lang.Class.getName() equals #TAINT_INVOKED_BY #METHOD java.lang.Class.getSimpleName()
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+        }
+        PROPAGATOR {
+            #PARAM 1 of #METHOD java.net.URL.<init>(java.lang.String) to #BASE
+        }
+    }
+    @description {
+        원격으로부터 소스코드 또는 실행 파일을 무결성 검사 없이 다운로드 받고, 이를 실행하는 제품들이 종종 존재. 이는 호스트 서버의 변조, DNS 스푸핑(Spoofing) 또는 전송시의 코드 변조 등의 방법을 이용하여 공격자가 악의적인 코드를 실행할 수 있도록 한다.
+    }
+}
+
+rule {
+    @name {
+        DO_NOT_OPERATE_ON_UNTRUSTED_FILE_LINKS
+    }
+    @definition {
+        ALARM {
+            if #PARAM 1 of #METHOD java.nio.file.Files.newInputStream(java.nio.file.Path,java.nio.file.OpenOption[]) is_from #BASE of #METHOD java.io.File.<init>(java.lang.String)
+        }
+        EXCLUDE {
+            if #TAINT_USED_BY #PARAM 1 of #METHOD java.nio.file.Files.readAttributes(java.nio.file.Path,java.lang.Class,java.nio.file.LinkOption[]) has_arg (*GLB_java.nio.file.LinkOption.NOFOLLOW_LINKS)
+        }
+        PROPAGATOR {
+            #BASE of #METHOD java.io.File.toPath() to #RETURN
+        }
+    }
+    @description {
+        DO_NOT_OPERATE_ON_UNTRUSTED_FILE_LINKS
+    }
+}
+
+rule {
+    @name {
+        ELIMINATE_NONCHARACTER_CODE_POINTS_BEFORE_VALIDATION
+    }
+    @definition {
+        ALARM {
+            if #PARAM 1 of #METHOD java.util.regex.Pattern.matcher(java.lang.CharSequence) is_from #CONST_STRING "\uFEFF"
+        }
+        PROPAGATOR {
+            #PARAM 1 of #METHOD java.text.Normalizer.normalize(java.lang.CharSequence, java.text.Normalizer$Form) to #RETURN
+        }
+    }
+    @description {
+        SANITIZE_UNTRUSTED_DATA_PASSED_TO_A_REGEX
+    }
+}
+
+/*
+    Rule: 시스템 또는 구성 설정의 외부 제어(EXTERNAL_CONTROL_OF_SYSTEM_OR_CONFIGURATION_SETTING)
+
+    시스템 설정이나 구성요소를 외부에서 제어할 수 있으면 예상치 못한 결과(예: 서비스 중단)를 초래하거나 악용될 가능성이 있다.
+
+    아래 두 API 로부터 반환되는 값은 위험하다고 간주 한다.
+    java.util.Properties.getProperty(java.lang.String)
+    javax.servlet.http.HttpServletRequest.getParameter(java.lang.String)
+
+*/
+rule {
+    @name {
+        EXTERNAL_CONTROL_OF_SYSTEM_OR_CONFIGURATION_SETTING
+    }
+    @definition {
+        ALARM {
+            if #PARAM 1 of #METHOD java.sql.Connection.setCatalog(java.lang.String) is_from #RETURN of #METHOD javax.servlet.http.HttpServletRequest.getParameter(java.lang.String)
+            if #PARAM 1 of #METHOD java.sql.Connection.setCatalog(java.lang.String) is_from #RETURN of #METHOD javax.servlet.ServletRequest.getParameter(java.lang.String)
+            if #PARAM 1 of #METHOD java.sql.Connection.setCatalog(java.lang.String) is_from #RETURN of #METHOD jakarta.servlet.http.HttpServletRequest.getParameter(java.lang.String)
+            if #PARAM 1 of #METHOD java.sql.Connection.setCatalog(java.lang.String) is_from #RETURN of #METHOD jakarta.servlet.ServletRequest.getParameter(java.lang.String)
+            if #PARAM 1 of #METHOD java.sql.Connection.setCatalog(java.lang.String) is_from #RETURN of #METHOD java.util.Properties.getProperty(java.lang.String)
+            if #PARAM 1 of #METHOD java.sql.Connection.setCatalog(java.lang.String) is_from #RETURN of #METHOD org.springframework.core.env.PropertySource.getProperty(java.lang.String)
+        }
+    }
+    @description {
+        시스템 설정이나 구성요소를 외부에서 제어할 수 있으면 예상치 못한 결과(예: 서비스 중단)를 초래하거나 악용될 가능성이 있다.
+    }
+}
+
+/*
+    Format String
+    CWE-134: Uncontrolled Format String
+    http://cwe.mitre.org/data/definitions/134.html
+*/
+rule {
+    // Rule 이름은 FORMAT_STRING 이다.
+    @name {
+        FORMAT_STRING
+    }
+    // Rule 에서 검출하고자 하는 case 들을 아래와 같은 규칙으로 작성한다.
+    @definition {
+        ALARM {
+            if @FormatString_SamateSink is_from @SRC_INPUT
+        }
+    }
+    // Rule 에 대한 설명을 기술한다.
+    @description {
+        Uncontrolled Format String
+    }
+}
+
+/*
+    Rule: HTTP 응답분할 (Failure to Sanitize CRLF Sequences in HTTP Headers ('HTTP Response Splitting'))
+
+    HTTP 요청에 들어 있는 인자값이 HTTP 응답헤더에 포함되어 사용자에게 다시 전달되는 경우,
+    입력값에 CR(Carriage Return) 이나 LF(Line Feed)와 같은 개행문자가 존재하면 HTTP 응답이 2개 이상으로 분리될 수 있다.
+    이 경우 공격자는 개행문자를 이용하여 첫번째 응답을 종료시키고 두 번째 응답에 악의적인 코드를 주입할 수 있게 되어
+    공격자는 두 번째 응답을 이용해서 XSS 및 캐시 훼손(cache poisoning) 공격과 같은 것을 시도할 수 있다.
+    이 Checker 는 Cookie Poisoning 만을 검출한다.
+
+    참고: http://docs.oracle.com/javaee/6/api/javax/servlet/http/Cookie.html
+*/
+rule {
+    @name {
+        HTTP_RESPONSE_SPLITTING
+    }
+    @definition {
+        ALARM {
+            if @J_Response is_from @SRC_REQUEST
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD java.lang.String.replace(char, char)
+            if #TAINT_VAL pass #METHOD java.lang.String.replace(java.lang.CharSequence, java.lang.CharSequence)
+            if #TAINT_VAL pass #METHOD java.lang.String.replaceAll(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.replaceFirst(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.replace(java.lang.String, java.lang,String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.replaceOnce(java.lang.String, java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.replaceChar(java.lang.String, java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.removeCRLF(java.lang.String)
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.indexOf(java.lang.String) with_args ["\r"] in IF
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.indexOf(java.lang.String) with_args ["\n"] in IF
+            if #TAINT_VAL pass #METHOD java.net.URLEncoder.encode(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+            if #TAINT_VAL pass #METHOD kr.re.kepri.web.security.KepriSecureEtcUtils.preventRequestHeaderCRLF(java.lang.String)
+        }
+        PROPAGATOR {
+            @String_propag
+        }
+    }
+    @description {
+        HTTP 요청에 들어 있는 인자값이 HTTP 응답헤더에 포함되어 사용자에게 다시 전달되는 경우 입력값에 CR(Carriage Return) 이나 LF(Line Feed)와 같은 개행문자가 존재하면 HTTP 응답이 2개 이상으로 분리될 수 있다. 이 경우 공격자는 개행문자를 이용하여 첫번째 응답을 종료시키고 두 번째 응답에 악의적인 코드를 주입할 수 있게 되어 공격자는 두 번째 응답을 이용해서 XSS 및 캐시 훼손(cache poisoning) 공격과 같은 것을 시도할 수 있다.
+    }
+    @suggestion_filter_function {
+        splittingFilter
+    }
+}
+
+/*
+    INTEGER OVERFLOW
+    배열의 인덱스로 사용되는 정수값이 오염된 값이면, INTEGER OVERFLOW 라고 판정한다.
+    현재 taint 분석만 이루어 지나, 추후 정수 값의 음수값까지 판단하는 semantics 를 추가 해야 한다.
+    오염된 정수 값이 음수가 아니라는 가정을 하거나, 특정 Upper Bound 값이 설정 되어 있으면 경고를 내지 않는다.
+*/
+rule {
+    @name {
+        INTEGER_OVERFLOW
+    }
+    @definition {
+        ALARM {
+            if #ARRAY_INDEX_ACCESS is_from @SRC_ALL
+            if #ARRAY_INDEX_CREATE is_from @SRC_ALL
+            if #ARITHMETIC is_from @SRC_ALL
+            if #ARITHMETIC is_from #OVERFLOWED_NUMERIC
+        }
+        EXCLUDE {
+            if #TAINT_VAL assumed ANY_UPPERBOUND
+            if #TAINT_VAL assumed NON_NEGATIVE
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+            if #TAINT_VAL pass #METHOD java.lang.String.indexOf(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.indexOf(java.lang.String,int)
+            if #TAINT_VAL pass #METHOD java.lang.String.lastIndexOf(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.lastIndexOf(java.lang.String,int)
+            if #TAINT_USED_BY #PARAM 1 of #METHOD kr.re.kepri.web.security.KepriSecureEtcUtils.isValidArrayInitSize(int)
+        }
+        PROPAGATOR {
+            @String_propag
+            @Parse_propag
+        }
+    }
+    @description {
+        외부의 신뢰할 수 없는 입력을 적절한 검사 과정을 거치지 않고 index로 사용하는 것은 위험하다.
+    }
+}
+
+/*
+    LDAP 삽입 (LDAP Injection)
+
+    공격자가 외부 입력을 통해서 의도하지 않은 LDAP 명령어를 수행할 수 있다.
+    즉 웹 애플리케이션이 사용자가 제공한 입력을 올바르게 처리하지 못하면,
+    공격자가 LDAP 명령문의 구성을 바꿀 수 있으며, 이로 인해 프로세스가
+    명령을 실행한 컴포넌트와 동일한 Authentication 을 가지고 동작하게 된다.
+
+    Reference:
+    1. java 1.6 doc - javax.naming.directory.DirContext (filter 를 만족하는 search method 가 LDAP Injection 의 위험이 있다)
+        * NamingEnumeration<SearchResult> search(Name name, String filterExpr, Object[] filterArgs, SearchControls cons)
+        * NamingEnumeration<SearchResult> search(Name name, String filter, SearchControls cons)
+*/
+rule {
+    @name {
+        LDAP_INJECTION
+    }
+    @definition {
+        ALARM {
+            if @J_LDAP is_from @SRC_INPUT
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD java.lang.String.replace(char, char)
+            if #TAINT_VAL pass #METHOD java.lang.String.replace(java.lang.CharSequence, java.lang.CharSequence)
+            if #TAINT_VAL pass #METHOD java.lang.String.replaceAll(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.replaceFirst(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.replace(java.lang.String, java.lang,String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.replaceOnce(java.lang.String, java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.replaceChar(java.lang.String, java.lang.String, java.lang.String)
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.indexOf(java.lang.String) with_args ["&"] in IF
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.indexOf(java.lang.String) with_args ["<"] in IF
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.indexOf(java.lang.String) with_args [">"] in IF
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+            if #TAINT_VAL pass #METHOD kr.re.kepri.web.security.KepriSecureLdapUtils.escapeDN(java.lang.String)
+        }
+        PROPAGATOR {
+            @String_propag
+        }
+    }
+    @description {
+        공격자가 외부 입력을 통해서 의도하지 않은 LDAP 명령어를 수행할 수 있다.
+    }
+}
+
+/*
+    Rule: 신뢰되지 않는 URL 주소로의 자동 접속 연결
+
+    외부로부터 받은 문자열을 URL 주소로 사용하여 자동으로 연결하는 서버 프로그램은 취약점을 가질 수 있다.
+    일반적으로 클라이언트에게 전송된 폼으로부터 전송된 URL 주소로 연결하기 때문에 안전하다고 생각할 수 있으나,
+    해당 폼의 요청을 변조함으로써 공격자는 희생자가 위험한 URL로 접속할 수 있도록 공격할 수 있다.
+
+    아래 API 로부터 반환되는 값은 위험하다고 간주 한다.
+    javax.servlet.http.HttpServletRequest.getParameter(java.lang.String)
+
+*/
+rule {
+    @name {
+        OPEN_REDIRECT
+    }
+    @definition {
+        ALARM {
+            if #PARAM 1 of #METHOD javax.servlet.http.HttpServletResponse.sendRedirect(java.lang.String) is_from @SRC_INPUT
+            if #PARAM 1 of #METHOD jakarta.servlet.http.HttpServletResponse.sendRedirect(java.lang.String) is_from @SRC_INPUT
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+            if #TAINT_USED_BY #PARAM 1 of #METHOD kr.re.kepri.web.security.KepriSecureEtcUtils.isAllowedDomainName(java.lang.String)
+        }
+        PROPAGATOR {
+            @String_propag
+        }
+    }
+    @description {
+        외부로부터 받은 문자열을 URL 주소로 사용하여 자동으로 연결하는 서버 프로그램은 취약점을 가질 수 있다.
+    }
+    @suggestion_filter_function {
+        urlFilter
+    }
+}
+
+/*
+    사용자 중요정보 평문 저장(또는 전송)
+*/
+rule {
+    @name {
+        PASSWORD_SAVED_FILE_WITHOUT_ENCRYPTION
+    }
+    @definition {
+        ALARM {
+            if #PARAM 2 of #METHOD java.net.PasswordAuthentication.<init>(java.lang.String,char[]) is_from @SRC_INPUT
+            if #PARAM 2 of #METHOD java.net.PasswordAuthentication.<init>(java.lang.String,char[]) is_from #RETURN of #METHOD java.net.PasswordAuthentication.getPassword(lang.String, java.lang.String)
+            if #PARAM 2 of #METHOD java.net.PasswordAuthentication.PasswordAuthentication(java.lang.String, char[]) is_from @SRC_INPUT
+            if #PARAM 2 of #METHOD java.net.PasswordAuthentication.PasswordAuthentication(java.lang.String, char[]) is_from #RETURN of #METHOD java.net.PasswordAuthentication.getPassword()
+            if #PARAM 3 of #METHOD java.sql.DriverManager.getConnection(java.lang.String, java.lang.String, java.lang.String) is_from @SRC_INPUT
+            if #PARAM 3 of #METHOD java.sql.DriverManager.getConnection(java.lang.String, java.lang.String, java.lang.String) is_from #RETURN of #METHOD java.net.PasswordAuthentication.getPassword()
+            if #PARAM 2 of #METHOD javax.security.auth.kerberos.KerberosKey.<init>(javax.security.auth.kerberos.KerberosPrincipal, char[], java.lang.String) is_from @SRC_INPUT
+            if #PARAM 2 of #METHOD javax.security.auth.kerberos.KerberosKey.<init>(javax.security.auth.kerberos.KerberosPrincipal, char[], java.lang.String) is_from #RETURN of #METHOD java.net.PasswordAuthentication.getPassword()
+            if #PARAM 2 of #METHOD javax.security.auth.kerberos.KerberosKey.KerberosKey(javax.security.auth.kerberos.KerberosPrincipal, char[]) is_from @SRC_INPUT
+            if #PARAM 2 of #METHOD javax.security.auth.kerberos.KerberosKey.KerberosKey(javax.security.auth.kerberos.KerberosPrincipal, char[]) is_from #RETURN of #METHOD java.net.PasswordAuthentication.getPassword()
+            if #PARAM 2 of #METHOD jakarta.security.auth.kerberos.KerberosKey.<init>(jakarta.security.auth.kerberos.KerberosPrincipal, char[], java.lang.String) is_from @SRC_INPUT
+            if #PARAM 2 of #METHOD jakarta.security.auth.kerberos.KerberosKey.<init>(jakarta.security.auth.kerberos.KerberosPrincipal, char[], java.lang.String) is_from #RETURN of #METHOD java.net.PasswordAuthentication.getPassword()
+            if #PARAM 2 of #METHOD jakarta.security.auth.kerberos.KerberosKey.KerberosKey(jakarta.security.auth.kerberos.KerberosPrincipal, char[]) is_from @SRC_INPUT
+            if #PARAM 2 of #METHOD jakarta.security.auth.kerberos.KerberosKey.KerberosKey(jakarta.security.auth.kerberos.KerberosPrincipal, char[]) is_from #RETURN of #METHOD java.net.PasswordAuthentication.getPassword()
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.sim.service.EgovFileScrty.decryptFile(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.sim.service.EgovFileScrty.decodeBinary(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.sim.service.EgovFileScrty.decode(java.lang.String)
+        }
+        PROPAGATOR {
+            #BASE of #METHOD java.lang.String.toCharArray() to #RETURN
+            #BASE of #METHOD java.lang.String.getBytes() to #RETURN
+            #BASE of #METHOD java.lang.String.getBytes(java.lang.String) to #RETURN
+            #PARAM 1 of #METHOD egovframework.com.utl.fcc.service.EgovFormBasedFileUtil.convert(java.lang.String) to #RETURN
+            #PARAM 1 of #METHOD egovframework.com.cmm.EgovWebUtil.filePathWhiteList(java.lang.String) to #RETURN
+            #PARAM 1 of #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.isNullToString(java.lang.Object) to #RETURN
+            #PARAM 1 of #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.nullConvert(java.lang.String) to #RETURN
+            #PARAM 1 of #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getEncdDcd(java.lang.String, java.lang.String, java.lang.String) to #RETURN
+            #PARAM 1 of #METHOD java.lang.String.<init>(char[]) to #BASE
+            #PARAM 1 of #METHOD java.lang.String.<init>(byte[]) to #BASE
+        }
+
+    }
+    @description {
+        PASSWORD_SAVED_FILE_WITHOUT_ENCRYPTION
+    }
+}
+
+/*
+    Rule: 디렉토리 경로 조작 (Path Traversal)
+
+    외부의 입력을 통하여 "디렉토리 경로 문자열" 생성이 필요한 경우, 외부 입력에서 경로 조작에 사용될 수 있는 문자를 필터링하지 않으면,
+    예상 밖의 영역에 대한 경로 문자열이 가능해져 시스템 정보누출, 서비스 장애 등을 유발 시킬 수 있다.
+
+    @see java.io.File, java.io.FileInputStream, java.io.FileReader, java.io.FileWriter
+*/
+rule {
+    @name {
+        PATH_TRAVERSAL
+    }
+    @definition {
+        ALARM {
+            if @PATH_TRAVERSAL_sink is_from @SRC_INPUT
+            if @PATH_TRAVERSAL_sink is_from #RETURN of #METHOD java.util.zip.ZipFile.entries()
+            if @PATH_TRAVERSAL_sink is_from #RETURN of #METHOD org.springframework.web.multipart.MultipartRequest.getFile(java.lang.String)
+            if @PATH_TRAVERSAL_sink is_from #RETURN of #METHOD org.springframework.web.multipart.MultipartHttpServletRequest.getFile(java.lang.String)
+            if @PATH_TRAVERSAL_sink is_from #RETURN of #METHOD org.springframework.web.multipart.AbstractMultipartHttpServletRequest.getFile(java.lang.String)
+            if @PATH_TRAVERSAL_sink is_from #RETURN of #METHOD org.springframework.web.multipart.MultipartHttpServletRequest.getParameter(java.lang.String)
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD java.lang.String.replace(char, char)
+            if #TAINT_VAL pass #METHOD java.lang.String.replace(java.lang.CharSequence, java.lang.CharSequence)
+            if #TAINT_VAL pass #METHOD java.lang.String.replaceAll(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.replaceFirst(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.replace(java.lang.String, java.lang,String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.replaceOnce(java.lang.String, java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.replaceChar(java.lang.String, java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.filePathBlackList(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.filePathReplaceAll(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+            if #TAINT_USED_BY #PARAM 1 of #METHOD kr.re.kepri.web.security.KepriSecureEtcUtils.isSafePath(java.lang.String)
+        }
+        PROPAGATOR {
+            @String_propag
+            #BASE of #METHOD org.springframework.web.multipart.MultipartFile.getOriginalFilename() to #RETURN
+            #PARAM 1 of #METHOD java.net.URLDecoder.decode(java.lang.String, java.lang.String) to #RETURN
+            #BASE of #METHOD java.util.Enumeration.nextElement() to #RETURN
+            #BASE of #METHOD java.util.zip.ZipEntry.getName() to #RETURN
+        }
+    }
+    @description {
+        외부의 입력을 통하여 "디렉토리 경로 문자열" 생성이 필요한 경우, 외부 입력에서 경로 조작에 사용될 수 있는 문자를 필터링하지 않으면, 예상 밖의 영역에 대한 경로 문자열이 가능해져 시스템 정보누출, 서비스 장애 등을 유발 시킬 수 있다.
+    }
+    @suggestion_filter_function {
+        pathFilter
+    }
+}
+
+/*
+    Rule: 쿠키보안: 영속적인 쿠키(Cookie Security: Persistent Cookie)
+
+    보안상 민감한 데이터를 영속적인 쿠키에 저장하는 것은 시스템 보안을 취약하게 만든다.
+    대부분의 웹 응용 프로그램에서 쿠키는 메모리에 상주하며, 브라우저의 실행이 종료되면 사라진다.
+    프로그래머가 원하는 경우, 브라우저 세션에 관계없이 계속적으로 지속되도록 설정할 수 있으며,
+    이것은 디스크에 기록되고 다음 브라우저 세션이 시작되었을 때 메모리에 로드된다.
+    만약 개인 정보 등의 이런 형태의 영속적인 쿠키에 저장된다면, 공격자는 쿠키에 접근할 수 있는
+    보다 많은 기회를 가지게 되며, 이는 시스템을 취약하게 만든다.
+
+    아래 두 API 로 부터 들어오는 값은 위험하다고 간주한다.
+    java.util.Properties.getProperty(java.lang.String)
+    javax.servlet.http.HttpServletRequest.getParameter(java.lang.String)
+
+    참고: http://docs.oracle.com/javaee/6/api/javax/servlet/http/Cookie.html
+*/
+rule {
+    @name {
+        PERSISTENT_COOKIE
+    }
+    @definition {
+        ALARM {
+            if #PARAM 1 of #METHOD java.net.HttpCookie.setMaxAge(long) is_from @SRC_ALL
+            if #PARAM 1 of #METHOD java.net.HttpCookie.setMaxAge(long) is_from #CONST_STRING
+            if #PARAM 1 of #METHOD java.net.HttpCookie.setMaxAge(long) is_from #CONST_INTEGER
+            if #PARAM 1 of #METHOD javax.servlet.http.Cookie.setMaxAge(int) is_from @SRC_ALL
+            if #PARAM 1 of #METHOD jakarta.servlet.http.Cookie.setMaxAge(int) is_from @SRC_ALL
+            if #PARAM 4 of #METHOD egovframework.com.utl.cas.service.EgovSessionCookieUtil.setCookie(javax.servlet.http.HttpServletResponse, java.lang.String, java.lang.String, int) is_from @SRC_ALL
+            if #PARAM 4 of #METHOD egovframework.com.utl.cas.service.EgovSessionCookieUtil.setCookie(jakarta.servlet.http.HttpServletResponse, java.lang.String, java.lang.String, int) is_from @SRC_ALL
+        }
+        EXCLUDE {
+            if #TAINT_VAL assumed UPPERBOUND(3600)
+        }
+        PROPAGATOR {
+            @Parse_propag
+            @String_propag
+            #PARAM1 of #METHOD java.lang.Integer.valueOf(int) to #RETURN
+            #PARAM1 of #METHOD java.lang.Integer.valueOf(java.lang.String) to #RETURN
+        }
+    }
+    @description {
+        외부의 신뢰할 수 없는 입력을 적절한 검사 과정을 거치지 않고 쿠키에 저장하는 것은 위험하다.
+    }
+}
+
+/*
+    RELIANCE_ON_DNS_LOOKUPS_IN_A_SECURITY_DECISION
+    CWE-247 Reliance on DNS Lookups in a Security Decision
+    http://cwe.mitre.org/data/definitions/247.html
+*/
+
+rule {
+    @name {
+        RELIANCE_ON_DNS_LOOKUPS_IN_A_SECURITY_DECISION
+    }
+    @definition {
+        ALARM {
+            if @RELIANCE_ON_DNS_LOOKUPS_IN_A_SECURITY_DECISION_sink is_from #RETURN of #METHOD java.net.InetAddress.getByName(java.lang.String)
+            if #PARAM 1 of #METHOD java.net.Socket.<init>(java.lang.String, int) is_from #RETURN of #METHOD java.net.InetAddress.getByName(java.lang.String)
+        }
+        PROPAGATOR {
+            @dns_propag
+        }
+    }
+    @description {
+        Reliance on DNS Lookups in a Security Decision
+    }
+}
+
+/*
+    Rule: 자원 삽입 (Resource Injection)
+
+    외부의 신뢰할 수 없는 입력이 적절한 검사과정을 거치지 않고
+    자원(resource) 식별자로 사용될 경우 부 적절한 자원 접근이 일어날 수 있다.
+*/
+rule {
+    @name {
+        RESOURCE_INJECTION
+    }
+    @definition {
+        ALARM {
+            if @J_Resources is_from @SRC_INPUT
+            if @PATH_TRAVERSAL_sink is_from #RETURN of #METHOD java.util.zip.ZipFile.entries()
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD java.lang.String.replace(char, char)
+            if #TAINT_VAL pass #METHOD java.lang.String.replace(java.lang.CharSequence, java.lang.CharSequence)
+            if #TAINT_VAL pass #METHOD java.lang.String.replaceAll(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.replaceFirst(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.replace(java.lang.String, java.lang,String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.replaceOnce(java.lang.String, java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.replaceChar(java.lang.String, java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.filePathBlackList(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.filePathReplaceAll(java.lang.String)
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.indexOf(java.lang.String) with_args ["&"] in IF
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.indexOf(java.lang.String) with_args ["<"] in IF
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.indexOf(java.lang.String) with_args [">"] in IF
+            if #TAINT_USED_BY #PARAM 1 of #METHOD kr.re.kepri.web.security.KepriSecureEtcUtils.isSafePath(java.lang.String)
+        }
+        PROPAGATOR {
+            #BASE of #METHOD java.util.Enumeration.nextElement() to #RETURN
+            #BASE of #METHOD java.util.zip.ZipEntry.getName() to #RETURN
+        }
+    }
+    @description {
+        외부의 신뢰할 수 없는 입력이 적절한 검사과정을 거치지 않고, 자원(resource) 식별자로 사용될 경우 부 적절한 자원 접근이 일어날 수 있다.
+    }
+}
+
+/*
+    SENSITIVE_COOKIE_IN_HTTPS_SESSION_WITHOUT_SECURE_ATTRIBUTE
+    CWE-614 Sensitive Cookie in HTTPS Session without 'Secure' Attribute
+    http://cwe.mitre.org/data/definitions/614.html
+*/
+rule {
+    @name {
+        SENSITIVE_COOKIE_IN_HTTPS_SESSION_WITHOUT_SECURE_ATTRIBUTE
+    }
+    @definition {
+        ALARM {
+            if #PARAM 1 of #METHOD javax.servlet.http.HttpServletResponse.addCookie(javax.servlet.http.Cookie) is_from #BASE of #METHOD javax.servlet.http.Cookie.<init>(java.lang.String,java.lang.String)
+            if #PARAM 1 of #METHOD jakarta.servlet.http.HttpServletResponse.addCookie(jakarta.servlet.http.Cookie) is_from #BASE of #METHOD jakarta.servlet.http.Cookie.<init>(java.lang.String,java.lang.String)
+        }
+        EXCLUDE {
+            if #TAINT_INVOKED_BY #METHOD javax.servlet.http.Cookie.setSecure(boolean) with_args [1]
+            if #TAINT_INVOKED_BY #METHOD jakarta.servlet.http.Cookie.setSecure(boolean) with_args [1]
+        }
+    }
+    @description {
+        Sensitive Cookie in HTTPS Session without 'Secure' Attribute
+    }
+}
+
+/*
+    Rule: SQL_INJECTION
+
+    참고:
+    CWE(Common Weakness Enumeration): CWE-89 (SQL injection)
+    JDK 1.6: SQL Query 를 실행시킬 수 있는 API 들이 있는 java.sql.Connection, java.sql.Statement
+*/
+rule {
+    // Rule 이름은 SQL_INJECTION 이다.
+    @name {
+        SQL_INJECTION
+    }
+    // Rule 에서 검출하고자 하는 case 들을 아래와 같은 규칙으로 작성한다.
+    @definition {
+        ALARM {
+            if @SQLInjection_SamateSink is_from @SRC_INPUT
+            if @SQLInjection_JdbcTemplate is_from @SRC_REQUEST
+            if @SQLInjection_Owasp is_from @SRC_INPUT
+            if @SQLInjection_Owasp is_from @SRC_REQUEST
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.removeSQLInjectionRisk(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+        }
+        PROPAGATOR {
+            @String_propag
+            #PARAM 1 of #METHOD java.util.Vector.add(Object) to #BASE
+        }
+    }
+    // Rule 에 대한 설명을 기술한다.
+    @description {
+        SQL 질의를 보내는 method 의 parameter로 외부 입력값이 들어갈 경우 취약하다고 판정한다.
+    }
+}
+
+/*
+    Rule: SQL_INJECTION
+
+    참고:
+    CWE(Common Weakness Enumeration): CWE-89 (SQL injection)
+    JDK 1.6: SQL Query 를 실행시킬 수 있는 API 들이 있는 java.sql.Connection, java.sql.Statement
+*/
+intermediate_rule {
+    // Rule 이름은 SQL_INJECTION 이다.
+    @name {
+        SQL_INJECTION.JS
+    }
+    // Rule 에서 검출하고자 하는 case 들을 아래와 같은 규칙으로 작성한다.
+    @definition {
+        ALARM {
+            if @J_write_to_response is_from @SRC_INPUT
+            if @J_write_to_response is_from @SRC_REQUEST
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.removeSQLInjectionRisk(java.lang.String)
+        }
+        PROPAGATOR {
+            @String_propag
+        }
+    }
+    // Rule 에 대한 설명을 기술한다.
+    @description {
+        SQL 질의를 보내는 method 의 parameter로 외부 입력값이 들어갈 경우 취약하다고 판정한다.
+    }
+}
+
+/*
+    Rule: SQL 삽입 공격: Hibernate
+
+    외부의 신뢰할 수 없는 입력을 적절한 검사 과정을 거치지 않고 Hibernate API의 SQL 질의문 생성을 위한 문자열로
+    사용하면, 공격자가 프로그래머가 의도하지 않았던 문자열을 전달함으로써 질의문의 의미를 왜곡시키거나 그 구조를
+    변경하여 임의의 데이터 베이스 명령어가 수행되도록 할 수 있다.
+
+    아래 두 API 로부터 반환되는 값은 위험하다고 간주 한다.
+    java.util.Properties.getProperty(java.lang.String)
+    javax.servlet.http.HttpServletRequest.getParameter(java.lang.String)
+
+*/
+rule {
+    @name {
+        SQL_INJECTION_HIBERNATE
+    }
+    @definition {
+        ALARM {
+            if @J_HibernateCreateQuery is_from @SRC_INPUT
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.removeSQLInjectionRisk(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+        }
+        PROPAGATOR {
+            @String_propag
+        }
+    }
+    @description {
+        외부의 신뢰할 수 없는 입력을 적절한 검사 과정을 거치지 않고 Hibernate API의 SQL 질의문 생성을 위한 문자열로 사용하면 위험하다.
+    }
+}
+
+/*
+    Rule: SQL Injection JDO (Java Data Object)
+
+    외부의 신뢰할 수 없는 입력을 적절한 검사 과정을 거치지 않고 JDO(Java Data Objects) API 의
+    SQL 또는 JDOQL 질의문 생성을 위한 문자열로 사용하면, 공격자가 프로그래머가 의도하지 않았던
+    문자열을 전달함으로써 질의문의 의미를 왜곡시키거나 그 구조를 변경하여 임의의 질의 명령어를 수행할 수 있다.
+
+    Java Data Objects
+    API link: http://db.apache.org/jdo/api30/apidocs/index.html
+*/
+rule {
+    // Rule 이름은 SQL_INJECTION_JDO 이다.
+    @name {
+        SQL_INJECTION_JDO
+    }
+    @definition {
+        ALARM {
+            if @J_JDOQuery is_from @SRC_INPUT
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.removeSQLInjectionRisk(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+        }
+        PROPAGATOR {
+            @String_propag
+        }
+    }
+    // Rule 에 대한 설명을 기술한다.
+    @description {
+        외부의 신뢰할 수 없는 입력을 적절한 검사 과정을 거치지 않고 JDO(Java Data Objects)
+        API 의 SQL 또는 JDOQL 질의문 생성을 위한 입력 값으로 사용하면 취약하다고 판정한다.
+    }
+}
+
+/*
+    Rule: SQL Injection Persistence (SQL Injection: Persistence)
+
+    J2EE Persistence API 를 사용하는 응용 프로그램에서 외부의 입력을 아무 검증없이 질의문에 그대로 사용하면,
+    질의문의 의미를 왜곡시키거나 그 구조를 변경하여 임의의 질의 명령어가 수행될 수 있다.
+*/
+rule {
+    @name {
+        SQL_INJECTION_PERSISTENCE
+    }
+    @definition {
+        ALARM {
+            if @J_EMQuery is_from @SRC_INPUT
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.removeSQLInjectionRisk(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+        }
+        PROPAGATOR {
+            @String_propag
+        }
+    }
+    // Rule 에 대한 설명을 기술한다.
+    @description {
+        외부의 신뢰할 수 없는 입력을 적절한 검사 과정을 거치지 않고, 질의문에 그대로 사용하면,
+        질의문의 의미를 왜곡 시키거나 그 구조를 변경하여 임의의 질의 명령어가 수행될 수 있다.
+    }
+}
+
+rule {
+    @name {
+        UNRESTRICTED_UPLOAD_OF_FILE
+    }
+    @definition {
+        ALARM {
+            if #PARAM 1 of #METHOD com.oreilly.servlet.MultipartRequest.getOriginalFileName(java.lang.String) is_from @SRC_INPUT
+            if #PARAM 1 of #METHOD org.apache.commons.fileupload.FileItem.write(java.io.File) is_from #RETURN of #METHOD org.apache.commons.fileupload.FileItem.getName()
+            if #PARAM 1 of #METHOD org.apache.commons.fileupload.FileItem.write(java.io.File) is_from #RETURN of #METHOD org.owasp.webgoat.session.WebSession.getRequest()
+	        if #PARAM 1 of #METHOD org.apache.commons.fileupload.FileItem.write(java.io.File) is_from #RETURN of #METHOD org.apache.commons.fileupload.servlet.ServletFileUpload.parseRequest(javax.servlet.http.HttpServletRequest)
+            if #PARAM 1 of #METHOD org.apache.commons.fileupload.FileItem.write(java.io.File) is_from #RETURN of #METHOD org.apache.commons.fileupload.servlet.ServletFileUpload.parseRequest(jakarta.servlet.http.HttpServletRequest)
+            if #TAINT_INVOKED_BY #METHOD org.springframework.web.multipart.MultipartFile.getOriginalFilename() is_from #RETURN of #METHOD com.oreilly.servlet.MultipartRequest.getFile(java.lang.String)
+        }
+        EXCLUDE {
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.endsWith(java.lang.String) with_args [".asp"] in IF
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.endsWith(java.lang.String) with_args [".jsp"] in IF
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.endsWith(java.lang.String) with_args [".html"] in IF
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.endsWith(java.lang.String) with_args [".htm"] in IF
+            if #TAINT_INVOKED_BY #METHOD java.lang.String.endsWith(java.lang.String) with_args [".php"] in IF
+            if #TAINT_USED_BY #PARAM 1 of #METHOD kr.re.kepri.web.security.KepriSecureEtcUtils.isAllowedFileExtensionName(java.lang.String)
+        }
+        PROPAGATOR {
+            #PARAM 1 of #METHOD java.util.StringTokenizer.<init>(java.lang.String,java.lang.String) to #BASE
+            #BASE of #METHOD java.util.StringTokenizer.nextToken() to #RETURN
+            #PARAM 1 of #METHOD java.io.File.<init>(java.lang.String) to #BASE
+            #PARAM 2 of #METHOD java.io.File.<init>(java.io.File, java.lang.String) to #BASE
+            #PARAM 1 of #METHOD java.io.File.<init>(java.lang.String, java.lang.String) to #BASE
+            #PARAM 2 of #METHOD java.io.File.<init>(java.lang.String, java.lang.String) to #BASE
+        }
+    }
+    @suggestion_filter_function {
+        uploadFilter
+    }
+}
+
+/*
+    솔트 없이 일방향 해쉬 함수 사용
+*/
+rule {
+    @name {
+        USING_HASH_WITHOUT_SALT
+    }
+    @definition {
+        ALARM {
+            if #TAINT_INVOKED_BY #METHOD java.security.MessageDigest.digest(byte []) is_from #RETURN of #METHOD java.security.MessageDigest.getInstance(java.lang.String)
+        }
+        EXCLUDE {
+            if #TAINT_INVOKED_BY #METHOD java.security.MessageDigest.update(byte [])
+        }
+    }
+    @description {
+        솔트 없이 일방향 해쉬 함수 사용.
+    }
+}
+
+/*
+    WEAK_ENCRYPTION_INSUFFICIENT_KEY_SIZE_TestCase
+    CWE-310 Cryptographic Issues
+    http://cwe.mitre.org/data/definitions/310.html
+*/
+rule {
+    @name {
+        WEAK_ENCRYPTION_INSUFFICIENT_KEY_SIZE
+    }
+    @definition {
+        ALARM {
+            if #PARAM 1 of #METHOD java.security.KeyPairGenerator.initialize(int, java.security.SecureRandom) is_from @SRC_ALL
+            if #PARAM 1 of #METHOD java.security.KeyPairGenerator.initialize(int) is_from @SRC_ALL
+        }
+        PROPAGATOR {
+            #PARAM 1 of #METHOD java.lang.Integer.parseInt(java.lang.String) to #RETURN
+        }
+    }
+    @description {
+        Reliance on DNS Lookups in a Security Decision
+    }
+}
+
+/*
+    Rule: XPath 삽입 (Failure to Sanitize Data within XPath Expressions (XPath injection)
+
+    외부의 신뢰할 수 없는 입력을 적절한 검사 과정을 거치지 않고 XPath 질의문 생성을 위한 문자열로 사용하면,
+    공격자가 프로그래머가 의도하지 않았던 문자열을 전달함으로써 질의문의 의미를 왜곡시키거나 그 구조를 변경
+    하고 임의의 질의 명령어를 수행할 수 있다.
+
+    아래 두 API 로 부터 들어오는 값은 위험하다고 간주한다.
+    java.util.Properties.getProperty(java.lang.String)
+    javax.servlet.http.HttpServletRequest.getParameter(java.lang.String)
+*/
+rule {
+    @name {
+        XPATH_INJECTION
+    }
+    @definition {
+        ALARM {
+            if @J_XPath is_from @SRC_INPUT
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+            if #TAINT_USED_BY #PARAM 1 of #METHOD kr.re.kepri.web.security.KepriSecureEtcUtils.isDetectedInjectionOfXPath(java.lang.String)
+        }
+        PROPAGATOR {
+            @String_propag
+        }
+    }
+    @description {
+        외부의 신뢰할 수 없는 입력을 적절한 검사 과정을 거치지 않고 XPath 질의문 생성을 위한 문자열로 사용하면 위험하다.
+    }
+}
+
+/*
+    Rule: XQuery 삽입 (Failure to Sanitize Data within XQuery Expressions (XQuery injection))
+
+    XQuery 를 사용하여 XML 데이터에 접근하는 응용프로그램에서 외부의 입력이 질의문 문자열을 생성하는데 사용될 경우에,
+    공격자는 프로그래머가 의도하지 않았던 문자열을 전달함으로써 질의문의 의미를 왜곡시키거나 그 구조를 변경하여
+    임의의 질의 명령어를 수행할 수 있다.
+
+    아래 두 API 로 부터 들어오는 값은 위험하다고 간주한다.
+    java.util.Properties.getProperty(java.lang.String)
+    javax.servlet.http.HttpServletRequest.getParameter(java.lang.String)
+
+    참고: http://xqj.net/javadoc/
+*/
+rule {
+    @name {
+        XQUERY_INJECTION
+    }
+    @definition {
+        ALARM {
+            if @J_XQuery is_from @SRC_INPUT
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+            if #TAINT_USED_BY #PARAM 1 of #METHOD kr.re.kepri.web.security.KepriSecureEtcUtils.isDetectedInjectionOfXQuery(java.lang.String)
+        }
+        PROPAGATOR {
+            @String_propag
+        }
+    }
+    @description {
+        XQuery 를 사용하여 XML 데이터에 접근하는 응용프로그램에서 외부의 입력이 질의문 문자열을 생성하는데 사용될 경우 위험하다.
+    }
+}
+
+/*
+    Rule: CWE80 XSS
+*/
+rule {
+    @name {
+        XSS
+    }
+    @definition {
+        ALARM {
+            if @J_write_to_response is_from @SRC_REQUEST
+            if @J_write_to_response is_from @SRC_DB
+            if @J_webgoat is_from @SRC_REQUEST
+            if #PARAM 1 of #METHOD org.springframework.http.ResponseEntity.ok(java.lang.String) is_from @SRC_REQUEST
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.checkHtmlView(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getSpclStrCnvr(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getHtmlStrCnvr(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.clearXSSMinimum(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.clearXSSMaximum(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.net.URLEncoder.encode(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.net.URLEncoder.encode(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD org.owasp.esapi.DefaultEncoder.encodeForURL(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+            if #TAINT_VAL pass #METHOD java.lang.String.replaceAll(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD org.apache.commons.lang.StringEscapeUtils.escapeHtml(java.lang.String)
+            if #TAINT_VAL pass #METHOD org.apache.commons.text.StringEscapeUtils.escapeHtml3(java.lang.String)
+            if #TAINT_VAL pass #METHOD org.apache.commons.text.StringEscapeUtils.escapeHtml4(java.lang.String)
+            if #TAINT_VAL pass #METHOD org.apache.taglibs.standard.functions.Functions.escapeXml(java.lang.String)
+            if #TAINT_VAL pass #METHOD com.fasoo.jspconv.util.EscapeXML.escapeXml(java.lang.String)
+            if #TAINT_VAL pass #METHOD com.fasoo.jspconv.util.HtmlEscape.htmlEscape(java.lang.String)
+            if #TAINT_VAL pass #METHOD org.springframework.web.util.HtmlUtils.htmlEscape(java.lang.String)
+            if #TAINT_VAL pass #METHOD kr.re.kepri.web.security.KepriXssEscapeFilter.doFilter(java.lang.String)
+        }
+        PROPAGATOR {
+            @String_propag
+            #PARAM 1 of #METHOD java.net.URLDecoder.decode(java.lang.String, java.lang.String) to #RETURN
+        }
+    }
+    @description {
+        외부로부터 받은 문자열을 사용하여 응답하는 서버 프로그램은 취약점을 가질 수 있다.
+    }
+    @suggestion_filter_function {
+        xssFilter
+    }
+}
+
+rule {
+    @name {
+        XSS.DOM.JS
+    }
+    @definition {
+        ALARM {
+            if @J_write_to_response is_from @SRC_REQUEST
+if @J_write_to_response is_from @SRC_DB
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.checkHtmlView(java.lang.String)
+if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getSpclStrCnvr(java.lang.String)
+if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getHtmlStrCnvr(java.lang.String)
+if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.clearXSSMinimum(java.lang.String)
+if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.clearXSSMaximum(java.lang.String)
+if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+if #TAINT_VAL pass #METHOD java.lang.String.length()
+        }
+        PROPAGATOR {
+            @String_propag
+#BASE of #METHOD java.lang.String.replaceAll(java.lang.String, java.lang.String) to #RETURN
+#PARAM 1 of #METHOD java.net.URLDecoder.decode(java.lang.String, java.lang.String) to #RETURN
+        }
+    }
+}
+
+/*
+    Rule: CWE81 XSS Error Message
+*/
+rule {
+    @name {
+        XSS_ERROR_MESSAGE
+    }
+    @definition {
+        ALARM {
+            if #PARAM 2 of #METHOD javax.servlet.http.HttpServletResponse.sendError(int,java.lang.String) is_from @SRC_INPUT
+            if #PARAM 2 of #METHOD jakarta.servlet.http.HttpServletResponse.sendError(int,java.lang.String) is_from @SRC_INPUT
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.checkHtmlView(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getSpclStrCnvr(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getHtmlStrCnvr(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.clearXSSMinimum(java.lang.String)
+            if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.clearXSSMaximum(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+            if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.length()
+            if #TAINT_VAL pass #METHOD java.lang.String.replaceAll(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD org.apache.commons.lang.StringEscapeUtils.escapeHtml(java.lang.String)
+            if #TAINT_VAL pass #METHOD org.apache.commons.text.StringEscapeUtils.escapeHtml3(java.lang.String)
+            if #TAINT_VAL pass #METHOD org.apache.commons.text.StringEscapeUtils.escapeHtml4(java.lang.String)
+            if #TAINT_VAL pass #METHOD org.springframework.web.util.HtmlUtils.htmlEscape(java.lang.String)
+            if #TAINT_VAL pass #METHOD java.lang.String.replaceAll(java.lang.String, java.lang.String)
+            if #TAINT_VAL pass #METHOD kr.re.kepri.web.security.KepriXssEscapeFilter.doFilter(java.lang.String)
+        }
+        PROPAGATOR {
+            @String_propag
+        }
+    }
+    @description {
+        외부로부터 받은 문자열을 사용하여 응답하는 서버 프로그램은 취약점을 가질 수 있다.
+    }
+}
+
+rule {
+    @name {
+        XSS.DOM.JS
+    }
+    @definition {
+        ALARM {
+            if @J_write_to_response is_from @SRC_REQUEST
+if @J_write_to_response is_from @SRC_DB
+        }
+        EXCLUDE {
+            if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.checkHtmlView(java.lang.String)
+if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getSpclStrCnvr(java.lang.String)
+if #TAINT_VAL pass #METHOD egovframework.com.utl.fcc.service.EgovStringUtil.getHtmlStrCnvr(java.lang.String)
+if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.clearXSSMinimum(java.lang.String)
+if #TAINT_VAL pass #METHOD egovframework.com.cmm.EgovWebUtil.clearXSSMaximum(java.lang.String)
+if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String, java.lang.Integer)
+if #TAINT_VAL pass #METHOD java.lang.Integer.parseInt(java.lang.String)
+if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String, java.lang.Integer)
+if #TAINT_VAL pass #METHOD java.lang.Long.parseLong(java.lang.String)
+if #TAINT_VAL pass #METHOD java.lang.Double.parseDouble(java.lang.String)
+if #TAINT_VAL pass #METHOD java.lang.Float.parseFloat(java.lang.String)
+if #TAINT_VAL pass #METHOD java.lang.String.length()
+        }
+        PROPAGATOR {
+            @String_propag
+#BASE of #METHOD java.lang.String.replaceAll(java.lang.String, java.lang.String) to #RETURN
+#PARAM 1 of #METHOD java.net.URLDecoder.decode(java.lang.String, java.lang.String) to #RETURN
+        }
+    }
+}
+

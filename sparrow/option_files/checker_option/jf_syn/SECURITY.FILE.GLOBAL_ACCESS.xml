@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<option>
+    <category name="SECURITY.FILE.GLOBAL_ACCESS">
+        <item name="method_name" type="string" required="true" variable="true">
+            <value>openFileOutput</value>
+            <value>getSharedPreferences</value>
+        </item>
+        <item name="forbidden_argument" type="string" required="true" variable="true">
+            <value>android.content.Context.MODE_WORLD_WRITEABLE</value>
+            <value>android.content.Context.MODE_WORLD_READABLE</value>
+            <value>MODE_WORLD_WRITEABLE</value>
+            <value>MODE_WORLD_READABLE</value>
+        </item>
+    </category>
+</option>
+

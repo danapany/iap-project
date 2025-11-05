@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="WEAK_XML_TRANSFORMERS_SECURITY.CSHARP">
+        <item name="_net_version" type="string" required="false" variable="true" regexp="true">
+            <value>4.5.2</value>
+        </item>
+    </category>
+</option>
+

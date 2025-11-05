@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="OPEN_REDIRECT.OBJC">
+        <item name="taint_source" type="string" required="false" variable="true" regexp="true">
+            <value>getenv$return</value>
+            <value>main$param</value>
+        </item>
+        <item name="taint_sink" type="string" required="true" variable="true" regexp="true">
+            <value>UIApplication\.openURL:$param(1)</value>
+            <!--<value>*\.openURL:$param(*)</value>-->
+        </item>
+        <item name="taint_propagator" type="string" required="false" variable="true" regexp="true">
+            <value>strcpy$param(2)->param(1)</value>
+            <value>memcpy$param(2)->param(1)</value>
+            <value>NSString\.stringWithUTF8String:$param(1)->return</value>
+            <value>NSString\.stringByAppendingString:$param(1)->return</value>
+            <value>base of "NSString.stringByAppendingString:" to return</value>
+            <value>NSString\.stringWithString:$param(1)->return</value>
+            <value>NSString\.UTF8String$base->return</value>
+            <value>NSURL\.URLWithString:$param(1)->return</value>
+            <value>sprintf$param(3~*)->param(1)</value>
+        </item>
+        <item name="taint_filter" type="string" required="false" variable="true" regexp="true">
+            <value>NSString\.stringByAddingPercentEncodingWithAllowedCharacters:$param(1)->return</value>
+        </item>
+        <item name="taint_filter_function_fqn" type="string" required="false" variable="true" regexp="true">
+        </item>
+    </category>
+</option>

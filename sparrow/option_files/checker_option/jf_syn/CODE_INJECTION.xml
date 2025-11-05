@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="CODE_INJECTION">
+        <item name="filter_method" type="string" required="true" variable="true">
+            <value>checkParam</value>
+        </item>
+        <item name="filter_set" type="string" required="true" variable="true">
+            <value>whiteList</value>
+        </item>
+    </category>
+</option>

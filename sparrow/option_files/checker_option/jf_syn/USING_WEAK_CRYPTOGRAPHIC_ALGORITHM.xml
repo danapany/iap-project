@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<option>
+    <category name="USING_WEAK_CRYPTOGRAPHIC_ALGORITHM">
+        <item name="variable_name_for_password" type="string" required="true" variable="true" regexp="true">
+            <value>password</value>
+            <value>passwd</value>
+            <value>pass</value>
+        </item>
+        <item name="weak_algorithm" type="string" required="true" variable="true" regexp="true">
+            <value>CES</value>
+            <value>DES</value>
+            <value>RC2</value>
+            <value>RC4</value>
+            <value>RC5</value>
+            <value>MD5</value>
+            <value>SHA1</value>
+            <value>DES/CBC/PKCS5Padding</value>
+            <value>DES/CBC/PKCS5PADDING</value>
+            <value>DESede/ECB/PKCS5Padding</value>
+        </item>
+        <item name="weak_class" type="string" required="true" variable="true" regexp="false">
+            <value>Cipher</value>
+            <value>javax.crypto.Cipher</value> <!-- FQN of Cipher -->
+            <value>KeyGenerator</value>
+            <value>javax.crypto.KeyGenerator</value> <!-- FQN of KeyGenerator -->
+            <value>MessageDigest</value>
+            <value>java.security.MessageDigest</value> <!-- FQN of MessageDigest -->
+            <value>Base64</value>
+            <value>com.sun.org.apache.xml.internal.security.utils.Base64</value> <!-- FQN of Base64 -->
+        </item>
+        <item name="weak_method" type="string" required="true" variable="true" regexp="false">
+            <value>getInstance</value>
+            <value>decode</value>
+        </item>
+    </category>
+</option>
+

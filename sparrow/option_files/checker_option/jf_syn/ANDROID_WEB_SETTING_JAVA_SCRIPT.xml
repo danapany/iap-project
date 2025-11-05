@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<option>
+    <category name="ANDROID_WEB_SETTING_JAVA_SCRIPT">
+        <item name="method_name" type="string" required="true" variable="true">
+            <value>setJavaScriptEnabled</value>
+        </item>
+    </category>
+</option>

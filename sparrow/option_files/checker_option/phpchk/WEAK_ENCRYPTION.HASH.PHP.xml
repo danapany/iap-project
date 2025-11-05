@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="WEAK_ENCRYPTION.HASH.PHP">
+        <item name="weak_hash_function" type="string" required="false" variable="true" regexp="true">
+            <value>md5</value>
+            <value>sha1</value>
+        </item>
+        <item name="ignore_hash_function_paramcall" type="string" required="false" variable="true" regexp="true">
+            <value>mt_rand</value>
+        </item>
+    </category>
+</option>
+

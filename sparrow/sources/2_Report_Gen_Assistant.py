@@ -56,7 +56,7 @@ else:
 openai_endpoint = os.getenv("OPENAI_ENDPOINT")
 openai_api_key = os.getenv("OPENAI_KEY")
 openai_model = os.getenv("OPENAI_MODEL")
-chat_model = os.getenv("CHAT_MODEL2")
+chat_model = os.getenv("CHAT_MODEL3")
 
 # 환경 변수 유효성 검사
 required_env_vars = {

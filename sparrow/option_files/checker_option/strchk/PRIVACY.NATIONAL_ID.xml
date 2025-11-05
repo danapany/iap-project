@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name = "PRIVACY.NATIONAL_ID">
+		<item name="exclude_extension" type="string" required="false" variable="true">
+			<value></value>
+		</item>
+		<item name="rule" type="string" required="true" variable="true">
+			<value>\b\d{2}(0[1-9]|1[0-2])(0[1-9]|[1,2][0-9]|3[0,1])(-|\s)[1-4]{1}\d{6}\b</value>
+			<value>\b\d{2}(0[1-9]|1[0-2])(0[1-9]|[1,2][0-9]|3[0,1])[1-4]{1}\d{6}\b</value>
+		</item>
+    </category>
+</option>

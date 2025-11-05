@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="INSECURE_PERSISTENT_COOKIE.PYTHON">
+        <item name="max_timeout" type="decimal" required="true" variable="true" regexp="true">
+            <value>3600</value>
+        </item>
+    </category>
+</option>

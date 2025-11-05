@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="DESERIALIZATION_OF_UNTRUSTED_DATA.KOTLIN">
+        <item name="forbidden_fqn" type="string" required="true" variable="true" regexp="true">
+            <value>java.beans.XMLDecoder.readObject</value>
+            <value>java.io.ObjectInputStream.readObject</value>
+            <value>com.fasterxml.jackson.databind.ObjectMapper.enableDefaultTyping</value>
+        </item>
+    </category>
+</option>

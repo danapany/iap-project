@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<option>
+    <category name="SENSITIVE_COOKIE_IN_HTTPS_SESSION_WITHOUT_SECURE_ATTRIBUTE">
+        <item name="response_class" type="string" required="true" variable="true">
+            <value>ServletResponse</value>
+            <value>HttpServletResponse</value>
+            <value>javax.servlet.http.HttpServletResponse</value>
+        </item>
+        <item name="cookie_class" type="string" required="true" variable="true">
+            <value>Cookie</value>
+            <value>javax.servlet.http.Cookie</value>
+        </item>
+    </category>
+</option>
+
