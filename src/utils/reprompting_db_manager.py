@@ -60,7 +60,31 @@ class RepromptingDBManager:
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )""",
-                    # ... 나머지 테이블들 동일
+                    # 엑셀 업로드 이력 테이블
+                    """CREATE TABLE IF NOT EXISTS upload_history (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        file_name TEXT NOT NULL,
+                        file_size INTEGER,
+                        total_rows INTEGER,
+                        processed_rows INTEGER,
+                        new_count INTEGER,
+                        update_count INTEGER,
+                        skipped_rows INTEGER,
+                        success_rows INTEGER,
+                        error_rows INTEGER,
+                        upload_status TEXT,
+                        upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        error_message TEXT
+                    )""",
+                    
+                    # 개별 입력 이력 테이블
+                    """CREATE TABLE IF NOT EXISTS individual_input_history (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        question_id INTEGER,
+                        action_type TEXT,
+                        input_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (question_id) REFERENCES reprompting_questions(id)
+                    )"""
                 ]
                 
                 for table in tables:
