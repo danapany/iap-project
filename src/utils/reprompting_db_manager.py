@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 def get_reprompting_db_path():
     """환경변수에서 재프롬프팅 DB 경로 가져오기"""
     base_path = os.getenv('DB_BASE_PATH', 'data/db')
