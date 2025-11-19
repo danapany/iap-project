@@ -6,6 +6,7 @@ from pathlib import Path
 import difflib
 import os
 from dotenv import load_dotenv
+import re
 
 load_dotenv()
 
@@ -440,7 +441,6 @@ class RepromptingDBManager:
         except Exception as e:
             logging.error(f"질문 추가/업데이트 실패: {str(e)}")
             return {'success': False, 'error': str(e)}
-            return {'success': False, 'error': str(e)}
     
     def get_individual_input_statistics(self):
         """개별 입력 통계 조회"""
@@ -451,10 +451,10 @@ class RepromptingDBManager:
                 fetch_all=True
             )
             recent = self._execute_query("""
-                SELECT rq.question_type, rq.question, iih.action_type, iih.input_time
+                SELECT rq.question_type, rq.question, iih.action_type, iih.input_date
                 FROM individual_input_history iih
                 JOIN reprompting_questions rq ON iih.question_id = rq.id
-                ORDER BY iih.input_time DESC LIMIT 10
+                ORDER BY iih.input_date DESC LIMIT 10
             """, fetch_all=True)
             
             return {
@@ -537,8 +537,8 @@ class RepromptingDBManager:
                 GROUP BY question_type ORDER BY COUNT(*) DESC
             """, fetch_all=True)
             recent_uploads = self._execute_query("""
-                SELECT file_name, total_rows, success_rows, error_rows, upload_time
-                FROM upload_history ORDER BY upload_time DESC LIMIT 10
+                SELECT file_name, total_rows, success_rows, error_rows, upload_date
+                FROM upload_history ORDER BY upload_date DESC LIMIT 10
             """, fetch_all=True)
             
             return {

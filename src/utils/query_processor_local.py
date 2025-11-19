@@ -1,8 +1,10 @@
 import streamlit as st
 import re
+import shutil
 import time
 import os
 from datetime import datetime
+from pathlib import Path
 from config.prompts import SystemPrompts
 from config.settings_local import AppConfigLocal
 from utils.search_utils_local import SearchManagerLocal
@@ -1122,13 +1124,34 @@ class QueryProcessorLocal:
 
     # 기존 메서드들 유지 (다른 개선된 버전에서 가져온 메서드들 추가)
     def check_and_transform_query_with_reprompting(self, user_query):
-        """개선된 리프롬프팅 - 강제 치환 추가"""
-        if not user_query:
-            return {'transformed': False, 'original_query': user_query, 'transformed_query': user_query, 'match_type': 'none'}
+        """
+        개선된 리프롬프팅 - replacement_mode 지원 추가
         
+        Args:
+            user_query: 사용자 질문
+        
+        Returns:
+            dict: 변환 정보를 포함한 딕셔너리
+                - transformed: bool - 변환 여부
+                - original_query: str - 원본 질문
+                - transformed_query: str - 변환된 질문
+                - match_type: str - 매칭 타입 (exact, similar, force_replacement, none, error)
+                - replacement_mode: str - 치환 모드 (full, word)
+                - similarity: float - 유사도 점수 (해당되는 경우)
+        """
+        if not user_query:
+            return {
+                'transformed': False, 
+                'original_query': user_query, 
+                'transformed_query': user_query, 
+                'match_type': 'none'
+            }
+        
+        # 1단계: 강제 치환 (기본 동의어 처리)
         force_replaced_query = self.force_replace_problematic_queries(user_query)
         
         try:
+            # 강제 치환이 발생한 경우
             if force_replaced_query != user_query:
                 st.success("✅ 맞춤형 프롬프트를 적용하여 더 정확한 답변을 제공합니다.")
                 return {
@@ -1140,6 +1163,7 @@ class QueryProcessorLocal:
                     'match_type': 'force_replacement'
                 }
             
+            # 2단계: 정확한 매칭 체크
             exact_result = self.reprompting_db_manager.check_reprompting_question(user_query)
             if exact_result['exists']:
                 st.success("✅ 맞춤형 프롬프트를 적용하여 더 정확한 답변을 제공합니다.")
@@ -1152,32 +1176,114 @@ class QueryProcessorLocal:
                     'match_type': 'exact'
                 }
             
-            similar_questions = self.reprompting_db_manager.find_similar_questions(user_query, similarity_threshold=0.7, limit=3)
+            # ========================================
+            # 🔥 핵심 수정 부분: find_similar_questions_enhanced 사용
+            # ========================================
+            similar_questions = self.reprompting_db_manager.find_similar_questions_enhanced(
+                user_query, 
+                similarity_threshold=0.6,  # 🔧 0.7 -> 0.6으로 낮춤 (핵심 수정 1)
+                limit=3
+            )
+            
             if similar_questions:
                 best_match = similar_questions[0]
-                try:
-                    transformed_query = re.sub(re.escape(best_match['question']), best_match['custom_prompt'], user_query, flags=re.IGNORECASE)
-                except:
-                    transformed_query = user_query.replace(best_match['question'], best_match['custom_prompt'])
+                replacement_mode = best_match.get('replacement_mode', 'full')  # 🔧 핵심 수정 2
                 
+                # ========================================
+                # 🔥 핵심 수정 3: replacement_mode에 따른 처리 추가
+                # ========================================
+                if replacement_mode == 'word':
+                    # 단어 치환 모드: 특정 단어/구문만 교체
+                    try:
+                        import re
+                        # 대소문자 구분 없이 단어 경계를 고려한 치환
+                        pattern = r'\b' + re.escape(best_match['question']) + r'\b'
+                        transformed_query = re.sub(
+                            pattern, 
+                            best_match['custom_prompt'], 
+                            user_query, 
+                            flags=re.IGNORECASE
+                        )
+                        
+                        # 단어 경계가 없는 경우를 위한 폴백
+                        if transformed_query == user_query:
+                            transformed_query = user_query.replace(
+                                best_match['question'], 
+                                best_match['custom_prompt']
+                            )
+                    except Exception as e:
+                        print(f"단어 치환 실패: {e}")
+                        # 에러 시 단순 replace로 폴백
+                        transformed_query = user_query.replace(
+                            best_match['question'], 
+                            best_match['custom_prompt']
+                        )
+                else:
+                    # full 모드: 전체 질문을 custom_prompt로 교체
+                    transformed_query = best_match['custom_prompt']
+                
+                # 변환 여부 확인
                 is_transformed = transformed_query != user_query
+                
+                # 변환이 성공한 경우 사용자에게 알림
                 if is_transformed:
-                    st.info("📋 유사 질문 패턴을 감지하여 질문을 최적화했습니다.")
+                    match_type = best_match.get('match_type', 'similar')
+                    
+                    # 매칭 타입에 따라 다른 메시지 표시
+                    if match_type == 'word_boundary':
+                        print("✅ 정확한 단어 매칭으로 질문을 최적화했습니다.")
+                    else:
+                        similarity_pct = best_match.get('similarity', 0) * 100
+                        # st.info(f"📋 유사 질문 패턴을 감지하여 질문을 최적화했습니다. (유사도: {similarity_pct:.1f}%)")
+                    
+                    # 디버그 모드에서만 상세 정보 표시
+                    if self.debug_mode:
+                        with st.expander("🔍 Reprompting 상세 정보"):
+                            st.write(f"**원본 질문:** {user_query}")
+                            st.write(f"**매칭된 패턴:** {best_match['question']}")
+                            st.write(f"**변환 모드:** {replacement_mode}")
+                            st.write(f"**변환된 질문:** {transformed_query}")
+                            st.write(f"**유사도:** {best_match.get('similarity', 0):.2%}")
+                            st.write(f"**매칭 타입:** {match_type}")
+                
+                # 결과 반환
                 return {
                     'transformed': is_transformed, 
                     'original_query': user_query, 
                     'transformed_query': transformed_query, 
-                    'question_type': best_match['question_type'], 
-                    'wrong_answer_summary': best_match['wrong_answer_summary'], 
-                    'similarity': best_match['similarity'], 
+                    'question_type': best_match.get('question_type', 'default'), 
+                    'wrong_answer_summary': best_match.get('wrong_answer_summary', ''), 
+                    'similarity': best_match.get('similarity', 0), 
                     'similar_question': best_match['question'], 
-                    'match_type': 'similar'
+                    'replacement_mode': replacement_mode,
+                    'match_type': best_match.get('match_type', 'similar')
                 }
             
-            return {'transformed': False, 'original_query': user_query, 'transformed_query': user_query, 'match_type': 'none'}
+            # 3단계: 매칭되는 질문이 없음
+            return {
+                'transformed': False, 
+                'original_query': user_query, 
+                'transformed_query': user_query, 
+                'match_type': 'none'
+            }
             
         except Exception as e:
-            return {'transformed': False, 'original_query': user_query, 'transformed_query': user_query, 'match_type': 'error', 'error': str(e)}
+            # 에러 발생 시 로깅 및 원본 쿼리 반환
+            print(f"❌ Reprompting 에러: {e}")
+            
+            if self.debug_mode:
+                import traceback
+                st.error(f"⚠️ Reprompting 처리 중 오류가 발생했습니다: {str(e)}")
+                with st.expander("상세 오류 정보"):
+                    st.code(traceback.format_exc())
+            
+            return {
+                'transformed': False, 
+                'original_query': user_query, 
+                'transformed_query': user_query, 
+                'match_type': 'error', 
+                'error': str(e)
+            }
     
     def extract_time_conditions(self, query):
         if not query:
