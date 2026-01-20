@@ -1,5 +1,7 @@
 import streamlit as st
 import re
+import html as html_module
+import time
 
 class UIComponentsLocal:
     """UI 컴포넌트 관리 클래스"""
@@ -44,9 +46,6 @@ class UIComponentsLocal:
         """장애원인 마커를 HTML로 변환"""
         return self._convert_box_to_html(text, 'CAUSE_BOX', '장애원인', '📋', True)
     
-    def convert_repair_box_to_html(self, text):
-        """복구방법 마커를 HTML로 변환"""
-        return self._convert_box_to_html(text, 'REPAIR_BOX', '복구방법 (incident_repair 기준)', '🤖', False)
     
     def _convert_box_to_html(self, text, box_type, title, icon, parse_causes):
         """박스 마커를 HTML로 변환하는 공통 로직"""
@@ -62,7 +61,7 @@ class UIComponentsLocal:
         
         if parse_causes:
             parsed = self._parse_cause_content(content)
-            formatted = ''.join([f'<li style="margin-bottom:8px;line-height:1.5;"><strong>원인{num}:</strong> {c}</li>' 
+            formatted = ''.join([f'<li key="cause-{num}" style="margin-bottom:8px;line-height:1.5;"><strong>원인{num}:</strong> {c}</li>' 
                                for num, c in parsed])
             content = f'<ul style="margin:0;padding-left:20px;list-style-type:none;">{formatted}</ul>'
         else:
@@ -81,10 +80,10 @@ class UIComponentsLocal:
         return text
 
     def _remove_box_markers_enhanced(self, text):
-        """강화된 박스 마커 제거"""
+        """강화된 박스 마커 제거 - REPAIR_BOX 제거"""
         patterns = [
-            r'\[REPAIR_BOX_START\].*?\[REPAIR_BOX_END\]', r'\[CAUSE_BOX_START\].*?\[CAUSE_BOX_END\]',
-            r'\[.*?_BOX_START\].*?\[.*?_BOX_END\]', r'\[REPAIR_BOX_START\].*', r'.*\[REPAIR_BOX_END\]',
+            r'\[CAUSE_BOX_START\].*?\[CAUSE_BOX_END\]',
+            r'\[.*?_BOX_START\].*?\[.*?_BOX_END\]', 
             r'\[CAUSE_BOX_START\].*', r'.*\[CAUSE_BOX_END\]'
         ]
         return self._remove_patterns(text, patterns)
@@ -191,76 +190,827 @@ class UIComponentsLocal:
         """박스 마커들을 제거하는 헬퍼 메서드 - 강화된 버전으로 대체"""
         return self._remove_box_markers_enhanced(text)
     
-    def display_response_with_query_type_awareness(self, response, query_type="default", chart_info=None):
-        """쿼리 타입을 고려한 응답 표시 - statistics에서만 차트 표시"""
-        if not response:
-            st.write("응답이 없습니다.")
-            return
+
+    # ============== 새로 추가된 메서드들 (repair 디자인용) ==============
+
+    def _strip_html_tags(self, text):
+        """HTML 태그와 마크다운 헤더를 제거하고 순수 텍스트만 반환"""
+        if not text:
+            return text
         
-        response_text, chart_info = response if isinstance(response, tuple) else (response, chart_info)
-        if chart_info and chart_info.get('chart'):
-            response_text = self.remove_text_charts_from_response(response_text)
+        # HTML 태그 제거
+        clean_text = re.sub(r'<[^>]+>', '', text)
+        # HTML 엔티티 디코드
+        clean_text = html_module.unescape(clean_text)
         
-        converted_content = response_text
-        html_converted = False
+        # 마크다운 헤더 제거 및 정리
+        clean_text = self._clean_markdown_headers(clean_text)
         
-        if self.debug_mode:
-            print(f"UI_DEBUG: Query type: {query_type}")
-            print(f"UI_DEBUG: Chart manager available: {self.chart_manager is not None}")
+        return clean_text.strip()
+    
+    def _clean_markdown_headers(self, text):
+        """마크다운 헤더를 제거하고 적절한 줄바꿈으로 변환"""
+        if not text:
+            return text
         
-        # INQUIRY 타입인 경우 강화된 박스 제거
-        if query_type.lower() == 'inquiry':
-            if self.debug_mode: print("UI_DEBUG: INQUIRY 타입 감지 - 모든 박스 제거 시작")
+        # ## 📋 형태의 헤더를 이모지와 텍스트만 남기고 줄바꿈 추가
+        text = re.sub(r'^#+\s*(📋.*?)(?=\s|$)', r'\1\n', text, flags=re.MULTILINE)
+        
+        # ### 형태의 헤더도 동일하게 처리
+        text = re.sub(r'^#+\s*(.*?)(?=\s|$)', r'\1\n', text, flags=re.MULTILINE)
+        
+        # 연속된 공백이나 줄바꿈 정리
+        text = re.sub(r'\n\s*\n', '\n\n', text)
+        text = re.sub(r'^\s+', '', text, flags=re.MULTILINE)
+        
+        return text.strip()
+    
+    def _parse_html_content(self, html_content):
+        """HTML 컨텐츠를 태그와 텍스트로 분리"""
+        parts = []
+        tag_pattern = re.compile(r'(<[^>]+>)')
+        segments = tag_pattern.split(html_content)
+        
+        for segment in segments:
+            if segment.startswith('<'):
+                parts.append({'type': 'tag', 'content': segment, 'text': ''})
+            elif segment:
+                parts.append({'type': 'text', 'content': segment, 'text': segment})
+        
+        return parts
+    
+    def typewriter_sections(self, sections, duration=10.0):
+        """스마트 타이핑 효과"""
+        time_per_section = duration / len(sections) if sections else 0
+        
+        for placeholder, content in sections:
+            parts = self._parse_html_content(content)
+            text_chars = sum(len(p['text']) for p in parts if p['type'] == 'text')
+            char_delay = time_per_section / text_chars if text_chars > 0 else 0.01
             
-            converted_content = self._remove_box_markers_enhanced(converted_content)
-            converted_content = self._remove_html_boxes_enhanced(converted_content)
-            converted_content = self._remove_repair_text_sections(converted_content)
-            converted_content = self._clean_inquiry_response(converted_content)
-            converted_content = self._emergency_remove_green_boxes(converted_content, query_type)
+            displayed_parts = []
+            for part in parts:
+                if part['type'] == 'tag':
+                    displayed_parts.append(part['content'])
+                else:
+                    for char in part['text']:
+                        displayed_parts.append(char)
+                        placeholder.markdown(''.join(displayed_parts), unsafe_allow_html=True)
+                        time.sleep(char_delay)
+            
+            placeholder.markdown(content, unsafe_allow_html=True)
+    
+    def display_repair_report_with_tabs(self, incidents_data, use_typewriter=False, duration=8.0, message_index=None):
+        """
+        repair 타입의 응답을 탭 기반 디자인으로 표시
+        Args:
+            incidents_data: {
+                'summary': {
+                    'overall': '전체 종합의견',
+                    'recovery_methods': ['복구방법1', '복구방법2', ...]
+                },
+                'incidents': [
+                    {장애1 데이터},
+                    {장애2 데이터},
+                    ...
+                ]
+            }
+            message_index: 메시지 인덱스 (여러 답변 구분용)
+        """
+        # 안정적인 고유 ID 생성 (내용 기반 해시)
+        import hashlib
+        
+        # incidents의 incident_id들을 조합하여 고유 ID 생성
+        incident_ids = [inc.get('incident_id', '') for inc in incidents_data.get('incidents', [])]
+        id_string = '-'.join(incident_ids[:10])  # 최대 10개만 사용
+        
+        # message_index가 있으면 포함
+        if message_index is not None:
+            id_string = f"{message_index}-{id_string}"
+        
+        unique_call_id = hashlib.md5(id_string.encode()).hexdigest()[:12]
+        
+        # 헤더
+        st.markdown("""
+        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if use_typewriter:
+            ph1 = st.empty()
+            sections = []
+            
+            # 종합 의견 섹션 (plain text로 표시)
+            overall_text = self._strip_html_tags(incidents_data['summary']['overall'])
+            
+            # 복구방법들을 텍스트로 조합
+            recovery_text = ""
+            for idx, method in enumerate(incidents_data['summary']['recovery_methods'], 1):
+                clean_method = self._strip_html_tags(method)
+                recovery_text += f"\n\n복구방법 {idx}\n{clean_method}"
+            
+            # 전체 텍스트 조합
+            full_text = f"{overall_text}\n\n통합 복구 방법{recovery_text}"
+            
+            sections.append((ph1, f"""
+            <div key="summary-{unique_call_id}" style='background: white; padding: 30px; border-radius: 15px;
+                        margin-bottom: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+                        border-top: 6px solid #667eea;'>
+                <h2 style='color: #667eea; margin: 0 0 15px 0; font-size: 1.9em;
+                           border-bottom: 3px solid #667eea; padding-bottom: 15px;
+                           display: flex; align-items: center;'>
+                    <span style='margin-right: 10px;'>💡</span> 종합 의견
+                </h2>
+                <div style='background: #f7fafc; padding: 20px; border-radius: 10px; 
+                            margin-bottom: 20px; border-left: 4px solid #667eea;'>
+                    <pre style='color: #2d3748; line-height: 1.8; font-size: 1.05em; margin: 0; 
+                               white-space: pre-wrap; word-wrap: break-word; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;'>
+    {html_module.escape(full_text)}</pre>
+                </div>
+            </div>
+            """))
+            
+            self.typewriter_sections(sections, duration)
+        else:
+            # 타이핑 효과 없이 즉시 표시
+            overall_text = self._strip_html_tags(incidents_data['summary']['overall'])
+            
+            # 복구방법들을 텍스트로 조합
+            recovery_text = ""
+            for idx, method in enumerate(incidents_data['summary']['recovery_methods'], 1):
+                clean_method = self._strip_html_tags(method)
+                recovery_text += f"\n\n복구방법 {idx}\n{clean_method}"
+            
+            # 전체 텍스트 조합
+            full_text = f"{overall_text}\n\n통합 복구 방법{recovery_text}"
+            
+            st.markdown(f"""
+            <div key="summary-{unique_call_id}" style='background: white; padding: 30px; border-radius: 15px;
+                        margin-bottom: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+                        border-top: 6px solid #667eea;'>
+                <h2 style='color: #667eea; margin: 0 0 15px 0; font-size: 1.9em;
+                           border-bottom: 3px solid #667eea; padding-bottom: 15px;
+                           display: flex; align-items: center;'>
+                    <span style='margin-right: 10px;'>💡</span> 종합 의견
+                </h2>
+                <div style='background: #f7fafc; padding: 20px; border-radius: 10px; 
+                            margin-bottom: 20px; border-left: 4px solid #667eea;'>
+                    <pre style='color: #2d3748; line-height: 1.8; font-size: 1.05em; margin: 0; 
+                               white-space: pre-wrap; word-wrap: break-word; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;'>
+    {html_module.escape(full_text)}</pre>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # ============================================================
+        # 페이징 기능 추가: 한 페이지당 6개의 탭만 표시
+        # ============================================================
+        
+        # 세션 스테이트 초기화: 고유 ID별 현재 페이지 번호
+        page_key = f'repair_tab_page_{unique_call_id}'
+        if page_key not in st.session_state:
+            st.session_state[page_key] = 0
+        
+        # 페이징 설정
+        ITEMS_PER_PAGE = 6
+        total_incidents = len(incidents_data['incidents'])
+        total_pages = (total_incidents + ITEMS_PER_PAGE - 1) // ITEMS_PER_PAGE  # 올림 나눗셈
+        
+        # 현재 페이지 범위 계산
+        current_page = st.session_state[page_key]
+        start_idx = current_page * ITEMS_PER_PAGE
+        end_idx = min(start_idx + ITEMS_PER_PAGE, total_incidents)
+        
+        # 페이징 컨트롤 (상단) - 2페이지 이상일 때만 표시
+        if total_pages > 1:
+            col_prev, col_info, col_next = st.columns([1, 2, 1])
+            
+            with col_prev:
+                if current_page > 0:
+                    if st.button("◀ 이전", key=f"prev_{unique_call_id}", use_container_width=True):
+                        st.session_state[page_key] -= 1
+                        st.rerun()
+            
+            with col_info:
+                st.markdown(f"""
+                <div key="pageinfo-{unique_call_id}-{current_page}" style='text-align: center; padding: 10px; font-size: 1.1em; color: #4a5568;'>
+                    <b>페이지 {current_page + 1} / {total_pages}</b> 
+                    <span style='color: #718096;'>(전체 {total_incidents}개 중 {start_idx + 1}-{end_idx}번째 표시)</span>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col_next:
+                if current_page < total_pages - 1:
+                    if st.button("다음 ▶", key=f"next_{unique_call_id}", use_container_width=True):
+                        st.session_state[page_key] += 1
+                        st.rerun()
+        
+        # 현재 페이지의 인시던트만 표시
+        current_page_incidents = incidents_data['incidents'][start_idx:end_idx]
+        
+        # 각 장애별 탭 구성 - 장애/이상징후 구분
+        tab_labels = []
+        
+        for idx in range(start_idx, end_idx):
+            inc = incidents_data['incidents'][idx]
+            source_type = inc.get('_source_type', 'incident')
+            incident_id = inc.get('incident_id', 'INC-UNKNOWN')
+            
+            # 전체 인덱스 기준으로 번호 표시 (연속성 유지)
+            display_num = idx + 1
+            
+            if source_type == 'anomaly':
+                label = f"이상징후 {display_num}: {incident_id}"
+            else:  # 'incident' or default
+                label = f"장애 {display_num}: {incident_id}"
+            
+            tab_labels.append(label)
+        
+        tabs = st.tabs(tab_labels)
+        
+        # 각 탭에 장애 정보 표시
+        for tab, incident in zip(tabs, current_page_incidents):
+            with tab:
+                self._display_single_incident_detail(incident)
+        
+    def _display_single_incident_detail(self, incident):
+            """단일 장애 상세 정보 표시 - 핵심 포인트 섹션 추가 (필드 매핑 수정)"""
+            
+            # ★★★ 이상징후 여부 확인 ★★★
+            source_type = incident.get('_source_type', 'incident')
+            is_anomaly = (source_type == 'anomaly')
+            
+            # 고유 ID 생성 (React key 충돌 방지)
+            incident_id = incident.get('incident_id', 'unknown')
+            unique_key = f"{incident_id}-{id(incident)}"
+            
+            # ======================================
+            # 핵심 포인트 섹션 - 장애내역만 표시
+            # ======================================
+            
+            # ★★★ 이상징후는 핵심 포인트 섹션 스킵 ★★★
+            if not is_anomaly:
+                # 안전한 데이터 추출 함수
+                def safe_get(data, *keys):
+                    """여러 키를 시도하여 값을 가져오고 HTML 태그 제거"""
+                    for key in keys:
+                        value = data.get(key, '')
+                        if value and str(value).strip():
+                            # HTML 태그 제거
+                            cleaned = re.sub(r'<[^>]+>', '', str(value))
+                            cleaned = html_module.unescape(cleaned)
+                            return cleaned.strip()
+                    return ''
+                
+                # 각 필드에 대한 값 추출
+                cause_text = safe_get(incident, 'detailed_cause', 'cause', 'root_cause')
+                impact_text = safe_get(incident, 'failure_status', 'impact', 'symptom')
+                recovery_text = safe_get(incident, 'recovery_method', 'recovery', 'incident_repair')
+                followup_text = safe_get(incident, 'improvement_plan', 'followup', 'incident_plan')
+                
+                st.markdown(f"""
+                <div key="keypoints-{unique_key}" style='background: white; padding: 25px; border-radius: 12px;
+                            margin-bottom: 15px; box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+                            border-left: 6px solid #4facfe;'>
+                    <h3 style='color: #4facfe; margin: 0 0 20px 0; font-size: 1.6em;
+                            border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;'>
+                        🎯 핵심 포인트
+                    </h3>
+                    <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 15px;'>
+                        <div key="cause-{unique_key}" style='background: #f0f9ff; padding: 15px; border-radius: 8px;
+                                    border-left: 4px solid #3b82f6;'>
+                            <div style='color: #1e40af; font-weight: bold; margin-bottom: 8px; 
+                                        font-size: 1.1em;'>① 장애 원인</div>
+                            <div style='color: #1e293b; line-height: 1.6; font-size: 0.95em;'>
+                                {html_module.escape(cause_text) if cause_text else '<span style="color: #94a3b8;">정보 없음</span>'}
+                            </div>
+                        </div>
+                        <div key="impact-{unique_key}" style='background: #fef3c7; padding: 15px; border-radius: 8px;
+                                    border-left: 4px solid #f59e0b;'>
+                            <div style='color: #92400e; font-weight: bold; margin-bottom: 8px; 
+                                        font-size: 1.1em;'>② 영향 범위</div>
+                            <div style='color: #1e293b; line-height: 1.6; font-size: 0.95em;'>
+                                {html_module.escape(impact_text) if impact_text else '<span style="color: #94a3b8;">정보 없음</span>'}
+                            </div>
+                        </div>
+                        <div key="recovery-{unique_key}" style='background: #dcfce7; padding: 15px; border-radius: 8px;
+                                    border-left: 4px solid #10b981;'>
+                            <div style='color: #065f46; font-weight: bold; margin-bottom: 8px; 
+                                        font-size: 1.1em;'>③ 복구 조치</div>
+                            <div style='color: #1e293b; line-height: 1.6; font-size: 0.95em;'>
+                                {html_module.escape(recovery_text) if recovery_text else '<span style="color: #94a3b8;">정보 없음</span>'}
+                            </div>
+                        </div>
+                        <div key="followup-{unique_key}" style='background: #fce7f3; padding: 15px; border-radius: 8px;
+                                    border-left: 4px solid #ec4899;'>
+                            <div style='color: #831843; font-weight: bold; margin-bottom: 8px; 
+                                        font-size: 1.1em;'>④ 후속 조치</div>
+                            <div style='color: #1e293b; line-height: 1.6; font-size: 0.95em;'>
+                                {html_module.escape(followup_text) if followup_text else '<span style="color: #94a3b8;">정보 없음</span>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # ======================================
+            # 기존 3열 레이아웃 (INCIDENT INFO, SYSTEM INFO, RECOVERY ACTION)
+            # ======================================
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.markdown(f"""
+                <div key="info-{unique_key}" style='background: white; padding: 20px; border-radius: 10px;
+                            border: 2px solid #e2e8f0; height: 100%;'>
+                    <div style='background: #667eea; color: white; padding: 8px 12px;
+                                border-radius: 6px; margin-bottom: 15px; font-weight: 600;
+                                text-align: center; font-size: 0.95em; letter-spacing: 0.5px;'>
+                        INCIDENT INFO
+                    </div>
+                    <div style='color: #475569; line-height: 1.9; font-size: 0.92em;'>
+                        <p key="service-{unique_key}" style='margin: 10px 0; padding: 8px; background: #f8fafc; border-radius: 5px;'>
+                            <span style='color: #64748b; font-weight: 600; display: block; margin-bottom: 5px;'>서비스명</span>
+                            <span style='color: #1e293b;'>{html_module.escape(str(incident.get('service', incident.get('service_name', ''))))}</span>
+                        </p>
+                        <p key="severity-{unique_key}" style='margin: 10px 0; padding: 8px; background: #f8fafc; border-radius: 5px;'>
+                            <span style='color: #64748b; font-weight: 600; display: block; margin-bottom: 5px;'>장애등급</span>
+                            <span style='color: #dc2626; font-weight: 700;'>{html_module.escape(str(incident.get('severity', incident.get('incident_grade', ''))))}</span>
+                        </p>
+                        <p key="timestamp-{unique_key}" style='margin: 10px 0; padding: 8px; background: #f8fafc; border-radius: 5px;'>
+                            <span style='color: #64748b; font-weight: 600; display: block; margin-bottom: 5px;'>발생일시</span>
+                            <span style='color: #1e293b;'>{html_module.escape(str(incident.get('timestamp', incident.get('error_date', ''))))}</span>
+                        </p>
+                        <p key="duration-{unique_key}" style='margin: 10px 0; padding: 8px; background: #f8fafc; border-radius: 5px;'>
+                            <span style='color: #64748b; font-weight: 600; display: block; margin-bottom: 5px;'>장애시간</span>
+                            <span style='color: #dc2626; font-weight: 600;'>{html_module.escape(str(incident.get('duration', incident.get('error_time', ''))))}</span>
+                        </p>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown(f"""
+                <div key="system-{unique_key}" style='background: white; padding: 20px; border-radius: 10px;
+                            border: 2px solid #e2e8f0; height: 100%;'>
+                    <div style='background: #f093fb; color: white; padding: 8px 12px;
+                                border-radius: 6px; margin-bottom: 15px; font-weight: 600;
+                                text-align: center; font-size: 0.95em; letter-spacing: 0.5px;'>
+                        SYSTEM INFO
+                    </div>
+                    <div style='color: #475569; line-height: 1.9; font-size: 0.92em;'>
+                        <p key="dept-{unique_key}" style='margin: 10px 0; padding: 8px; background: #f8fafc; border-radius: 5px;'>
+                            <span style='color: #64748b; font-weight: 600; display: block; margin-bottom: 5px;'>담당부서</span>
+                            <span style='color: #1e293b;'>{html_module.escape(str(incident.get('department', incident.get('owner_depart', ''))))}</span>
+                        </p>
+                        <p key="fixtype-{unique_key}" style='margin: 10px 0; padding: 8px; background: #f8fafc; border-radius: 5px;'>
+                            <span style='color: #64748b; font-weight: 600; display: block; margin-bottom: 5px;'>처리유형</span>
+                            <span style='color: #1e293b;'>{html_module.escape(str(incident.get('fix_type', incident.get('done_type', ''))))}</span>
+                        </p>
+                        <p key="detcause-{unique_key}" style='margin: 10px 0; padding: 8px; background: #f8fafc; border-radius: 5px;'>
+                            <span style='color: #64748b; font-weight: 600; display: block; margin-bottom: 5px;'>장애원인</span>
+                            <span style='color: #1e293b;'>{html_module.escape(str(incident.get('detailed_cause', incident.get('root_cause', ''))))}</span>
+                        </p>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col3:
+                # ★★★ 핵심 수정: symptom 필드를 확실하게 fallback으로 추가 ★★★
+                failure_status_value = incident.get('failure_status', '')
+                if not failure_status_value or str(failure_status_value).strip() == '':
+                    # failure_status가 비어있으면 symptom 필드 확인
+                    failure_status_value = incident.get('symptom', '')
+                
+                st.markdown(f"""
+                <div key="recovery-action-{unique_key}" style='background: white; padding: 20px; border-radius: 10px;
+                            border: 2px solid #e2e8f0; height: 100%;'>
+                    <div style='background: #10b981; color: white; padding: 8px 12px;
+                                border-radius: 6px; margin-bottom: 15px; font-weight: 600;
+                                text-align: center; font-size: 0.95em; letter-spacing: 0.5px;'>
+                        RECOVERY ACTION
+                    </div>
+                    <div style='color: #475569; line-height: 1.9; font-size: 0.92em;'>
+                        <p key="failstatus-{unique_key}" style='margin: 10px 0; padding: 8px; background: #f8fafc; border-radius: 5px;'>
+                            <span style='color: #64748b; font-weight: 600; display: block; margin-bottom: 5px;'>장애상황</span>
+                            <span style='color: #1e293b;'>{html_module.escape(str(failure_status_value))}</span>
+                        </p>
+                        <p key="recovmethod-{unique_key}" style='margin: 10px 0; padding: 8px; background: #f8fafc; border-radius: 5px;'>
+                            <span style='color: #64748b; font-weight: 600; display: block; margin-bottom: 5px;'>복구방법</span>
+                            <span style='color: #1e293b;'>{html_module.escape(str(incident.get('recovery_method', incident.get('incident_repair', ''))))}</span>
+                        </p>
+                        <p key="impplan-{unique_key}" style='margin: 10px 0; padding: 8px; background: #f8fafc; border-radius: 5px;'>
+                            <span style='color: #64748b; font-weight: 600; display: block; margin-bottom: 5px;'>개선계획</span>
+                            <span style='color: #1e293b;'>{html_module.escape(str(incident.get('improvement_plan', incident.get('incident_plan', ''))))}</span>
+                        </p>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+    def _extract_and_format_timestamp(self, text):
+        """텍스트에서 날짜/시간 정보를 추출하고 표준 형식으로 변환"""
+        import re
+        from datetime import datetime
+        
+        if not text:
+            return ''
+        
+        # 다양한 날짜 패턴 매칭
+        date_patterns = [
+            r'(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{1,2})',  # 2024-04-01 09:26
+            r'(\d{4})\.(\d{1,2})\.(\d{1,2})\s+(\d{1,2}):(\d{1,2})', # 2024.04.01 09:26
+            r'(\d{4})/(\d{1,2})/(\d{1,2})\s+(\d{1,2}):(\d{1,2})',  # 2024/04/01 09:26
+            r'(\d{4})-(\d{1,2})-(\d{1,2})',  # 2024-04-01 (시간 없음)
+            r'(\d{4})\.(\d{1,2})\.(\d{1,2})',  # 2024.04.01 (시간 없음)
+            r'(\d{1,2})/(\d{1,2})/(\d{4})',   # 01/04/2024
+        ]
+        
+        for pattern in date_patterns:
+            match = re.search(pattern, text)
+            if match:
+                groups = match.groups()
+                try:
+                    if len(groups) == 5:  # 날짜 + 시간
+                        year, month, day, hour, minute = groups
+                        return f"{int(year):04d}-{int(month):02d}-{int(day):02d} {int(hour):02d}:{int(minute):02d}"
+                    elif len(groups) == 3:  # 날짜만
+                        if len(groups[2]) == 4:  # MM/DD/YYYY 형식
+                            month, day, year = groups
+                            return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+                        else:  # YYYY-MM-DD 형식
+                            year, month, day = groups
+                            return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+                except ValueError:
+                    continue
+        
+        # 패턴이 매칭되지 않으면 원본 반환
+        return text.strip()
+    
+    def _parse_repair_response_to_incidents_data(self, response_text):
+        """repair 응답 텍스트를 incidents_data 구조로 파싱 - 실제 응답 형식에 맞춤"""
+        try:
+            # ★★★ 디버그: LLM 응답 출력 ★★★
+            print("="*80)
+            print("DEBUG: LLM 응답 (처음 1500자)")
+            print("="*80)
+            print(response_text[:1500])
+            print("="*80)
+            incidents_data = {
+                'summary': {
+                    'overall': '',
+                    'recovery_methods': []
+                },
+                'incidents': []
+            }
+            
+            # 전체 텍스트에서 날짜 패턴 검색
+            import re
+            date_matches = re.findall(r'(\d{4}[-./]\d{1,2}[-./]\d{1,2}(?:\s+\d{1,2}:\d{1,2})?)', response_text)
+            extracted_dates = [self._extract_and_format_timestamp(match) for match in date_matches]
+            
+            lines = response_text.split('\n')
+            overall_lines = []
+            recovery_methods = []
+            current_incident = None
+            incidents = []
+            in_incident_section = False
+            
+            i = 0
+            while i < len(lines):
+                line = lines[i].strip()
+                
+                # 장애내역/이상징후내역 섹션 시작 감지
+                if ('장애내역' in line and 'Incident Records' in line) or ('이상징후내역' in line and 'Anomaly Records' in line):
+                    in_incident_section = True
+                    print(f"DEBUG: ✅ 섹션 감지됨: {line}")
+                    i += 1
+                    continue
+                
+                # 개별 장애/이상징후 시작 감지 (예: [장애내역 2], [이상징후 1], Case 1 등)
+                if in_incident_section and (line.startswith('[장애내역') or line.startswith('[이상징후') or line.startswith('Case ')):
+                    if current_incident and any(current_incident.values()):
+                        incidents.append(current_incident)
+                        print(f"DEBUG: ✅ Incident 추가됨: {current_incident.get('incident_id')}")
+                    
+                    # _source_type 결정: [이상징후]로 시작하면 'anomaly', 그 외는 'incident'
+                    source_type = 'anomaly' if line.startswith('[이상징후') else 'incident'
+                    print(f"DEBUG: 🆕 새 Incident 시작: {line} (type: {source_type})")
+                    
+                    current_incident = {
+                        'incident_id': '',
+                        'service': '',
+                        'severity': '',
+                        'timestamp': extracted_dates[0] if extracted_dates else '',
+                        'duration': '',
+                        'department': '',
+                        'fix_type': '',
+                        'detailed_cause': '',
+                        'failure_status': '',
+                        'symptom': '',  # ★★★ 추가: symptom 필드 ★★★
+                        'recovery_method': '',
+                        'improvement_plan': '',
+                        '_source_type': source_type  # 중요: 소스 타입 추가
+                    }
+                    
+                    # ★★★ 같은 라인에 장애ID가 있는 경우 처리 (예: "[이상징후 7] 장애ID: INM...") ★★★
+                    if '장애 ID:' in line or '장애ID:' in line:
+                        id_text = line.split('ID:')[-1].strip().replace('**', '').replace('*', '')
+                        current_incident['incident_id'] = id_text
+                    
+                    i += 1
+                    continue
+                
+                # 장애내역 섹션 전까지는 종합 의견
+                if not in_incident_section and line and not line.startswith('---'):
+                    # HTML 태그나 특수 문자 제외
+                    if not line.startswith('<') and not line.startswith('※'):
+                        overall_lines.append(line)
+                
+                # 표 형태 데이터 파싱 추가
+                if '|' in line and ('장애' in line or 'INM' in line or '2024' in line):
+                    # 표의 행 데이터 파싱
+                    cells = [cell.strip() for cell in line.split('|') if cell.strip()]
+                    if len(cells) >= 4:  # 최소 4개 컬럼이 있어야 유효한 데이터
+                        if current_incident is None:
+                            current_incident = {
+                                'incident_id': '',
+                                'service_name': '',
+                                'severity': '',
+                                'timestamp': extracted_dates[0] if extracted_dates else '',
+                                'duration': '',
+                                'department': '',
+                                'fix_type': '',
+                                'detailed_cause': '',
+                                'failure_status': '',
+                                'symptom': '',  # ★★★ 추가: symptom 필드 ★★★
+                                'recovery_method': '',
+                                'improvement_plan': '',
+                                '_source_type': 'table'
+                            }
+                        
+                        # 표의 컬럼 순서에 맞게 데이터 추출
+                        for idx, cell in enumerate(cells):
+                            if idx == 0 and 'INM' in cell:  # 장애 ID
+                                current_incident['incident_id'] = cell
+                            elif idx == 1:  # 서비스명
+                                current_incident['service_name'] = cell
+                            elif idx == 2:  # 장애등급
+                                current_incident['severity'] = cell
+                            elif idx == 3 and ('2024' in cell or '2025' in cell):  # 발생일자
+                                current_incident['timestamp'] = cell
+                            elif idx == 4:  # 시간대
+                                if current_incident['timestamp']:
+                                    current_incident['timestamp'] += f" ({cell})"
+                            elif idx == 5:  # 장애시간
+                                current_incident['duration'] = cell
+                            elif '분' in cell and not current_incident['duration']:  # 장애시간 (다른 위치)
+                                current_incident['duration'] = cell
+                            elif len(cell) > 10 and not current_incident['failure_status']:  # 장애현상 (긴 텍스트)
+                                current_incident['failure_status'] = cell
+                            elif cell and not current_incident['department'] and len(cell) < 20:  # 담당부서
+                                current_incident['department'] = cell
+                if current_incident is not None and in_incident_section:
+                    # 다양한 형식 지원
+                    if '장애 ID:' in line or '장애ID:' in line or 'ID:' in line:
+                        id_text = line.split('ID:')[-1].strip().replace('**', '').replace('*', '')
+                        current_incident['incident_id'] = id_text
+                    
+                    elif '서비스명:' in line or '서비스:' in line:
+                        current_incident['service'] = line.split(':')[-1].strip()
+                    
+                    elif '장애등급:' in line or '등급:' in line:
+                        current_incident['severity'] = line.split(':')[-1].strip()
+                    
+                    elif '발생일시:' in line or '발생시간:' in line or '발생일자:' in line:
+                        # split(':', 1)로 첫 번째 콜론만 분리 (시간 형식 "HH:MM" 보존)
+                        current_incident['timestamp'] = line.split(':', 1)[-1].strip()
+                    # 시간대와 요일은 timestamp에 추가하지 않음 (error_date에 이미 완전한 형식 포함)
+                    #                     elif '시간대:' in line:
+                    #                         # 시간대 정보가 있으면 timestamp에 추가
+                    #                         time_period = line.split(':')[-1].strip()
+                    #                         if current_incident['timestamp']:
+                    #                             current_incident['timestamp'] += f" ({time_period})"
+                    #                         else:
+                    #                             current_incident['timestamp'] = time_period
+                    #                     
+                    #                     elif '요일:' in line:
+                    #                         # 요일 정보가 있으면 timestamp에 추가
+                    #                         day_of_week = line.split(':')[-1].strip()
+                    #                         if current_incident['timestamp']:
+                    #                             current_incident['timestamp'] += f" {day_of_week}"
+                    #                         else:
+                    #                             current_incident['timestamp'] = day_of_week
+                    
+                    elif '장애시간:' in line or '지속시간:' in line:
+                        current_incident['duration'] = line.split(':')[-1].strip()
+                    
+                    elif '담당부서:' in line or '부서:' in line:
+                        current_incident['department'] = line.split(':')[-1].strip()
+                    
+                    elif '처리유형:' in line or '조치유형:' in line:
+                        current_incident['fix_type'] = line.split(':')[-1].strip()
+                    
+                    elif '장애원인:' in line or '원인:' in line:
+                        cause_text = line.split(':')[-1].strip()
+                        # 다음 줄도 원인의 일부인지 확인
+                        j = i + 1
+                        while j < len(lines) and lines[j].strip() and not ':' in lines[j]:
+                            cause_text += ' ' + lines[j].strip()
+                            j += 1
+                        current_incident['detailed_cause'] = cause_text
+                        i = j - 1
+                    
+                    elif '장애상황:' in line or '현상:' in line or '증상:' in line:
+                        status_value = line.split(':')[-1].strip()
+                        # ★★★ 빈 값이 아닐 때만 저장 (빈 라인 무시) ★★★
+                        if status_value:
+                            current_incident['failure_status'] = status_value
+                            current_incident['symptom'] = status_value
+                    
+                    elif '복구방법:' in line or '조치방법:' in line or '해결방법:' in line:
+                        recovery_text = line.split(':')[-1].strip()
+                        # 여러 줄에 걸친 복구방법 수집
+                        j = i + 1
+                        while j < len(lines) and lines[j].strip():
+                            next_line = lines[j].strip()
+                            # 다음 필드가 시작되면 중단
+                            if any(keyword in next_line for keyword in ['개선계획:', '장애내역', 'Case ', '---', '장애 ID:']):
+                                break
+                            recovery_text += ' ' + next_line
+                            j += 1
+                        current_incident['recovery_method'] = recovery_text
+                        recovery_methods.append(recovery_text)
+                        i = j - 1
+                    
+                    elif '개선계획:' in line or '예방대책:' in line:
+                        current_incident['improvement_plan'] = line.split(':')[-1].strip()
+                
+                i += 1
+            
+            # 마지막 incident 추가
+            if current_incident and any(current_incident.values()):
+                # timestamp 포맷팅 적용
+                if current_incident.get('timestamp'):
+                    current_incident['timestamp'] = self._extract_and_format_timestamp(current_incident['timestamp'])
+                incidents.append(current_incident)
+            
+            # 종합 의견 구성
+            incidents_data['summary']['overall'] = '\n'.join(overall_lines) if overall_lines else '장애 분석 결과입니다.'
+            incidents_data['summary']['recovery_methods'] = recovery_methods if recovery_methods else ['복구방법을 확인해주세요.']
+            
+            # 모든 incidents의 timestamp 포맷팅
+            for incident in incidents:
+                if incident.get('timestamp'):
+                    incident['timestamp'] = self._extract_and_format_timestamp(incident['timestamp'])
+            
+            incidents_data['incidents'] = incidents
+            
+            # 디버그 로그
+            if self.debug_mode:
+                print(f"파싱 결과: {len(incidents)}개 장애 발견")
+                print(f"종합의견 길이: {len(incidents_data['summary']['overall'])}")
+                print(f"복구방법 개수: {len(recovery_methods)}")
+            
+            # 최소한 incidents가 있어야 성공
+            print(f"DEBUG: 파싱 완료 - incidents 개수: {len(incidents)}")
+            if incidents:
+                for inc in incidents[:3]:  # 처음 3개만 출력
+                    print(f"  - {inc.get('incident_id')}: symptom='{inc.get('symptom')}', failure_status='{inc.get('failure_status')}'")
+            else:
+                print("DEBUG: ❌ incidents가 비어있음 - None 반환!")
+            return incidents_data if incidents else None
+            
+        except Exception as e:
+            if self.debug_mode:
+                print(f"UI_DEBUG: repair 응답 파싱 실패: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+            return None
+    
+
+    def display_response_with_query_type_awareness(self, response, query_type="default", chart_info=None):
+            """쿼리 타입을 고려한 응답 표시 - repair 타입은 새 디자인 사용"""
+            if not response:
+                st.write("응답이 없습니다.")
+                return
+            
+            response_text, chart_info = response if isinstance(response, tuple) else (response, chart_info)
+            if chart_info and chart_info.get('chart'):
+                response_text = self.remove_text_charts_from_response(response_text)
+            
+            # ★★★ REPAIR 타입 처리 - 새 디자인 적용 ★★★
+            if query_type.lower() == 'repair':
+                # response_text에서 incidents_data 파싱
+                incidents_data = self._parse_repair_response_to_incidents_data(response_text)
+                if incidents_data:
+                    # 현재 메시지 인덱스 계산 (새 메시지이므로 기존 메시지 수)
+                    msg_idx = len(st.session_state.get('messages', []))
+                    self.display_repair_report_with_tabs(incidents_data, use_typewriter=True, message_index=msg_idx)
+                    return
+                # 파싱 실패 시 기존 방식으로 폴백
+            
+            # 나머지 코드는 기존과 동일...
+            converted_content = response_text
+            html_converted = False
             
             if self.debug_mode:
-                print(f"UI_DEBUG: 박스 제거 완료. 최종 길이: {len(converted_content)}")
-        else:
-            # INQUIRY가 아닌 경우에만 박스 변환 적용
-            if '[REPAIR_BOX_START]' in converted_content:
-                converted_content, has_html = self.convert_repair_box_to_html(converted_content)
-                html_converted = html_converted or has_html
-            if '[CAUSE_BOX_START]' in converted_content:
-                converted_content, has_html = self.convert_cause_box_to_html(converted_content)
-                html_converted = html_converted or has_html
-        
-        # 응답 표시
-        if html_converted:
-            st.markdown(converted_content, unsafe_allow_html=True)
-        else:
-            st.write(converted_content)
-        
-        # 차트 표시 - statistics 타입에서만 그리고 chart_manager가 있을 때만
-        if (chart_info and chart_info.get('chart') and 
-            query_type.lower() == 'statistics' and 
-            self.chart_manager is not None):
-            st.markdown("---")
-            try:
-                self.chart_manager.display_chart_with_data(
-                    chart_info['chart'], chart_info['chart_data'], 
-                    chart_info['chart_type'], chart_info.get('query', ''))
-            except Exception as e:
-                st.error(f"차트 표시 중 오류: {str(e)}")
-        elif chart_info and chart_info.get('chart') and query_type.lower() == 'statistics':
-            st.warning("차트 매니저가 초기화되지 않아 차트를 표시할 수 없습니다.")
-        
-        # INQUIRY 타입인 경우 엑셀 다운로드 버튼 표시
-        if query_type.lower() == 'inquiry':
-            if self.debug_mode: print("UI_DEBUG: INQUIRY 타입 - 엑셀 다운로드 버튼 표시 시도")
-            try:
-                from utils.excel_utils import ExcelDownloadManager
-                excel_manager = ExcelDownloadManager()
-                excel_manager.debug_mode = True
-                excel_manager.display_download_button(converted_content, query_type)
-            except Exception as e:
+                print(f"UI_DEBUG: Query type: {query_type}")
+                print(f"UI_DEBUG: Chart manager available: {self.chart_manager is not None}")
+            
+            # INQUIRY 타입인 경우 강화된 박스 제거
+            if query_type.lower() == 'inquiry':
+                if self.debug_mode: print("UI_DEBUG: INQUIRY 타입 감지 - 모든 박스 제거 시작")
+                
+                converted_content = self._remove_box_markers_enhanced(converted_content)
+                converted_content = self._remove_html_boxes_enhanced(converted_content)
+                converted_content = self._remove_repair_text_sections(converted_content)
+                converted_content = self._clean_inquiry_response(converted_content)
+                converted_content = self._emergency_remove_green_boxes(converted_content, query_type)
+                
                 if self.debug_mode:
-                    print(f"UI_DEBUG: 엑셀 다운로드 기능 오류: {str(e)}")
-    
+                    print(f"UI_DEBUG: 박스 제거 완료. 최종 길이: {len(converted_content)}")
+            else:
+                # INQUIRY가 아닌 경우에만 박스 변환 적용
+                if '[CAUSE_BOX_START]' in converted_content:
+                    converted_content, has_html = self.convert_cause_box_to_html(converted_content)
+                    html_converted = html_converted or has_html
+            
+            # 응답 표시
+            if html_converted:
+                st.markdown(converted_content, unsafe_allow_html=True)
+            else:
+                st.write(converted_content)
+            
+            # 차트 표시 - statistics 타입에서만
+            if (chart_info and chart_info.get('chart') and 
+                query_type.lower() == 'statistics' and 
+                self.chart_manager is not None):
+                try:
+                    # 올바른 메서드 호출: display_chart_with_data
+                    self.chart_manager.display_chart_with_data(
+                        chart_info['chart'],
+                        chart_info.get('chart_data', {}),
+                        chart_info.get('chart_type', 'bar'),
+                        chart_info.get('query', '')
+                    )
+                    if self.debug_mode:
+                        print(f"UI_DEBUG: 차트 표시 성공 - 타입: {chart_info.get('chart_type', 'bar')}")
+                except Exception as e:
+                    if self.debug_mode:
+                        print(f"UI_DEBUG: 차트 표시 오류: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
+            
+            
+            # 엑셀 다운로드 버튼 (inquiry 타입에서만)
+            if query_type.lower() == 'inquiry':
+                if self.debug_mode:
+                    print(f"UI_DEBUG: INQUIRY 타입 감지 - 엑셀 다운로드 버튼 표시 시작")
+                
+                try:
+                    from utils.excel_utils import ExcelDownloadManager
+                    excel_manager = ExcelDownloadManager()
+                    
+                    # 엑셀 다운로드 버튼 표시 시도
+                    success = excel_manager.display_download_button(converted_content, query_type)
+                    
+                    if not success:
+                        # 표가 없는 경우 사용자에게 안내
+                        st.markdown("---")
+                        st.markdown("### 📊 엑셀 다운로드")
+                        st.warning("⚠️ 엑셀 다운로드를 위해서는 응답에 표 형식의 데이터가 필요합니다. 마크다운 표가 포함된 응답을 생성해주세요.")
+                        
+                        # 표 형식 예시 제공
+                        with st.expander("📋 표 형식 예시 보기"):
+                            st.markdown("""
+                            응답에 다음과 같은 마크다운 표가 포함되어야 합니다:
+                            
+                            ```
+                            | 장애ID | 서비스명 | 장애등급 | 발생일자 | 시간대 |
+                            |--------|----------|----------|----------|--------|
+                            | INM123 | ERP | 2등급 | 2025-01-15 | 주간 |
+                            ```
+                            """)
+                    
+                    if self.debug_mode:
+                        print(f"UI_DEBUG: 엑셀 다운로드 버튼 표시 {'성공' if success else '실패'}")
+                        
+                except ImportError as e:
+                    if self.debug_mode:
+                        print(f"UI_DEBUG: ExcelDownloadManager import 실패: {str(e)}")
+                    st.error("엑셀 다운로드 모듈을 불러올 수 없습니다. excel_utils.py 파일을 확인해주세요.")
+                    
+                except Exception as e:
+                    if self.debug_mode:
+                        print(f"UI_DEBUG: 엑셀 다운로드 기능 오류: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
+                    
+                    # 에러 발생 시에도 사용자에게 안내
+                    st.markdown("---")
+                    st.markdown("### 📊 엑셀 다운로드")
+                    st.error(f"엑셀 다운로드 기능에 오류가 발생했습니다: {str(e)}")
+                    st.info("💡 데이터를 복사하여 엑셀에 직접 붙여넣기 해주세요.")
+
     def render_main_ui(self):
         """메인 UI 렌더링"""
         html_code = """<style>
@@ -352,27 +1102,94 @@ INDEX_REBUILD_NAME=your-index-name
 - INDEX_REBUILD_NAME: 검색 인덱스명""")
     
     def display_chat_messages(self):
-        """채팅 메시지 표시"""
+        """채팅 메시지 표시 - 디자인 템플릿 유지 (후진 호환성 보장)"""
         with st.container():
-            for message in st.session_state.messages:
+            for msg_idx, message in enumerate(st.session_state.messages):
                 with st.chat_message(message["role"]):
                     if message["role"] == "assistant":
-                        content, html_converted = message["content"], False
+                        # 새로운 메시지 구조 확인 (후진 호환성 유지)
+                        query_type = message.get("query_type", "general")
+                        rendered_content = message.get("rendered_content")
+                        content = message["content"]
                         
-                        if '[REPAIR_BOX_START]' in content:
-                            content, has_html = self.convert_repair_box_to_html(content)
-                            html_converted = html_converted or has_html
+                        # 새로운 구조의 메시지인 경우
+                        if rendered_content and isinstance(rendered_content, dict):
+                            if rendered_content.get("type") == "repair":
+                                # repair 타입은 전용 디자인으로 표시
+                                incidents_data = rendered_content.get("data")
+                                if incidents_data:
+                                    try:
+                                        self.display_repair_report_with_tabs(incidents_data, use_typewriter=False, message_index=msg_idx)
+                                        continue
+                                    except Exception as e:
+                                        # 오류 시 기본 표시로 폴백
+                                        print(f"repair 디스플레이 오류: {e}")
+                            elif rendered_content.get("type") == "text":
+                                # 기타 텍스트 타입
+                                content = rendered_content.get("content", content)
+                                query_type = rendered_content.get("query_type", query_type)
                         
-                        if '[CAUSE_BOX_START]' in content:
-                            content, has_html = self.convert_cause_box_to_html(content)
-                            html_converted = html_converted or has_html
+                        # repair 응답인지 확인 (기존 메시지 처리)
+                        if query_type == "repair" and not rendered_content:
+                            # 기존 repair 메시지를 파싱해서 디자인 적용
+                            try:
+                                incidents_data = self._parse_repair_response_to_incidents_data(content)
+                                if incidents_data:
+                                    self.display_repair_report_with_tabs(incidents_data, use_typewriter=False, message_index=msg_idx)
+                                    continue
+                            except Exception as e:
+                                print(f"기존 repair 메시지 파싱 오류: {e}")
                         
-                        if html_converted or ('<div style=' in content and ('장애원인' in content or '복구방법' in content)):
-                            st.markdown(content, unsafe_allow_html=True)
-                        else: 
-                            st.write(content)
+                        # 기본 처리 (CAUSE_BOX 등)
+                        self._display_content_with_markers(content, query_type)
                     else: 
                         st.write(message["content"])
+    
+    def _display_content_with_markers(self, content, query_type):
+        """컨텐츠를 마커에 따라 적절히 표시"""
+        html_converted = False
+        
+        # repair 타입 자동 감지 (기존 메시지 처리용)
+        if not query_type or query_type == "general":
+            if self._is_repair_response(content):
+                query_type = "repair"
+                # repair 응답을 파싱해서 전용 디자인으로 표시
+                try:
+                    incidents_data = self._parse_repair_response_to_incidents_data(content)
+                    if incidents_data:
+                        self.display_repair_report_with_tabs(incidents_data, use_typewriter=False)
+                        return
+                except Exception as e:
+                    print(f"repair 응답 파싱 실패: {e}")
+        
+        # CAUSE_BOX 처리
+        if '[CAUSE_BOX_START]' in content:
+            content, has_html = self.convert_cause_box_to_html(content)
+            html_converted = html_converted or has_html
+        
+        # HTML이 포함된 경우 또는 특수 디자인이 필요한 경우
+        if html_converted or ('<div style=' in content and ('장애원인' in content or '복구방법' in content)):
+            st.markdown(content, unsafe_allow_html=True)
+        else: 
+            st.write(content)
+    
+    def _is_repair_response(self, content):
+        """repair 타입 응답인지 감지"""
+        if not content:
+            return False
+        
+        # repair 응답의 특징적인 패턴들
+        repair_indicators = [
+            '📋 장애내역 복구방법',
+            '📋 이상징후내역 복구방법', 
+            '복구방법 1',
+            '복구방법 2',
+            '복구방법 3',
+            '종합 복구 방법',
+            '통합 복구 방법'
+        ]
+        
+        return any(indicator in content for indicator in repair_indicators)
     
     def display_documents_with_quality_info(self, documents):
         """품질 정보와 처리 방식 정보를 포함한 문서 표시"""
@@ -785,4 +1602,110 @@ INDEX_REBUILD_NAME=your-index-name
 - 목록 위주의 깔끔한 UI
 - 표 형태 데이터 제공
 - 엑셀 다운로드 버튼 자동 표시
-""")
+""")    
+    def format_output_type1(self, incident_data):
+        """안 1: 간결한 3단계 구조 형식으로 포맷팅"""
+        output = []
+        
+        # 헤더 정보
+        output.append("=" * 80)
+        output.append("                          장애 분석 보고서")
+        output.append("=" * 80)
+        output.append("")
+        
+        # 기본 정보
+        if incident_id := incident_data.get('incident_id'):
+            output.append(f"📋 장애 ID: {incident_id}")
+        if service := incident_data.get('service'):
+            output.append(f"🔧 서비스: {service}")
+        if severity := incident_data.get('severity'):
+            output.append(f"⚠️  등급: {severity}")
+        if timestamp := incident_data.get('timestamp'):
+            output.append(f"🕐 발생시간: {timestamp}")
+        if time_period := incident_data.get('time_period'):
+            output.append(f"🌓 시간대: {time_period}")
+        if duration := incident_data.get('duration'):
+            output.append(f"⏱️  장애시간: {duration}")
+        if day_of_week := incident_data.get('day_of_week'):
+            output.append(f"📅 요일: {day_of_week}")
+        if department := incident_data.get('department'):
+            output.append(f"👥 담당부서: {department}")
+        
+        output.append("")
+        output.append("-" * 80)
+        output.append("")
+        
+        # 1단계: 요약
+        if summary := incident_data.get('summary'):
+            output.append("【 1단계: 장애 요약 】")
+            output.append("")
+            output.append(f"  {summary}")
+            output.append("")
+        
+        # 2단계: 상세 분석
+        output.append("【 2단계: 상세 분석 】")
+        output.append("")
+        
+        if cause := incident_data.get('cause'):
+            output.append(f"  🔍 원인: {cause}")
+        if detailed_cause := incident_data.get('detailed_cause'):
+            output.append(f"  📝 상세원인: {detailed_cause}")
+        if impact := incident_data.get('impact'):
+            output.append(f"  💥 영향: {impact}")
+        if failure_status := incident_data.get('failure_status'):
+            output.append(f"  ❌ 장애상태: {failure_status}")
+        
+        output.append("")
+        
+        # 3단계: 조치 및 계획
+        output.append("【 3단계: 조치 및 개선 】")
+        output.append("")
+        
+        if recovery := incident_data.get('recovery'):
+            output.append(f"  ✅ 복구방법: {recovery}")
+        if recovery_method := incident_data.get('recovery_method'):
+            output.append(f"  🔧 복구절차: {recovery_method}")
+        if followup := incident_data.get('followup'):
+            output.append(f"  📈 후속조치: {followup}")
+        if improvement_plan := incident_data.get('improvement_plan'):
+            output.append(f"  💡 개선계획: {improvement_plan}")
+        if improvement_detail := incident_data.get('improvement_detail'):
+            output.append(f"  📋 개선상세: {improvement_detail}")
+        if fix_type := incident_data.get('fix_type'):
+            output.append(f"  🔨 처리유형: {fix_type}")
+        
+        output.append("")
+        output.append("=" * 80)
+        
+        return "\n".join(output)
+    
+    def display_incident_report_type1(self, incident_data, use_typewriter=True, duration=10.0):
+        """안 1: 간결한 3단계 구조 형식으로 장애 분석 보고서 출력
+        
+        Args:
+            incident_data: 장애 데이터 딕셔너리
+            use_typewriter: 타이핑 효과 사용 여부 (기본값: True)
+            duration: 타이핑 효과 전체 지속 시간 (초, 기본값: 10.0)
+        """
+        import time
+        
+        # 포맷팅된 텍스트 생성
+        formatted_text = self.format_output_type1(incident_data)
+        
+        if use_typewriter:
+            # 타이핑 효과로 출력
+            placeholder = st.empty()
+            text_length = len(formatted_text)
+            chars_per_second = text_length / duration
+            
+            displayed_text = ""
+            for i, char in enumerate(formatted_text):
+                displayed_text += char
+                placeholder.code(displayed_text, language='text')
+                
+                # 지연 시간 계산 (초 단위)
+                if i < len(formatted_text) - 1:
+                    time.sleep(1.0 / chars_per_second)
+        else:
+            # 즉시 출력
+            st.code(formatted_text, language='text')

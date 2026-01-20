@@ -186,7 +186,7 @@ class AzureClientManager:
     
     @st.cache_resource
     def init_clients(_self):
-        """Azure 클라이언트 초기화 - 임베딩 클라이언트 추가"""
+        """Azure 클라이언트 초기화 - 임베딩 클라이언트 추가 (단일 인덱스, 하위 호환성 유지)"""
         try:
             # Azure OpenAI 클라이언트 설정
             azure_openai_client = AzureOpenAI(
@@ -195,7 +195,7 @@ class AzureClientManager:
                 api_version=_self.config.azure_openai_api_version
             )
             
-            # Azure AI Search 클라이언트 설정
+            # Azure AI Search 클라이언트 설정 (장애내역)
             search_client = SearchClient(
                 endpoint=_self.config.search_endpoint,
                 index_name=_self.config.search_index,
@@ -214,8 +214,62 @@ class AzureClientManager:
             st.error(f"클라이언트 초기화 실패: {str(e)}")
             return None, None, None, False
     
+    # ★★★ 추가: 이중 인덱스 지원 메서드 ★★★
+    @st.cache_resource
+    def init_clients_dual_index(_self):
+        """
+        두 개의 인덱스를 지원하는 Azure 클라이언트 초기화
+        - search_client: 장애내역 인덱스 (INDEX_REBUILD_NAME)
+        - search_client_2: 이상징후 인덱스 (INDEX_REBUILD_NAME2)
+        
+        Returns:
+            tuple: (azure_openai_client, search_client, search_client_2, embedding_client, init_success)
+        """
+        try:
+            # Azure OpenAI 클라이언트 설정
+            azure_openai_client = AzureOpenAI(
+                azure_endpoint=_self.config.azure_openai_endpoint,
+                api_key=_self.config.azure_openai_key,
+                api_version=_self.config.azure_openai_api_version
+            )
+            
+            # Azure AI Search 클라이언트 1 - 장애내역 인덱스
+            search_client = SearchClient(
+                endpoint=_self.config.search_endpoint,
+                index_name=_self.config.search_index,  # INDEX_REBUILD_NAME
+                credential=AzureKeyCredential(_self.config.search_key)
+            )
+            
+            # ★★★ Azure AI Search 클라이언트 2 - 이상징후 인덱스 ★★★
+            search_client_2 = SearchClient(
+                endpoint=_self.config.search_endpoint,
+                index_name=_self.config.search_index_anomaly,  # INDEX_REBUILD_NAME2
+                credential=AzureKeyCredential(_self.config.search_key)
+            )
+            
+            # Vector 임베딩 클라이언트 설정
+            embedding_client = VectorEmbeddingClient(azure_openai_client, _self.config)
+            
+            # 연결 테스트 (두 개의 인덱스 모두 테스트)
+            test_result = _self._test_connections_dual_index(
+                azure_openai_client, search_client, search_client_2, embedding_client
+            )
+            
+            if test_result:
+                print(f"✅ 이중 인덱스 클라이언트 초기화 성공")
+                print(f"   - 장애내역 인덱스: {_self.config.search_index}")
+                print(f"   - 이상징후 인덱스: {_self.config.search_index_anomaly}")
+            
+            return azure_openai_client, search_client, search_client_2, embedding_client, test_result
+            
+        except Exception as e:
+            st.error(f"이중 인덱스 클라이언트 초기화 실패: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return None, None, None, None, False
+    
     def _test_connections(self, openai_client, search_client, embedding_client):
-        """클라이언트 연결 테스트"""
+        """클라이언트 연결 테스트 (단일 인덱스)"""
         try:
             # OpenAI 연결 테스트
             openai_client.chat.completions.create(
@@ -236,6 +290,38 @@ class AzureClientManager:
             
         except Exception as e:
             print(f"연결 테스트 실패: {str(e)}")
+            return False
+    
+    # ★★★ 추가: 이중 인덱스 연결 테스트 메서드 ★★★
+    def _test_connections_dual_index(self, openai_client, search_client, search_client_2, embedding_client):
+        """클라이언트 연결 테스트 (이중 인덱스)"""
+        try:
+            # OpenAI 연결 테스트
+            openai_client.chat.completions.create(
+                model=self.config.azure_openai_model,
+                messages=[{"role": "user", "content": "test"}],
+                max_tokens=1
+            )
+            
+            # Search 클라이언트 1 (장애내역) 연결 테스트
+            search_client.search(search_text="*", top=1)
+            print("✅ 장애내역 인덱스 연결 성공")
+            
+            # ★★★ Search 클라이언트 2 (이상징후) 연결 테스트 ★★★
+            search_client_2.search(search_text="*", top=1)
+            print("✅ 이상징후 인덱스 연결 성공")
+            
+            # Embedding 연결 테스트
+            test_embedding = embedding_client.get_embedding("연결 테스트", use_cache=False)
+            if not test_embedding:
+                raise Exception("임베딩 생성 실패")
+            
+            return True
+            
+        except Exception as e:
+            print(f"이중 인덱스 연결 테스트 실패: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def get_client_status(self):
@@ -262,6 +348,34 @@ class AzureClientManager:
             return {
                 "status": "error", 
                 "message": f"상태 확인 실패: {str(e)}"
+            }
+    
+    # ★★★ 추가: 이중 인덱스 상태 정보 반환 메서드 ★★★
+    def get_client_status_dual_index(self):
+        """이중 인덱스 클라이언트 상태 정보 반환"""
+        try:
+            azure_openai_client, search_client, search_client_2, embedding_client, success = self.init_clients_dual_index()
+            
+            if not success:
+                return {"status": "error", "message": "이중 인덱스 클라이언트 초기화 실패"}
+            
+            # 임베딩 캐시 통계
+            cache_stats = embedding_client.get_cache_stats()
+            
+            return {
+                "status": "connected",
+                "openai_model": self.config.azure_openai_model,
+                "embedding_model": self.config.embedding_model,
+                "search_index_incidents": self.config.search_index,
+                "search_index_anomalies": self.config.search_index_anomaly,
+                "cache_stats": cache_stats,
+                "vector_config": self.config.get_vector_search_config()
+            }
+            
+        except Exception as e:
+            return {
+                "status": "error", 
+                "message": f"이중 인덱스 상태 확인 실패: {str(e)}"
             }
 
 

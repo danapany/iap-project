@@ -80,7 +80,7 @@ def apply_quality_config_to_app_config(app_config, quality_config):
         base_thresholds.update(enhanced_thresholds)
         return base_thresholds
     
-    app_config.get_dynamic_thresholds = get_enhanced_dynamic_thresholds
+    app_config.get_enhanced_dynamic_thresholds = get_enhanced_dynamic_thresholds
     return app_config
 
 def apply_page_style():
@@ -116,7 +116,9 @@ def main():
     
     config = apply_quality_config_to_app_config(config, selected_quality_config)
     client_manager = AzureClientManager(config)
-    azure_openai_client, search_client, embedding_client, init_success = client_manager.init_clients()
+    
+    # ★★★ 수정: 두 개의 search_client 초기화 ★★★
+    azure_openai_client, search_client, search_client_2, embedding_client, init_success = client_manager.init_clients_dual_index()
     
     if not init_success:
         ui_components.show_connection_error()
@@ -150,10 +152,14 @@ def main():
         with st.chat_message("user"):
             st.write(user_query)
         
-        # 쿼리 처리
+        # ★★★ 수정: QueryProcessorLocal 초기화 시 search_client_2 전달 ★★★
         query_processor = QueryProcessorLocal(
-            azure_openai_client, search_client, config.azure_openai_model, 
-            config, embedding_client=embedding_client
+            azure_openai_client, 
+            search_client,           # 장애내역 인덱스
+            search_client_2,         # 이상징후 인덱스 (추가)
+            config.azure_openai_model, 
+            config, 
+            embedding_client=embedding_client
         )
         
         try:

@@ -198,6 +198,10 @@ def summarize_text(text, summary_type, max_tokens=150):
             temperature=0.3
         )
         
+        # None 체크 추가
+        if response.choices[0].message.content is None:
+            return "요약 생성 실패: API 응답이 비어있습니다."
+        
         summary = response.choices[0].message.content.strip()
         return summary
         

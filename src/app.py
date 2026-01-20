@@ -11,7 +11,7 @@ base_pages = [
     st.Page("chatbot_main_local.py",  title="트러블 체이서 챗봇", icon="🕵️‍♂️"),
     st.Page("chatbot_main_web.py",  title="트러블 체이서 챗봇(WEB검색)", icon="🕵️‍♂️"),
     st.Page("menu/2_Report_Gen_Assistant.py", title="장애보고서 초안생성 도우미", icon="📰"),
-    st.Page("menu/3_Seasonality_Predictor.py", title="시즈널리티 통계정보", icon="📈"),
+    st.Page("menu/3_Seasonality_Predictor.py", title="시즈널리티 통계정보", icon="📈")
 ]
 
 # 관리자용 페이지 목록

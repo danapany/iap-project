@@ -1,33 +1,68 @@
-AI 통화비서
-AI통화비서
-AI고객센터
+5G스마트팩토리
 AI 고객센터
+AI 통화비서
+AI고객센터
+AI통화비서
+API Link 포탈
+API Link 플랫폼
 API_Link_GW
+API_Link_포탈
+API_Link_플랫폼
+APILink플랫폼
+APT탐지-임직원
+B2B IoTMakers
+B2B_IoTMakers
+B2B원가플랫폼
+BAPM
 BI/DW
 BIDW
 BI신용평가정보서비스
 BSS-IoT
 CAPRI
+cMIMO
 CRAB
+CS관제
 CVSaaS플랫폼-Cloud
-Dev-Space
 Dev Space
+Dev-Space
+DLP
+DMS
 d-Space
+DT플랫폼
+eMTC_DMS
 EPC-cloud-서버
 ERP
-erp
-Erp
 GiGAGenie호텔
+GiGA에너지트레이드
 GIS플랫폼
+GMMSC
+GPS측위
 HIMS
 HTTPS분석/유해사이트차단
 IAMUI
 ICIS
+ICIS권한관리
+IDMS
+IoTSupport
+ISC-공통인프라
 IS만족센터
+ITAM
+IT-NMS
+ITO 포털
 ITO운영VDI
-IT-포털
-IT포털
+ITO포털
+IT이벤트수집시스템
+IT인프라_Shared
+IT인프라공통
+IT인프라운영자동화
+IT인프라통합관제
 IT포탈
+IT포털
+IT-포털
+KATE
+KDAP
+K-ICIS 요금
+K-ICIS오더
 KOS-Billing
 KOS-CRM(B2B)
 KOS-CRM(B2C)
@@ -42,102 +77,236 @@ KOS-인증권한
 KT AICC CCaaS
 KT AICC SaaS/PaaS
 KT AICC 공공지자체
+KT MEG
+KT MVNO 통합채널
+KT Shop
+kt 공인전자문서센터
 KT 안심박스
 KT 웹메일
+KT 테이블오더
 KTAICC
-KT-MEG+
-KT MEG
 KT-MEG
-MEG+
+KT-MEG+
+KT-RPA
+KT그룹소통포탈
+KT그룹소통포털
+KT-그룹소통포털
 KT내비
 KT메신저
+KT멤버십 마들랜 2.0
 KT멤버십 앱
 KT멤버십VAN대행
+KT멤버십마들랜
+KT멤버십마들랜2.0
 KT샵
+KT샵-외국인
 KT숍
-KT Shop
 KT원격오피스
 KT전자서명인증시스템
+KT카드영업
+LDAP
 LVSaaS플랫폼-Cloud
+MBrain
+M-Brain
+MEG+
+MIH망통합관리
+mKATE
+MMSG
 MVNE플랫폼
+MVNO보안
+MVNO유통관리
+NeOSS
+NeOSS장치연동
 nMIMO
+OFCS
+One LBS
+OneLBS
+One-LBS
 OSCA
 OSS-OM
 OTP
-PC-DRM
+PAS
 PC DRM
+PC-DRM
+PC가상화망분리
+PSSO
+Public Cloud 운영관리
+Public Cloud운영관리
+PublicCloud운영관리
 RCS중계
 RCS허브
+RCS홀세일
+REMS
 SCAP
+SCMS
 SHUB
 SHUB(IAMUI)
 SHUB(SCAP)
-IAMUI
-SCAP
+SILK
+SMSBILL
+SMSVAS
 SoIP-HDS인증
 VSaaS
+WhaTap 통합 모니터링
+WhaTap통합모니터링
 Y박스
+가상사설망
+가치제안서
+간편결제고객관리
+감염병확산방지
+개인정보유통관리
+검색콘텐츠
 결재
 고객상담지식관리
+고객센터상담관리
+공정경쟁
+관제지능화솔루션
+규제회계
+그룹교육포털
 글로벌커넥티드카
-기업형SMS
+글로벌트래픽
+기술인력육성
+기업모바일
 기업형MMS
+기업형SMS
+네트워크DLP
+네트워크DW
 네트워크설비운영관제
+네트워크정보관리
+대량메일발송
 대리점경영지원
+대외AI교육플랫폼
+대외연동인프라
+디지털 물류 플랫폼
+디지털자산투자서비스
 디지털헬스 패스
+라이크스튜디오
 라이프플랜
 레코딩서비스
 로밍렌탈관리
 로밍렌탈관리(RIS)
+로봇 플랫폼
+로열티
 마이데이터Delivery플랫폼
 마이데이터서비스플랫폼
 마이크로소프트365
 마이페이지
+메세징서비스
+메일아카이빙
+멤버십마들랜
 모바일KATE
-mKATE
+모바일앱난독화
+미납안내지원
 미디어광고플랫폼
 미디어인증
+미디어정산플랫폼
+발신번호변작대응
+법무통합
 벨링콘텐츠
+복합측위엔진
 본인확인
+부하발생기
+분실폰찾기
 블록체인기반지역화폐
 비대면 교육 플랫폼
+비발디
 비즈나루
 비즈니스프로세스관리
+빅데이터 분석유통 플랫폼
+빅데이터인텔리젼스플랫폼
+사내무선랜인증
 사내접근제어
+사내통합인증
+사이니
 생체인증플랫폼
+샤이니
 선불카드POS유통
+소상공인통합플랫폼
+수사기관
+스마트녹취백업
 스마트멀티인증플랫폼
+스마트메시지플러스
 스마트신청서
+스팸가입자서버
+신용평가정보Delivery플랫폼
+심툴킷인증플랫폼
 씨큐브
 아이서치
 아이엠/쇼미
+안전작업허가시스템
+애플리케이션성능관리
+애플리케이션연동
+앱두
+양방향 문자플랫폼
+언론홍보
 업무용VDI
+에너지통합관제플랫폼
 에어맵코리아앱
+영업품질관리시스템
 오아시스
+오픈소스SW거버넌스
+온/오프라인 VOC 통합관리 시스템
 온라인신청서
 와플
 원내비인프라
 원스토어
+원스토어통합정산및회계연동
+웹모니터링시스템
+웹방화벽
+웹위변조방지
+위성보정정보
 위치관리시스템
 유무선통합결제
 이미징정보관리
+인장관리
 인터넷속도측정
+임대단말라이프사이클관리
+임직원PC수준진단
+전력수요관리
+전사 클라우드 서비스 이용
 전사기준정보관리
+전사방화벽통합관리시스템
+전사통합IT자산관리
+전용회선시험
+접속료정산
+정보공유포털
 정보료한도관리
+제3자 제공동의 관리 플랫폼
+제로트러스트네트워크액세스
 종합차량정보
+지적재산권
+창고운송관리
 채용접수
+취약점진단
 침입차단
+침입탐지
+캐치콜
+커넥티드카온라인서비스플랫폼
+커뮤니케이션이메일
 케어몬
 케이티 커뮤니즈
-케이티커뮤니즈
 케이티 커뮤니즈 게이트웨이
+케이티 커뮤니즈 포털
 케이티닷컴
+케이티커뮤니즈
+케이트커뮤니즈게이트웨이
+테스트최적화플랫폼
 통신빅데이터플랫폼
+통합FIDO인증플랫폼
 통합IDMS
-IDMS
 통합NMS
+통합검색플랫폼
 통합과금
+통합광고플랫폼
+통합보안관제
 통합쿠폰플랫폼
 패밀리박스
+패킷분배플랫폼
+퍼블릭 클라우드 운영관리
+퍼블릭클라우드운영관리
 포인트허브
-네트워크DW
+플랫폼E2E관제
+현대차
+현장정보보호경보
+협력사관리
+휴대폰소액결제마케팅

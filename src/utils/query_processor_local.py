@@ -469,15 +469,21 @@ class ImprovedStatisticsCalculator:
         return stats
 
 class QueryProcessorLocal:
-    def __init__(self, azure_openai_client, search_client, model_name, config=None, embedding_client=None):
+    def __init__(self, azure_openai_client, search_client, search_client_2, model_name, config=None, embedding_client=None):
+        """
+        Args:
+            search_client: 장애내역 인덱스 클라이언트 (INDEX_REBUILD_NAME)
+            search_client_2: 이상징후내역 인덱스 클라이언트 (INDEX_REBUILD_NAME2)
+        """
         self.azure_openai_client = azure_openai_client
         self.search_client = search_client
+        self.search_client_2 = search_client_2  # 이상징후 인덱스 추가
         self.model_name = model_name
         self.config = config or AppConfigLocal()
         self.embedding_client = embedding_client
         
-        # 컴포넌트 초기화
-        self.search_manager = SearchManagerLocal(search_client, embedding_client, self.config)
+        # 컴포넌트 초기화 - search_client_2 전달
+        self.search_manager = SearchManagerLocal(search_client, search_client_2, embedding_client, self.config)
         self.ui_components = UIComponentsLocal()
         self.reprompting_db_manager = RepromptingDBManager()
         self.chart_manager = ChartManager()
@@ -531,7 +537,132 @@ class QueryProcessorLocal:
         else:
             self.monitoring_manager = MonitoringManager()
             self.monitoring_enabled = False
+
+    def typewriter_effect_stream(self, text, delay=0.01):
+        """
+        스트림릿 환경에서 타이핑 효과를 주는 함수
+        
+        Args:
+            text (str): 출력할 텍스트
+            delay (float): 글자당 딜레이 시간 (초)
+        
+        Returns:
+            generator: 타이핑 효과를 위한 제너레이터
+        """
+        for char in text:
+            yield char
+            time.sleep(delay)
     
+    def format_output_type1(self, data):
+        """
+        안 1: 간결한 3단계 구조 형식으로 포맷팅
+        
+        Args:
+            data (dict): 장애 정보 딕셔너리
+                - summary: 종합 의견
+                - cause: 장애 원인
+                - impact: 영향 범위
+                - recovery: 복구 방법
+                - followup: 후속 조치
+                - incident_id: 장애 ID
+                - service: 서비스명
+                - severity: 장애등급
+                - timestamp: 발생일시
+                - time_period: 발생시간대
+                - duration: 장애시간
+                - day_of_week: 발생요일
+                - department: 담당부서
+                - fix_type: 처리유형
+                - detailed_cause: 상세 장애원인
+                - failure_status: 장애상황
+                - recovery_method: 복구방법
+                - improvement_plan: 개선계획
+                - improvement_detail: 개선내역
+        
+        Returns:
+            str: 포맷된 텍스트
+        """
+        output = f"""[장애 분석 보고서]
+
+■ 종합 의견
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{data.get('summary', '')}
+
+■ 핵심 포인트
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+① 장애 원인: {data.get('cause', '')}
+② 영향 범위: {data.get('impact', '')}
+③ 복구 방법: {data.get('recovery', '')}
+④ 후속 조치: {data.get('followup', '')}
+
+■ 세부 내역
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[장애 정보]
+• 장애 ID      : {data.get('incident_id', '')}
+• 서비스명     : {data.get('service', '')}
+• 장애등급     : {data.get('severity', '')}
+• 발생일시     : {data.get('timestamp', '')}
+• 발생시간대   : {data.get('time_period', '')}
+• 장애시간     : {data.get('duration', '')}
+• 발생요일     : {data.get('day_of_week', '')}
+
+[시스템 정보]
+• 담당부서     : {data.get('department', '')}
+• 처리유형     : {data.get('fix_type', '')}
+• 장애원인     : {data.get('detailed_cause', '')}
+
+[복구 조치]
+• 장애상황     : {data.get('failure_status', '')}
+• 복구방법     : {data.get('recovery_method', '')}
+• 개선계획     : {data.get('improvement_plan', '')}
+• 개선내역     : {data.get('improvement_detail', '')}
+"""
+        return output
+    
+    def display_with_typewriter_effect(self, data, total_duration=10.0):
+        """
+        타이핑 효과와 함께 '안 1' 형식으로 출력
+        
+        Args:
+            data (dict): 장애 정보 딕셔너리
+            total_duration (float): 전체 출력에 걸릴 총 시간 (초)
+        """
+        # 포맷된 텍스트 생성
+        formatted_text = self.format_output_type1(data)
+        
+        # 전체 글자 수에 따라 delay 계산
+        total_chars = len(formatted_text)
+        delay = total_duration / total_chars if total_chars > 0 else 0.01
+        
+        # 스트림릿 placeholder 생성
+        placeholder = st.empty()
+        displayed_text = ""
+        
+        # 타이핑 효과로 출력
+        for char in formatted_text:
+            displayed_text += char
+            placeholder.markdown(f"```\n{displayed_text}\n```")
+            time.sleep(delay)
+        
+        # 최종 출력
+        placeholder.markdown(f"```\n{displayed_text}\n```")
+    
+    def display_incident_report_type1(self, incident_data, use_typewriter=True, duration=10.0):
+        """
+        장애 보고서를 '안 1' 형식으로 출력하는 편의 함수
+        
+        Args:
+            incident_data (dict): 장애 정보 딕셔너리
+            use_typewriter (bool): 타이핑 효과 사용 여부
+            duration (float): 타이핑 효과 지속 시간
+        """
+        if use_typewriter:
+            self.display_with_typewriter_effect(incident_data, duration)
+        else:
+            formatted_text = self.format_output_type1(incident_data)
+            st.markdown(f"```\n{formatted_text}\n```")
+
     @property
     def statistics_db_manager(self):
         """Lazy initialization property for StatisticsDBManager"""
@@ -1315,6 +1446,18 @@ class QueryProcessorLocal:
         if not query:
             return 'default'
         
+        # ★★★ 추가: incident_id 패턴 감지 시 바로 repair 반환 ★★★
+        query_stripped = query.strip()
+        # incident_id 패턴: INM으로 시작하고 숫자가 이어지는 형태
+        if re.match(r'^INM\d+$', query_stripped, re.IGNORECASE):
+            return 'repair'
+        
+        # 🔥 강력한 repair 키워드 우선 체크 (LLM보다 우선)
+        query_lower = query.lower()
+        strong_repair_keywords = ['복구방법', '해결방법', '조치방법', '대응방법']
+        if any(keyword in query_lower for keyword in strong_repair_keywords):
+            return 'repair'
+        
         try:
             # 개선된 분류 프롬프트 - 의도 중심
             classification_prompt = f"""당신은 IT 장애 관리 시스템의 질문 분석 전문가입니다.
@@ -1324,23 +1467,30 @@ class QueryProcessorLocal:
 
 ## 분류 기준
 
-### 1. repair (복구/해결 방법 문의)
+### 1. repair (복구/해결 방법 문의) ⭐ 최우선
 **사용자가 문제를 어떻게 해결할지 알고 싶어함**
 - "어떻게 해결하나요?", "복구 방법은?", "조치 방법은?"
 - "왜 이런 문제가 생기나요?", "원인이 뭔가요?"
 - "~할 때 어떻게 하나요?", "~하려면 어떻게?"
+
+🔥 **절대 규칙:** "복구방법", "해결방법", "조치방법", "대응방법"이 포함되면 **무조건 repair**
 
 예시:
 - "스마트신청서 장애발생시 어떻게 해결해야 하나요?" → repair
 - "로그인 안 될 때 어떻게 하나요?" → repair  
 - "API 연동 오류 해결 방법" → repair
 - "접속 불가 원인 분석" → repair
+- "사내통합인증 디바이스 등록불가현상 복구방법이 뭐야?" → repair
 
 ### 2. inquiry (장애 내역/목록 조회)
 **사용자가 과거 장애 기록이나 목록을 보고 싶어함**
 - "~한 장애 내역 보여줘", "~한 사례들 알려줘"
 - "어떤 장애들이 있었나요?", "~한 장애 목록"
 - "~에서 발생한 장애들"
+
+⚠️ **주의:** "현상"이라는 단어만으로는 inquiry가 아닙니다!
+- "디바이스 등록불가 현상" → 단순히 문제를 설명하는 것
+- "디바이스 등록불가 현상 내역 보여줘" → inquiry (내역 요청)
 
 예시:
 - "ERP 장애 내역 알려줘" → inquiry
@@ -1430,6 +1580,11 @@ class QueryProcessorLocal:
         if not query:
             return 'default'
         
+        # ★★★ 추가: incident_id 패턴 최우선 체크 ★★★
+        query_stripped = query.strip()
+        if re.match(r'^INM\d+$', query_stripped, re.IGNORECASE):
+            return 'repair'
+        
         query_lower = query.lower()
         
         # 1순위: repair 패턴
@@ -1448,7 +1603,7 @@ class QueryProcessorLocal:
         inquiry_patterns = [
             r'(?:내역|목록|리스트|이력).*(?:알려|보여|말해|확인|조회)',
             r'(?:알려|보여|말해).*(?:내역|목록|리스트|이력)',
-            r'(?:발생한|있었던).*(?:장애|사례|건)',
+            r'(?:발생한|있었던).*(?:내역|목록|리스트|이력|사례)',
         ]
         
         for pattern in inquiry_patterns:
@@ -1496,7 +1651,7 @@ class QueryProcessorLocal:
                 ],
                 'inquiry': [
                     '내역', '목록', '리스트', '이력', '조회',
-                    '사례', '알려줘', '보여줘', '발생한'
+                    '사례', '알려줘', '보여줘'
                 ],
                 'statistics': [
                     '몇건', '몇개', '얼마나', '건수', '개수', '통계',
@@ -1666,7 +1821,7 @@ class QueryProcessorLocal:
         )
 
     def process_query(self, query, query_type=None):
-        """메인 쿼리 처리 - RAG 데이터 무결성 절대 보장"""
+        """메인 쿼리 처리 - 두 개의 인덱스 검색 지원"""
 
         if not hasattr(st.session_state, 'embedding_cache'):
             st.session_state.embedding_cache = {}
@@ -1703,25 +1858,57 @@ class QueryProcessorLocal:
                     with st.spinner("🔍 질문 분석 중..."):
                         query_type = self.classify_query_type_with_llm(processing_query)
                 
-                target_service_name = self.search_manager.extract_service_name_from_query(processing_query)
-                
-                with st.spinner("📄 문서 검색 중..."):
-                    documents = self.search_manager.semantic_search_with_adaptive_filtering(processing_query, target_service_name, query_type) or []
-                    document_count = len(documents)
+                # ★★★ statistics 타입은 RAG 검색 없이 DB 통계만 사용 ★★★
+                if query_type == "statistics":
+                    with st.spinner("📊 통계 조회 중..."):
+                        # DB 기반 통계 직접 생성
+                        response = self._generate_statistics_response_with_integrity(query, [])
+                        
+                        if response:
+                            response_text = response[0] if isinstance(response, tuple) else response
+                            success = True
+                            document_count = 0  # statistics는 DB 기반이므로 문서 카운트 0
+                            
+                            self._display_response_with_marker_conversion(response, query_type=query_type)
+                            st.session_state.messages.append({"role": "assistant", "content": response_text})
+                        else:
+                            response_text = "통계 조회 중 오류가 발생했습니다."
+                            success = False
+                            error_message = "통계 조회 실패"
+                            st.write(response_text)
+                            st.session_state.messages.append({"role": "assistant", "content": response_text})
+                else:
+                    # ★★★ statistics 외의 타입은 기존 RAG 검색 로직 사용 ★★★
+                    target_service_name = self.search_manager.extract_service_name_from_query(processing_query)
+
+                    with st.spinner("📄 문서 검색 중..."):
+                        # ★★★ 수정된 부분: 두 개의 인덱스에서 검색 ★★★
+                        search_results = self.search_manager.semantic_search_with_adaptive_filtering_dual_index(
+                            processing_query, target_service_name, query_type
+                        )
+
+                        incidents = search_results.get('incidents', [])
+                        anomalies = search_results.get('anomalies', [])
+                        document_count = len(incidents) + len(anomalies)
                     
-                    if documents:
+                    if incidents or anomalies:
                         with st.expander("📄 매칭된 문서 상세 보기"):
-                            self.ui_components.display_documents_with_quality_info(documents)
+                            if incidents:
+                                st.markdown("### 🔴 장애내역")
+                                self.ui_components.display_documents_with_quality_info(incidents)
+                            if anomalies:
+                                st.markdown("### 🟡 이상징후내역")
+                                self.ui_components.display_documents_with_quality_info(anomalies)
                         
                         with st.spinner("🤖 AI 답변 생성 중..."):
-                            # 무결성 보장 응답 생성 메서드만 사용
-                            response = self.generate_rag_response_with_data_integrity(
-                                query, documents, query_type, time_conditions, department_conditions, reprompting_info
+                            # ★★★ 수정된 부분: 장애/이상징후 분리하여 응답 생성 ★★★
+                            response = self.generate_rag_response_with_dual_sources(
+                                query, incidents, anomalies, query_type, 
+                                time_conditions, department_conditions, reprompting_info
                             )
                             
                             if response:
                                 response_text = response[0] if isinstance(response, tuple) else response
-                                
                                 success = self._is_successful_response(response_text, document_count)
                                 if not success:
                                     error_message = self._get_failure_reason(response_text, document_count)
@@ -1792,6 +1979,178 @@ class QueryProcessorLocal:
                     response_content=response_text
                 )
                 st.session_state.current_query_logged = True
+
+    def generate_rag_response_with_dual_sources(self, query, incidents, anomalies, query_type="default", 
+                                                 time_conditions=None, department_conditions=None, reprompting_info=None):
+        """
+        장애내역과 이상징후내역을 분리하여 응답 생성
+        
+        Args:
+            query: 사용자 질문
+            incidents: 장애내역 문서 리스트
+            anomalies: 이상징후내역 문서 리스트
+            query_type: 쿼리 타입
+        
+        Returns:
+            str: 생성된 응답
+        """
+        if not incidents and not anomalies:
+            return "검색된 문서가 없어서 답변을 제공할 수 없습니다."
+        
+        try:
+            # 원본 데이터 보존을 위한 전처리
+            processed_incidents = [self.normalizer.normalize_document_with_integrity(doc) for doc in incidents]
+            processed_anomalies = [self.normalizer.normalize_document_with_integrity(doc) for doc in anomalies]
+            
+            # 조건 검증
+            validated_incidents = self._validate_documents_against_query_conditions(query, processed_incidents)
+            validated_anomalies = self._validate_documents_against_query_conditions(query, processed_anomalies)
+            
+            if not validated_incidents and not validated_anomalies:
+                return "검색된 문서가 요청하신 조건과 일치하지 않습니다."
+            
+            # statistics 타입은 기존 로직 사용
+            if query_type == "statistics":
+                all_docs = validated_incidents + validated_anomalies
+                return self._generate_statistics_response_with_integrity(query, all_docs)
+            
+            # 정렬 적용
+            sort_info = self.detect_sorting_requirements(query)
+            sorted_incidents = self.apply_custom_sorting(validated_incidents, sort_info)
+            sorted_anomalies = self.apply_custom_sorting(validated_anomalies, sort_info)
+            
+            final_query = reprompting_info.get('transformed_query', query) if reprompting_info and reprompting_info.get('transformed') else query
+            
+            # ★★★ 핵심 수정: 컨텍스트를 장애/이상징후로 구분하여 구성 ★★★
+            context_parts = [f"""전체 문서 수: 장애내역 {len(sorted_incidents)}건, 이상징후내역 {len(sorted_anomalies)}건
+⚠️ 중요: 아래 모든 필드값은 원본 RAG 데이터이므로 절대 변경하거나 요약하지 마세요.
+
+=== 장애내역 (Incident Records) ===
+"""]
+            
+            # 장애내역 추가
+            for i, doc in enumerate(sorted_incidents[:15]):  # 최대 15건
+                context_parts.append(f"""[장애내역 {i+1}]
+장애 ID: {doc.get('incident_id', '')}
+서비스명: {doc.get('service_name', '')}
+장애시간: {doc.get('error_time', 0)}분
+장애현상: {doc.get('symptom', '')}
+장애원인: {doc.get('root_cause', '')}
+복구방법: {doc.get('incident_repair', '')}
+개선계획: {doc.get('incident_plan', '')}
+처리유형: {doc.get('done_type', '')}
+발생일자: {doc.get('error_date', '')}
+장애등급: {doc.get('incident_grade', '')}
+담당부서: {doc.get('owner_depart', '')}
+시간대: {doc.get('daynight', '')}
+요일: {doc.get('week', '')}
+""")
+            
+            # 이상징후내역 추가
+            if sorted_anomalies:
+                context_parts.append("""
+=== 이상징후내역 (Anomaly Records) ===
+""")
+                for i, doc in enumerate(sorted_anomalies[:15]):  # 최대 15건
+                    context_parts.append(f"""[이상징후 {i+1}]
+장애 ID: {doc.get('incident_id', '')}
+서비스명: {doc.get('service_name', '')}
+장애시간: {doc.get('error_time', 0)}분
+장애현상: {doc.get('symptom', '')}
+장애원인: {doc.get('root_cause', '')}
+복구방법: {doc.get('incident_repair', '')}
+개선계획: {doc.get('incident_plan', '')}
+처리유형: {doc.get('done_type', '')}
+발생일자: {doc.get('error_date', '')}
+장애등급: {doc.get('incident_grade', '')}
+담당부서: {doc.get('owner_depart', '')}
+시간대: {doc.get('daynight', '')}
+요일: {doc.get('week', '')}
+""")
+            
+            # ★★★ 핵심 수정: 프롬프트에 장애/이상징후 구분 지시 추가 ★★★
+            integrity_prompt = self._get_data_integrity_prompt_dual_source(query_type)
+            
+            user_prompt = f"""{integrity_prompt}
+
+**원본 RAG 데이터 (절대 변경 금지):**
+{chr(10).join(context_parts)}
+
+**사용자 질문:** {final_query}
+
+**응답 지침:**
+1. 복구방법 박스에는 장애내역과 이상징후내역을 명확히 구분하여 표시하세요
+2. 세부내역 표에서는 장애내역을 먼저 출력하고, 그 다음 이상징후내역을 출력하세요
+3. 위 원본 데이터의 모든 필드값을 정확히 그대로 출력하세요
+4. 절대 요약하거나 변경하지 마세요
+
+답변:"""
+
+            max_tokens = 2500 if query_type == 'inquiry' else 3000 if query_type == 'repair' else 1500
+            response = self.azure_openai_client.chat.completions.create(
+                model=self.model_name, 
+                messages=[
+                    {"role": "system", "content": integrity_prompt}, 
+                    {"role": "user", "content": user_prompt}
+                ], 
+                temperature=0.0, 
+                max_tokens=max_tokens
+            )
+            
+            final_answer = response.choices[0].message.content
+            return final_answer
+            
+        except Exception as e:
+            st.error(f"응답 생성 실패: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return "죄송합니다. 응답을 생성하는 중 오류가 발생했습니다."
+    
+    def _get_data_integrity_prompt_dual_source(self, query_type):
+        """두 개의 소스(장애/이상징후)를 고려한 데이터 무결성 보장 프롬프트"""
+        base_prompt = f"""당신은 IT 시스템 장애 분석 전문가입니다.
+
+🚨 절대 최우선 규칙 - 데이터 무결성 보장 🚨
+**제공된 RAG 데이터의 어떤 정보도 절대 변경하거나 수정하지 마세요**
+
+### 1. 원본 데이터 보존 원칙
+- **모든 필드값을 원본 RAG 데이터 그대로 출력하세요**
+- **절대 요약하거나 의역하지 마세요**
+- **"해당 정보없음", "N/A", "정보 없음" 등의 임의 값 생성 금지**
+
+### 2. 장애내역과 이상징후내역 구분 원칙 ★★★
+- **복구방법 섹션에서는 반드시 다음과 같이 구분하여 표시:**
+  
+  ## 📋 장애내역 복구방법
+  [장애내역의 복구방법 내용]
+  
+  ## 📋 이상징후내역 복구방법  
+  [이상징후내역의 복구방법 내용]
+
+- **세부내역 표에서는 반드시 다음 순서로 출력:**
+  1. 먼저 장애내역 리스트 전체 출력
+  2. 그 다음 이상징후내역 리스트 출력
+  3. 각 내역의 출처를 명확히 표시
+
+### 3. 필수 준수사항
+"""
+        
+        if query_type == "repair":
+            base_prompt += """
+**REPAIR 타입 추가 지침:**
+- 복구방법 질문 시 장애내역과 이상징후내역을 모두 제공
+- 각 출처를 명확히 구분하여 표시
+- incident_repair 필드만 사용하고 incident_plan은 별도 참고용으로만
+"""
+        elif query_type == "inquiry":
+            base_prompt += """
+**INQUIRY 타입 추가 지침:**
+- 장애내역 리스트를 먼저 표 형태로 출력
+- 이상징후내역 리스트를 그 다음 표 형태로 출력
+- 각 표의 제목에 출처를 명시 (예: "## 장애내역", "## 이상징후내역")
+"""
+        
+        return base_prompt
 
     # 기타 필수 메서드들
     def _is_successful_response(self, response_text: str, document_count: int) -> bool:
@@ -2006,7 +2365,14 @@ class QueryProcessorLocal:
             cause_stats = db_stats['cause_type_stats']
             # 상위 10개만 차트로 표시
             top_causes = dict(list(cause_stats.items())[:10])
-            chart_type = requested_chart_type or 'horizontal_bar'
+            
+            # 사용자가 명시적으로 요청한 차트 타입을 우선 사용
+            if requested_chart_type:
+                chart_type = requested_chart_type
+            else:
+                # 기본값은 horizontal_bar (항목이 많을 때 적합)
+                chart_type = 'horizontal_bar'
+            
             return top_causes, chart_type
         
         # 기존 로직

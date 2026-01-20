@@ -8,10 +8,18 @@ from config.settings_local import AppConfigLocal
 from utils.filter_manager import DocumentFilterManager, FilterConditions, QueryType
 
 class SearchManagerLocal:
-    """Vector 하이브리드 검색 관리 클래스 - RAG 데이터 무결성 절대 보장"""
+    """Vector 하이브리드 검색 관리 클래스 - 두 개의 인덱스 지원"""
     
-    def __init__(self, search_client, embedding_client, config=None):
-        self.search_client = search_client
+    def __init__(self, search_client, search_client_2, embedding_client, config=None):
+        """
+        Args:
+            search_client: 장애내역 인덱스 클라이언트 (INDEX_REBUILD_NAME)
+            search_client_2: 이상징후내역 인덱스 클라이언트 (INDEX_REBUILD_NAME2)
+            embedding_client: 임베딩 클라이언트
+            config: 설정 객체
+        """
+        self.search_client = search_client  # 장애내역 인덱스
+        self.search_client_2 = search_client_2  # 이상징후내역 인덱스
         self.embedding_client = embedding_client
         self.config = config or AppConfigLocal()
         self.debug_mode = False
@@ -58,6 +66,136 @@ class SearchManagerLocal:
             'SSL': ['ssl', 'https', 'Secure Sockets Layer', '보안소켓계층'],
             'URL': ['url', 'link', '링크', 'Uniform Resource Locator']
         }
+
+    def semantic_search_with_adaptive_filtering_dual_index(self, query, target_service_name=None, query_type="default"):
+        """
+        두 개의 인덱스(장애내역 + 이상징후내역)를 검색하여 결과를 병합
+        
+        Returns:
+            dict: {
+                'incidents': [...],  # 장애내역 리스트
+                'anomalies': [...]   # 이상징후내역 리스트
+            }
+        """
+        try:
+            # 장애내역 검색 (기존 로직)
+            incidents = self.semantic_search_with_adaptive_filtering(
+                query, target_service_name, query_type
+            ) or []
+            
+            # 이상징후내역 검색 (동일 로직으로 search_client_2 사용)
+            anomalies = self._search_from_client(
+                self.search_client_2, query, target_service_name, query_type
+            ) or []
+            
+            # 문서에 출처 표시 추가
+            for doc in incidents:
+                doc['_source_type'] = 'incident'  # 장애내역
+            
+            for doc in anomalies:
+                doc['_source_type'] = 'anomaly'  # 이상징후내역
+            
+            return {
+                'incidents': incidents,
+                'anomalies': anomalies
+            }
+            
+        except Exception as e:
+            print(f"ERROR: dual index search failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return {'incidents': [], 'anomalies': []}
+    
+    def _search_from_client(self, client, query, target_service_name=None, query_type="default", top_k=15):
+        """
+        특정 search client를 사용하여 검색 수행
+        
+        Args:
+            client: 검색 클라이언트 (search_client 또는 search_client_2)
+            query: 검색 쿼리
+            target_service_name: 대상 서비스명
+            query_type: 쿼리 타입
+            top_k: 반환할 최대 결과 수
+        """
+        try:
+            # ★★★ 이상징후 인덱스 여부 판단 ★★★
+            is_anomaly = (client == self.search_client_2)
+            
+            if is_anomaly:
+                print(f"DEBUG: [ANOMALY] Using strict thresholds for anomaly index search")
+            
+            # 기본 검색 로직
+            grade_info = self.extract_incident_grade_from_query(query)
+            time_info = self._extract_year_month_from_query_unified(query)
+            
+            enhanced_query = (self.build_grade_search_query(query, grade_info) 
+                            if grade_info['has_grade_query'] else query)
+            
+            # 시간 조건 추가
+            enhanced_query = self._add_time_conditions(enhanced_query, time_info)
+            
+            # 서비스명 조건 추가  
+            if target_service_name:
+                enhanced_query = self._add_service_conditions(enhanced_query, target_service_name)
+            
+            # ★★★ 이상징후는 더 적은 수의 결과만 가져옴 ★★★
+            actual_top_k = 10 if is_anomaly else top_k
+            
+            results = client.search(
+                search_text=enhanced_query, top=actual_top_k, include_total_count=True,
+                select=["incident_id", "service_name", "error_time", "effect", "symptom", "repair_notice",
+                       "error_date", "week", "daynight", "root_cause", "incident_repair", "incident_plan",
+                       "cause_type", "done_type", "incident_grade", "owner_depart", "year", "month"]
+            )
+            
+            documents = [self._convert_search_result_to_document(result) for result in results]
+            
+            # ★★★ 이상징후는 엄격한 스코어 필터링 ★★★
+            if is_anomaly:
+                # 임계값 가져오기
+                thresholds = self.config.get_dynamic_thresholds(query_type, query, is_anomaly=True)
+                search_threshold = thresholds.get('search_threshold', 0.35)
+                reranker_threshold = thresholds.get('reranker_threshold', 2.5)
+                
+                print(f"DEBUG: [ANOMALY] Applying strict thresholds - search: {search_threshold}, reranker: {reranker_threshold}")
+                
+                # 엄격한 필터링 적용
+                filtered_by_score = []
+                for doc in documents:
+                    search_score = doc.get('score', 0) or 0
+                    reranker_score = doc.get('reranker_score', 0) or 0
+                    
+                    # 둘 중 하나라도 임계값을 넘어야 함
+                    if search_score >= search_threshold or reranker_score >= reranker_threshold:
+                        filtered_by_score.append(doc)
+                        if self.debug_mode:
+                            print(f"DEBUG: [ANOMALY] Kept doc - search_score: {search_score:.3f}, reranker_score: {reranker_score:.3f}")
+                    else:
+                        if self.debug_mode:
+                            print(f"DEBUG: [ANOMALY] Filtered out - search_score: {search_score:.3f}, reranker_score: {reranker_score:.3f}")
+                
+                documents = filtered_by_score
+                print(f"DEBUG: [ANOMALY] After score filtering: {len(documents)} documents")
+            
+            # 통합 필터링 시스템 적용
+            query_type_enum = self._convert_to_query_type_enum(query_type)
+            
+            # ★★★ 이상징후는 LLM 검증도 활성화 (더 엄격) ★★★
+            enable_llm = is_anomaly
+            
+            filtered_docs, _ = self.filter_manager.apply_comprehensive_filtering(
+                documents, query, query_type_enum, enable_llm_validation=enable_llm
+            )
+            
+            if is_anomaly:
+                print(f"DEBUG: [ANOMALY] After comprehensive filtering: {len(filtered_docs)} documents")
+            
+            return filtered_docs
+        except Exception as e:
+            print(f"ERROR: _search_from_client failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
 
     def _load_service_names_from_file(self):
         """config/service_names.txt 파일에서 서비스명 목록 로드"""

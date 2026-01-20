@@ -240,7 +240,7 @@ class ExcelDownloadManager:
             if not table_data:
                 print(f"DEBUG: 표 데이터를 찾을 수 없음")
                 # 강제로 간단한 표 생성 시도
-                if "장애 ID" in response_text and "서비스명" in response_text:
+                if "장애" in response_text or "INM" in response_text:
                     table_data = self._create_simple_table_from_response(response_text)
             
             if not table_data:
