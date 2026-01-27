@@ -654,6 +654,8 @@ class UIComponentsLocal:
             print("="*80)
             print(response_text[:1500])
             print("="*80)
+            print(f"DEBUG: 파싱 시작 - 전체 라인 수: {len(response_text.split(chr(10)))}")
+            
             incidents_data = {
                 'summary': {
                     'overall': '',
@@ -673,26 +675,69 @@ class UIComponentsLocal:
             current_incident = None
             incidents = []
             in_incident_section = False
+            current_section_type = None  # ★★★ 추가: 현재 섹션 타입 추적 ('incident' 또는 'anomaly') ★★★
             
             i = 0
             while i < len(lines):
                 line = lines[i].strip()
                 
-                # 장애내역/이상징후내역 섹션 시작 감지
-                if ('장애내역' in line and 'Incident Records' in line) or ('이상징후내역' in line and 'Anomaly Records' in line):
+                # ★★★ 수정: 섹션 감지 로직 유연화 ★★★
+                # 장애내역/이상징후내역 섹션 시작 감지 - 다양한 형식 지원
+                if any([
+                    '장애내역' in line and ('Incident' in line or line.startswith('####') or line.startswith('###')),
+                    '이상징후내역' in line and ('Anomaly' in line or line.startswith('####') or line.startswith('###')),
+                    line.strip() == '#### 장애내역',
+                    line.strip() == '#### 이상징후내역',
+                    line.strip() == '### 장애내역',
+                    line.strip() == '### 이상징후내역',
+                    '세부내역' in line and '####' in line,
+                    '장애내역' in line and i > 0 and '세부' in ''.join(lines[max(0, i-5):i])  # 세부내역 섹션 내부
+                ]):
                     in_incident_section = True
-                    print(f"DEBUG: ✅ 섹션 감지됨: {line}")
+                    # ★★★ 추가: 섹션 타입 판단 ★★★
+                    if '이상징후' in line:
+                        current_section_type = 'anomaly'
+                    else:
+                        current_section_type = 'incident'
+                    print(f"DEBUG: ✅ 섹션 감지됨: {line} (type: {current_section_type})")
                     i += 1
                     continue
                 
-                # 개별 장애/이상징후 시작 감지 (예: [장애내역 2], [이상징후 1], Case 1 등)
-                if in_incident_section and (line.startswith('[장애내역') or line.startswith('[이상징후') or line.startswith('Case ')):
+                # ★★★ 수정: 개별 장애/이상징후 시작 감지 - 다양한 형식 지원 ★★★
+                # 패턴: [장애내역 2], [이상징후 1], Case 1, 1., 2., 등
+                is_incident_start = False
+                source_type = 'incident'  # 기본값
+                
+                if in_incident_section:
+                    # 명확한 시작 패턴
+                    if in_incident_section and ('장애 ID:' in line or '장애ID:' in line):
+                        if current_incident is None or current_incident.get('incident_id'):
+                            # 새로운 incident 시작
+                            is_incident_start = True
+                            # ★★★ 수정: current_section_type 기반으로 source_type 결정 ★★★
+                            source_type = current_section_type if current_section_type else 'incident'
+                        # 번호 매김 패턴 (1., 2., 3. 등)
+                        elif re.match(r'^\d+\.$', line):
+                            is_incident_start = True
+                            # ★★★ 수정: current_section_type 우선 사용 ★★★
+                            if current_section_type:
+                                source_type = current_section_type
+                            else:
+                                # 이전 섹션 타입 확인 (fallback)
+                                for prev_line in reversed(lines[max(0, i-20):i]):
+                                    if '이상징후' in prev_line:
+                                        source_type = 'anomaly'
+                                        break
+                                    elif '장애내역' in prev_line:
+                                        source_type = 'incident'
+                                        break                            
+
+
+                if is_incident_start:
                     if current_incident and any(current_incident.values()):
                         incidents.append(current_incident)
                         print(f"DEBUG: ✅ Incident 추가됨: {current_incident.get('incident_id')}")
                     
-                    # _source_type 결정: [이상징후]로 시작하면 'anomaly', 그 외는 'incident'
-                    source_type = 'anomaly' if line.startswith('[이상징후') else 'incident'
                     print(f"DEBUG: 🆕 새 Incident 시작: {line} (type: {source_type})")
                     
                     current_incident = {
@@ -819,12 +864,22 @@ class UIComponentsLocal:
                         current_incident['detailed_cause'] = cause_text
                         i = j - 1
                     
-                    elif '장애상황:' in line or '현상:' in line or '증상:' in line:
+                    elif '장애현상:' in line or '현상:' in line or '증상:' in line or '장애상황:' in line:
                         status_value = line.split(':')[-1].strip()
                         # ★★★ 빈 값이 아닐 때만 저장 (빈 라인 무시) ★★★
                         if status_value:
                             current_incident['failure_status'] = status_value
                             current_incident['symptom'] = status_value
+                        # ★★★ 추가: 다음 줄도 장애현상의 일부인지 확인 ★★★
+                        if not status_value or len(status_value) < 10:
+                            j = i + 1
+                            while j < len(lines) and lines[j].strip() and not ':' in lines[j]:
+                                status_value += (' ' if status_value else '') + lines[j].strip()
+                                j += 1
+                            if status_value:
+                                current_incident['failure_status'] = status_value
+                                current_incident['symptom'] = status_value
+                            i = j - 1
                     
                     elif '복구방법:' in line or '조치방법:' in line or '해결방법:' in line:
                         recovery_text = line.split(':')[-1].strip()
@@ -872,11 +927,15 @@ class UIComponentsLocal:
             
             # 최소한 incidents가 있어야 성공
             print(f"DEBUG: 파싱 완료 - incidents 개수: {len(incidents)}")
+            print(f"DEBUG: in_incident_section 최종 상태: {in_incident_section}")
             if incidents:
                 for inc in incidents[:3]:  # 처음 3개만 출력
-                    print(f"  - {inc.get('incident_id')}: symptom='{inc.get('symptom')}', failure_status='{inc.get('failure_status')}'")
+                    print(f"  - {inc.get('incident_id')}: symptom='{inc.get('symptom')[:50] if inc.get('symptom') else 'N/A'}...', failure_status='{inc.get('failure_status')[:50] if inc.get('failure_status') else 'N/A'}...'")
             else:
                 print("DEBUG: ❌ incidents가 비어있음 - None 반환!")
+                print(f"DEBUG: in_incident_section이 True로 설정되었는가? {in_incident_section}")
+                print(f"DEBUG: overall_lines 개수: {len(overall_lines)}")
+                print(f"DEBUG: recovery_methods 개수: {len(recovery_methods)}")
             return incidents_data if incidents else None
             
         except Exception as e:
@@ -1146,10 +1205,10 @@ INDEX_REBUILD_NAME=your-index-name
                         st.write(message["content"])
     
     def _display_content_with_markers(self, content, query_type):
-        """컨텐츠를 마커에 따라 적절히 표시"""
+        """컨텐츠를 마커에 따라 적절히 표시 + INQUIRY 타입의 경우 엑셀 다운로드 버튼 추가"""
         html_converted = False
+        converted_content = content
         
-        # repair 타입 자동 감지 (기존 메시지 처리용)
         if not query_type or query_type == "general":
             if self._is_repair_response(content):
                 query_type = "repair"
@@ -1162,16 +1221,41 @@ INDEX_REBUILD_NAME=your-index-name
                 except Exception as e:
                     print(f"repair 응답 파싱 실패: {e}")
         
-        # CAUSE_BOX 처리
-        if '[CAUSE_BOX_START]' in content:
-            content, has_html = self.convert_cause_box_to_html(content)
-            html_converted = html_converted or has_html
+        # INQUIRY 타입인 경우 박스 제거
+        if query_type.lower() == 'inquiry':
+            converted_content = self._remove_box_markers_enhanced(converted_content)
+            converted_content = self._remove_html_boxes_enhanced(converted_content)
+            converted_content = self._remove_repair_text_sections(converted_content)
+            converted_content = self._clean_inquiry_response(converted_content)
+            converted_content = self._emergency_remove_green_boxes(converted_content, query_type)
+        else:
+            # INQUIRY가 아닌 경우에만 박스 변환 적용
+            if '[CAUSE_BOX_START]' in converted_content:
+                converted_content, has_html = self.convert_cause_box_to_html(converted_content)
+                html_converted = html_converted or has_html
+        
         
         # HTML이 포함된 경우 또는 특수 디자인이 필요한 경우
-        if html_converted or ('<div style=' in content and ('장애원인' in content or '복구방법' in content)):
-            st.markdown(content, unsafe_allow_html=True)
+        if html_converted or ('<div style=' in converted_content and ('장애원인' in converted_content or '복구방법' in converted_content)):
+            st.markdown(converted_content, unsafe_allow_html=True)
         else: 
-            st.write(content)
+            st.write(converted_content)
+        
+        # ★★★ 핵심 수정: INQUIRY 타입의 경우 엑셀 다운로드 버튼 추가 ★★★
+        if query_type.lower() == 'inquiry':
+            try:
+                from utils.excel_utils import ExcelDownloadManager
+                excel_manager = ExcelDownloadManager()
+                
+                # 엑셀 다운로드 버튼 표시 시도
+                excel_manager.display_download_button(converted_content, query_type)
+                
+            except ImportError as e:
+                if self.debug_mode:
+                    print(f"UI_DEBUG: ExcelDownloadManager import 실패 (이전 대화): {e}")
+            except Exception as e:
+                if self.debug_mode:
+                    print(f"UI_DEBUG: 엑셀 다운로드 버튼 표시 오류 (이전 대화): {e}")
     
     def _is_repair_response(self, content):
         """repair 타입 응답인지 감지"""

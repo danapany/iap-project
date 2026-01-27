@@ -78,6 +78,7 @@ class DataIntegrityNormalizer:
     
     @staticmethod
     def preserve_original_fields(doc):
+        """원본 필드 보존 (incident_id 검증 강화)"""
         preserved_doc = doc.copy()
         critical_fields = [
             'incident_id', 'service_name', 'symptom', 'root_cause', 
@@ -86,12 +87,25 @@ class DataIntegrityNormalizer:
             'cause_type', 'done_type'
         ]
         
+        # ★★★ 추가: incident_id 필수 검증 ★★★
+        incident_id = doc.get('incident_id')
+        if not incident_id or (isinstance(incident_id, str) and not incident_id.strip()):
+            print(f"❌ CRITICAL ERROR: incident_id가 누락된 문서 발견!")
+            print(f"  - service_name: {doc.get('service_name')}")
+            print(f"  - error_date: {doc.get('error_date')}")
+            print(f"  - 전체 키: {list(doc.keys())[:10]}")
+            # 빈 incident_id 대신 오류 표시
+            preserved_doc['incident_id'] = '[MISSING_INCIDENT_ID]'
+        
         for field in critical_fields:
             original_value = doc.get(field)
             if original_value is not None:
                 preserved_doc[field] = str(original_value).strip() if str(original_value).strip() else original_value
             else:
                 preserved_doc[field] = ''
+                # ★★★ 추가: 필수 필드 누락 경고 ★★★
+                if field == 'incident_id':
+                    print(f"❌ CRITICAL: incident_id가 None입니다!")
         
         return preserved_doc
     
@@ -482,8 +496,14 @@ class QueryProcessorLocal:
         self.config = config or AppConfigLocal()
         self.embedding_client = embedding_client
         
-        # 컴포넌트 초기화 - search_client_2 전달
-        self.search_manager = SearchManagerLocal(search_client, search_client_2, embedding_client, self.config)
+        self.search_manager = SearchManagerLocal(
+            search_client, 
+            search_client_2, 
+            embedding_client, 
+            self.config,
+            azure_openai_client=self.azure_openai_client,
+            model_name=self.model_name
+        )
         self.ui_components = UIComponentsLocal()
         self.reprompting_db_manager = RepromptingDBManager()
         self.chart_manager = ChartManager()
@@ -958,6 +978,13 @@ class QueryProcessorLocal:
             # 데이터 무결성 보장 프롬프트 사용
             integrity_prompt = self._get_data_integrity_prompt(query_type)
             
+            # 🔍 디버그: 사용된 프롬프트 타입 출력
+            print(f"\n{'='*60}")
+            print(f"📝 [프롬프트 사용] {query_type.upper()} 프롬프트 적용")
+            print(f"📋 질의: {query}")
+            print(f"📄 문서 수: {len(final_documents)}건")
+            print(f"{'='*60}\n")
+            
             user_prompt = f"""{integrity_prompt}
 
 **원본 RAG 데이터 (절대 변경 금지):**
@@ -994,6 +1021,8 @@ class QueryProcessorLocal:
             return "죄송합니다. 응답을 생성하는 중 오류가 발생했습니다."
     
     def _get_data_integrity_prompt(self, query_type):
+        # 🔍 디버그: 프롬프트 생성
+        print(f"🔧 [프롬프트 생성] query_type='{query_type}'")
         """데이터 무결성 보장 전용 프롬프트"""
         base_prompt = f"""당신은 IT 시스템 장애 분석 전문가입니다.
 
@@ -1037,6 +1066,12 @@ class QueryProcessorLocal:
         return base_prompt
     
     def _generate_statistics_response_with_integrity(self, query, documents):
+        # 🔍 디버그: 통계 응답 생성
+        print(f"\n{'='*60}")
+        print(f"📊 [통계 프롬프트] STATISTICS 프롬프트 사용")
+        print(f"📋 질의: {query}")
+        print(f"📄 문서 수: {len(documents)}건")
+        print(f"{'='*60}\n")
         """데이터 무결성을 보장하는 통계 응답 생성 - 원인유형 처리 강화"""
         try:
             # 1. DB 우선 조회 시도 (lazy initialization)
@@ -1450,12 +1485,26 @@ class QueryProcessorLocal:
         query_stripped = query.strip()
         # incident_id 패턴: INM으로 시작하고 숫자가 이어지는 형태
         if re.match(r'^INM\d+$', query_stripped, re.IGNORECASE):
+            print(f"\n{'='*60}")
+            print(f"🔍 [분기 결정] Incident ID 패턴 감지 → REPAIR")
+            print(f"📝 질의: {query}")
+            print(f"{'='*60}\n")
             return 'repair'
         
         # 🔥 강력한 repair 키워드 우선 체크 (LLM보다 우선)
         query_lower = query.lower()
-        strong_repair_keywords = ['복구방법', '해결방법', '조치방법', '대응방법']
+        strong_repair_keywords = [
+            '복구방법', '해결방법', '조치방법', '대응방법',
+            '복구하려면', '정상화', '어떻게해', '어떻게하', 
+            '해결하려면', '조치하려면', '정상화하려면'
+        ]
         if any(keyword in query_lower for keyword in strong_repair_keywords):
+            matched = [kw for kw in strong_repair_keywords if kw in query_lower]
+            print(f"\n{'='*60}")
+            print(f"🔍 [분기 결정] 강력 키워드 매칭 → REPAIR")
+            print(f"📝 질의: {query}")
+            print(f"🔑 매칭: {matched}")
+            print(f"{'='*60}\n")
             return 'repair'
         
         try:
@@ -1469,7 +1518,7 @@ class QueryProcessorLocal:
 
 ### 1. repair (복구/해결 방법 문의) ⭐ 최우선
 **사용자가 문제를 어떻게 해결할지 알고 싶어함**
-- "어떻게 해결하나요?", "복구 방법은?", "조치 방법은?"
+- "어떻게 해결하나요?", "복구방법은?", "조치방법은?", "복구 방법은?", "조치 방법은?"
 - "왜 이런 문제가 생기나요?", "원인이 뭔가요?"
 - "~할 때 어떻게 하나요?", "~하려면 어떻게?"
 
@@ -1549,6 +1598,11 @@ class QueryProcessorLocal:
             )
             
             query_type = response.choices[0].message.content.strip().lower()
+
+            print(f"\n{'='*60}")
+            print(f"🔍 [분기 결정] LLM 분류 결과 → {query_type.upper()}")
+            print(f"📝 질의: {query}")
+            print(f"{'='*60}\n")
             
             # 유효성 검사
             if query_type not in ['repair', 'inquiry', 'statistics', 'default']:
@@ -1583,6 +1637,10 @@ class QueryProcessorLocal:
         # ★★★ 추가: incident_id 패턴 최우선 체크 ★★★
         query_stripped = query.strip()
         if re.match(r'^INM\d+$', query_stripped, re.IGNORECASE):
+            print(f"\n{'='*60}")
+            print(f"🔍 [분기 결정] Incident ID 패턴 감지 → REPAIR")
+            print(f"📝 질의: {query}")
+            print(f"{'='*60}\n")
             return 'repair'
         
         query_lower = query.lower()
@@ -1860,6 +1918,10 @@ class QueryProcessorLocal:
                 
                 # ★★★ statistics 타입은 RAG 검색 없이 DB 통계만 사용 ★★★
                 if query_type == "statistics":
+                    print(f"\n{'='*60}")
+                    print(f"📊 [분기 실행] STATISTICS - DB 통계 조회")
+                    print(f"📝 질의: {query}")
+                    print(f"{'='*60}\n")
                     with st.spinner("📊 통계 조회 중..."):
                         # DB 기반 통계 직접 생성
                         response = self._generate_statistics_response_with_integrity(query, [])
@@ -1870,15 +1932,28 @@ class QueryProcessorLocal:
                             document_count = 0  # statistics는 DB 기반이므로 문서 카운트 0
                             
                             self._display_response_with_marker_conversion(response, query_type=query_type)
-                            st.session_state.messages.append({"role": "assistant", "content": response_text})
+                            st.session_state.messages.append({
+                                "role": "assistant", 
+                                "content": response_text, 
+                                "query_type": query_type
+                            })
                         else:
                             response_text = "통계 조회 중 오류가 발생했습니다."
                             success = False
                             error_message = "통계 조회 실패"
                             st.write(response_text)
-                            st.session_state.messages.append({"role": "assistant", "content": response_text})
+                            st.session_state.messages.append({
+                                "role": "assistant", 
+                                "content": response_text, 
+                                "query_type": query_type
+                            })
                 else:
                     # ★★★ statistics 외의 타입은 기존 RAG 검색 로직 사용 ★★★
+
+                    print(f"\n{'='*60}")
+                    print(f"📄 [분기 실행] {query_type.upper()} - RAG 검색 + AI 응답")
+                    print(f"📝 질의: {query}")
+                    print(f"{'='*60}\n")
                     target_service_name = self.search_manager.extract_service_name_from_query(processing_query)
 
                     with st.spinner("📄 문서 검색 중..."):
@@ -1914,13 +1989,21 @@ class QueryProcessorLocal:
                                     error_message = self._get_failure_reason(response_text, document_count)
                                 
                                 self._display_response_with_marker_conversion(response, query_type=query_type)
-                                st.session_state.messages.append({"role": "assistant", "content": response_text})
+                                st.session_state.messages.append({
+                                    "role": "assistant", 
+                                    "content": response_text, 
+                                    "query_type": query_type
+                                })
                             else:
                                 response_text = "죄송합니다. 응답을 생성할 수 없습니다."
                                 success = False
                                 error_message = "응답 생성 실패"
                                 st.write(response_text)
-                                st.session_state.messages.append({"role": "assistant", "content": response_text})
+                                st.session_state.messages.append({
+                                    "role": "assistant", 
+                                    "content": response_text, 
+                                    "query_type": query_type
+                                })
                     else:
                         with st.spinner("📄 추가 검색 중..."):
                             fallback_documents = self.search_manager.search_documents_fallback(processing_query, target_service_name)
@@ -1938,13 +2021,21 @@ class QueryProcessorLocal:
                                     error_message = self._get_failure_reason(response_text, document_count)
                                 
                                 self._display_response_with_marker_conversion(response, query_type=query_type)
-                                st.session_state.messages.append({"role": "assistant", "content": response_text})
+                                st.session_state.messages.append({
+                                    "role": "assistant", 
+                                    "content": response_text, 
+                                    "query_type": query_type
+                                })
                             else:
                                 response_text = f"'{target_service_name or '해당 조건'}'에 해당하는 문서를 찾을 수 없습니다."
                                 success = False
                                 error_message = "관련 문서 검색 실패"
                                 st.write(response_text)
-                                st.session_state.messages.append({"role": "assistant", "content": response_text})
+                                st.session_state.messages.append({
+                                    "role": "assistant", 
+                                    "content": response_text, 
+                                    "query_type": query_type
+                                })
                                 
             except Exception as e:
                 response_time = time.time() - start_time
@@ -1952,7 +2043,11 @@ class QueryProcessorLocal:
                 success = False
                 response_text = f"쿼리 처리 중 오류가 발생했습니다: {str(e)}"
                 st.error(response_text)
-                st.session_state.messages.append({"role": "assistant", "content": response_text})
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": response_text, 
+                    "query_type": query_type or "default"
+                })
                 
                 if not st.session_state.current_query_logged and self.monitoring_enabled and self._manual_logging_enabled:
                     self._log_query_activity(
@@ -1998,6 +2093,71 @@ class QueryProcessorLocal:
             return "검색된 문서가 없어서 답변을 제공할 수 없습니다."
         
         try:
+            # ★★★ 추가: incident_id 검증 단계 ★★★
+            print(f"\n{'='*60}")
+            print(f"📋 [incident_id 검증 시작]")
+            print(f"  - 장애내역: {len(incidents)}건")
+            print(f"  - 이상징후내역: {len(anomalies)}건")
+            
+            # 장애내역 검증
+            valid_incidents = []
+            for i, doc in enumerate(incidents):
+                incident_id = doc.get('incident_id')
+                if not incident_id or (isinstance(incident_id, str) and not incident_id.strip()):
+                    print(f"❌ 장애내역 [{i+1}] incident_id 누락: service_name={doc.get('service_name')}, error_date={doc.get('error_date')}")
+                else:
+                    valid_incidents.append(doc)
+                    if i < 3:  # 처음 3개만 로그
+                        print(f"✅ 장애내역 [{i+1}] incident_id={incident_id}")
+            
+            # 이상징후내역 검증
+            valid_anomalies = []
+            for i, doc in enumerate(anomalies):
+                incident_id = doc.get('incident_id')
+                if not incident_id or (isinstance(incident_id, str) and not incident_id.strip()):
+                    print(f"❌ 이상징후 [{i+1}] incident_id 누락: service_name={doc.get('service_name')}, error_date={doc.get('error_date')}")
+                else:
+                    valid_anomalies.append(doc)
+                    if i < 3:  # 처음 3개만 로그
+                        print(f"✅ 이상징후 [{i+1}] incident_id={incident_id}")
+            
+            print(f"검증 결과: 장애내역 {len(valid_incidents)}/{len(incidents)}건, 이상징후내역 {len(valid_anomalies)}/{len(anomalies)}건 유효")
+            print(f"{'='*60}\n")
+            
+            # 검증된 문서로 교체
+            incidents = valid_incidents
+            anomalies = valid_anomalies
+            
+            if not incidents and not anomalies:
+                return "incident_id가 유효한 문서가 없어서 답변을 제공할 수 없습니다."
+            
+            # ★★★ 추가: 사용자 쿼리에서 인덱스 필터 감지 ★★★
+            query_lower = query.lower()
+            
+            # 키워드 감지
+            has_incident_keyword = any(kw in query_lower for kw in ['장애내역', '장애 내역', '장애내용'])
+            has_anomaly_keyword = any(kw in query_lower for kw in ['이상징후', '이상 징후', 'anomaly', '이상징후내역'])
+            
+            # 필터링 로직
+            if has_anomaly_keyword and not has_incident_keyword:
+                # 이상징후만 요청 -> 장애내역 제거
+                incidents = []
+                print(f"DEBUG: 이상징후만 요청됨, 장애내역 필터링")
+            elif has_incident_keyword and not has_anomaly_keyword:
+                # 장애내역만 요청 -> 이상징후내역 제거
+                anomalies = []
+                print(f"DEBUG: 장애내역만 요청됨, 이상징후내역 필터링")
+            # else: 둘 다 포함하거나 둘 다 없으면 모두 사용
+            
+            # ★★★ 필터링 후 확인 ★★★
+            if not incidents and not anomalies:
+                if has_anomaly_keyword:
+                    return "요청하신 이상징후내역을 찾을 수 없습니다."
+                elif has_incident_keyword:
+                    return "요청하신 장애내역을 찾을 수 없습니다."
+                else:
+                    return "검색된 문서가 없어서 답변을 제공할 수 없습니다."
+            
             # 원본 데이터 보존을 위한 전처리
             processed_incidents = [self.normalizer.normalize_document_with_integrity(doc) for doc in incidents]
             processed_anomalies = [self.normalizer.normalize_document_with_integrity(doc) for doc in anomalies]
@@ -2011,6 +2171,10 @@ class QueryProcessorLocal:
             
             # statistics 타입은 기존 로직 사용
             if query_type == "statistics":
+                print(f"\n{'='*60}")
+                print(f"📊 [분기 실행] STATISTICS - DB 통계 조회")
+                print(f"📝 질의: {query}")
+                print(f"{'='*60}\n")
                 all_docs = validated_incidents + validated_anomalies
                 return self._generate_statistics_response_with_integrity(query, all_docs)
             
@@ -2022,16 +2186,40 @@ class QueryProcessorLocal:
             final_query = reprompting_info.get('transformed_query', query) if reprompting_info and reprompting_info.get('transformed') else query
             
             # ★★★ 핵심 수정: 컨텍스트를 장애/이상징후로 구분하여 구성 ★★★
-            context_parts = [f"""전체 문서 수: 장애내역 {len(sorted_incidents)}건, 이상징후내역 {len(sorted_anomalies)}건
+            context_parts = []
+            
+            # 요청 유형에 따른 안내 메시지 추가
+            if sorted_incidents and not sorted_anomalies:
+                context_parts.append(f"""전체 문서 수: 장애내역 {len(sorted_incidents)}건
+⚠️ 중요: 사용자가 장애내역만 요청했으므로 장애내역만 출력하세요.
 ⚠️ 중요: 아래 모든 필드값은 원본 RAG 데이터이므로 절대 변경하거나 요약하지 마세요.
 
 === 장애내역 (Incident Records) ===
-"""]
+""")
+            elif sorted_anomalies and not sorted_incidents:
+                context_parts.append(f"""전체 문서 수: 이상징후내역 {len(sorted_anomalies)}건
+⚠️ 중요: 사용자가 이상징후내역만 요청했으므로 이상징후내역만 출력하세요.
+⚠️ 중요: 아래 모든 필드값은 원본 RAG 데이터이므로 절대 변경하거나 요약하지 마세요.
+
+=== 이상징후내역 (Anomaly Records) ===
+""")
+            else:
+                context_parts.append(f"""전체 문서 수: 장애내역 {len(sorted_incidents)}건, 이상징후내역 {len(sorted_anomalies)}건
+⚠️ 중요: 아래 모든 필드값은 원본 RAG 데이터이므로 절대 변경하거나 요약하지 마세요.
+
+=== 장애내역 (Incident Records) ===
+""")
             
             # 장애내역 추가
-            for i, doc in enumerate(sorted_incidents[:15]):  # 최대 15건
-                context_parts.append(f"""[장애내역 {i+1}]
-장애 ID: {doc.get('incident_id', '')}
+            if sorted_incidents:
+                for i, doc in enumerate(sorted_incidents[:15]):  # 최대 15건
+                    incident_id = doc.get('incident_id', '[MISSING]')
+                    # ★★★ 추가: incident_id 로그 ★★★
+                    if incident_id == '[MISSING]' or not incident_id or incident_id == '[MISSING_INCIDENT_ID]':
+                        print(f"❌ 컨텍스트 추가 시 incident_id 누락 발견: 장애내역 문서 {i+1}, service={doc.get('service_name')}")
+                    
+                    context_parts.append(f"""[장애내역 {i+1}]
+장애 ID: {incident_id}
 서비스명: {doc.get('service_name', '')}
 장애시간: {doc.get('error_time', 0)}분
 장애현상: {doc.get('symptom', '')}
@@ -2048,12 +2236,18 @@ class QueryProcessorLocal:
             
             # 이상징후내역 추가
             if sorted_anomalies:
-                context_parts.append("""
+                if sorted_incidents:  # 장애내역도 있는 경우에만 구분선 추가
+                    context_parts.append("""
 === 이상징후내역 (Anomaly Records) ===
 """)
                 for i, doc in enumerate(sorted_anomalies[:15]):  # 최대 15건
+                    incident_id = doc.get('incident_id', '[MISSING]')
+                    # ★★★ 추가: incident_id 로그 ★★★
+                    if incident_id == '[MISSING]' or not incident_id or incident_id == '[MISSING_INCIDENT_ID]':
+                        print(f"❌ 컨텍스트 추가 시 incident_id 누락 발견: 이상징후 문서 {i+1}, service={doc.get('service_name')}")
+                    
                     context_parts.append(f"""[이상징후 {i+1}]
-장애 ID: {doc.get('incident_id', '')}
+장애 ID: {incident_id}
 서비스명: {doc.get('service_name', '')}
 장애시간: {doc.get('error_time', 0)}분
 장애현상: {doc.get('symptom', '')}
@@ -2071,7 +2265,29 @@ class QueryProcessorLocal:
             # ★★★ 핵심 수정: 프롬프트에 장애/이상징후 구분 지시 추가 ★★★
             integrity_prompt = self._get_data_integrity_prompt_dual_source(query_type)
             
+            # ★★★ 추가: 필터링 안내를 user_prompt에 명시 ★★★
+            filter_instruction = ""
+            if sorted_incidents and not sorted_anomalies:
+                filter_instruction = """
+**🚨 중요: 사용자가 장애내역만 요청했습니다. 이상징후내역은 출력하지 마세요! 🚨**
+- 장애내역 섹션만 출력하세요
+- 이상징후내역 섹션은 절대 포함하지 마세요
+"""
+            elif sorted_anomalies and not sorted_incidents:
+                filter_instruction = """
+**🚨 중요: 사용자가 이상징후내역만 요청했습니다. 장애내역은 출력하지 마세요! 🚨**
+- 이상징후내역 섹션만 출력하세요
+- 장애내역 섹션은 절대 포함하지 마세요
+"""
+            else:
+                filter_instruction = """
+**🚨 중요: 사용자가 전체 내역을 요청했습니다. 장애내역과 이상징후내역을 모두 출력하세요! 🚨**
+- 장애내역 섹션과 이상징후내역 섹션을 모두 포함하세요
+- 각 섹션을 명확히 구분하여 표시하세요
+"""
+            
             user_prompt = f"""{integrity_prompt}
+{filter_instruction}
 
 **원본 RAG 데이터 (절대 변경 금지):**
 {chr(10).join(context_parts)}
@@ -2079,10 +2295,12 @@ class QueryProcessorLocal:
 **사용자 질문:** {final_query}
 
 **응답 지침:**
-1. 복구방법 박스에는 장애내역과 이상징후내역을 명확히 구분하여 표시하세요
-2. 세부내역 표에서는 장애내역을 먼저 출력하고, 그 다음 이상징후내역을 출력하세요
-3. 위 원본 데이터의 모든 필드값을 정확히 그대로 출력하세요
-4. 절대 요약하거나 변경하지 마세요
+1. 위 필터링 안내에 따라 해당하는 섹션만 출력하세요
+2. 복구방법 박스에는 요청된 내역 유형만 포함하세요
+3. 세부내역 표에서도 요청된 내역 유형만 출력하세요
+4. 엑셀 다운로드용 표도 요청된 내역 유형만 포함하세요
+5. 위 원본 데이터의 모든 필드값을 정확히 그대로 출력하세요
+6. 절대 요약하거나 변경하지 마세요
 
 답변:"""
 
@@ -2105,6 +2323,7 @@ class QueryProcessorLocal:
             import traceback
             traceback.print_exc()
             return "죄송합니다. 응답을 생성하는 중 오류가 발생했습니다."
+
     
     def _get_data_integrity_prompt_dual_source(self, query_type):
         """두 개의 소스(장애/이상징후)를 고려한 데이터 무결성 보장 프롬프트"""
